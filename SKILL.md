@@ -133,43 +133,55 @@ These three questions take ≤90 seconds. After this, the user is hands-off unti
 
 Scan the project for existing deferred-work artifacts across six tractable surfaces. NOTHING is imported yet — this phase only produces a candidate list.
 
+**Universal exclusion rule (applies to ALL surfaces):** any path containing a segment named `archive` or `Archive` is skipped. Files in archive paths are intentionally retired and importing them re-pollutes the active backlog with old work the project already moved past. Same for `.git/`, `node_modules/`, `vendor/`, `Pods/`, and the project's `Documentation/Development/Archive/` (or equivalent) folder if one exists. The skill should still REPORT the count of skipped archive files so the user knows they exist; just don't import them.
+
 | Surface | Signal | Confidence |
 |---|---|---|
-| **Deferred-named files** at repo root or `Documentation/`, `docs/`, `notes/` | Filenames matching `Deferred.md`, `BACKLOG.md`, `TODO.md`, `*deferred*.md` | High |
-| **Audit-tool ledgers** | `.radar-suite/ledger.yaml`, `.eslint-todos`, `.audit/`, custom audit YAML | High when present |
-| **Plan files** in `~/.claude/plans/`, `.claude/plans/`, `plans/` | Markdown files referencing the project name; status hints (paused/aborted/in progress) | Medium — many will be done, not deferred |
-| **Code comments** | `// TODO`, `// FIXME`, `// HACK`, `// XXX`, `// MIGRATION-NOTE`, `// DEFERRED` across `Sources/`, `src/`, etc. | Variable — many are noise |
-| **GitHub issues** (if `gh` CLI available + repo accessible) | Open issues labeled `deferred`, `wontfix-for-now`, `post-release`, `backlog` | High when labeled |
-| **Memory files** | `~/.claude/projects/<project>/memory/*.md` with "defer" / "deferred" in name or content | High when present |
+| **Deferred-named files** at repo root or `Documentation/`, `docs/`, `notes/` (excluding archive paths) | Filenames matching `Deferred.md`, `BACKLOG.md`, `TODO.md`, `*deferred*.md` | High |
+| **Audit-tool ledgers** (excluding archive paths) | `.radar-suite/ledger.yaml`, `.eslint-todos`, `.audit/`, custom audit YAML | High when present |
+| **Plan files** in `./plans/`, `./.claude/plans/` only — global `~/.claude/plans/` is **NOT** scanned by default because it produces dozens of completed-session noise hits per project | Markdown files referencing the project name; explicit status hints (`PAUSED:`, `ABORTED:`, `IN PROGRESS:` in title or first heading) | Medium — many will be done, not deferred. User can opt in to global scan via `/unforget import --plans=global` |
+| **Code comments** | Regex `// (TODO\|FIXME\|HACK\|XXX\|MIGRATION-NOTE\|DEFERRED)\b` (word boundary, NO required colon — many comment styles use space or paren after the tag) across `Sources/`, `src/`, `lib/`, etc. | Variable — typically 0–50 hits depending on project age and code-review discipline |
+| **GitHub issues** (if `gh` CLI authenticated AND repo accessible) | Open issues labeled `deferred`, `wontfix-for-now`, `post-release`, `backlog` | High when labeled |
+| **Memory files** | Filename match `^deferred_*.md` or `^project_deferred_*.md` (strict — body-text "defer" matches produce too many false positives from book/feedback files that mention deferral in passing) | High when filename matches; deprioritized for body-only matches |
 
-Output of Phase 2 is a candidate report. Example:
+**Audit-ledger format-aware parsing:** for known formats (`radar-suite/ledger.yaml`, `eslint`, etc.), parse the structured fields (`status`, `urgency`, `severity`, `file:line`) so Phase 4 auto-fill can populate columns from real signals instead of guessing from prose. For unknown audit formats, fall back to filename-based heuristics and flag the rows as needing manual review.
+
+**Cross-surface deduplication:** before producing the candidate report, run a fuzzy-match dedup pass. If the same item appears in Deferred.md AND a plan file AND a memory file (common — e.g., a paused migration shows up in all three), merge into ONE candidate row with the multi-source pointer recorded in the Finding cell. Without this step, the survey produces 3× duplicate rows for the same logical item.
+
+**GitHub issues — three states, not two:**
+- `gh` not installed → "GitHub issues skipped (`gh` CLI not available)"
+- `gh` installed but `gh auth status` fails → "GitHub issues skipped (`gh` not authenticated; run `gh auth login` to enable)"
+- `gh` authed but `gh issue list` returns empty → "GitHub issues: 0 open issues with deferral labels found"
+
+The spec must distinguish these so the user knows whether the surface is silent because empty or silent because broken.
+
+Output of Phase 2 is a candidate report. Example (numbers will vary; treat as illustrative, not as expected counts):
 
 ```
-Found 47 candidate deferred items across 6 surfaces:
+Found N candidate deferred items across 6 surfaces:
 
-📁 Deferred-named files (2)
-  • Deferred.md (38 sections, ~22 active rows after stripping RESOLVED entries)
+📁 Deferred-named files (2 active, 3 archive paths skipped)
+  • Deferred.md (~22 active rows after stripping RESOLVED entries)
   • BACKLOG.md (3 items)
 
-📋 Audit ledgers (1)
+📋 Audit ledgers (1 active, 3 archive ledgers skipped)
   • .radar-suite/ledger.yaml — 17 fixed, 1 deferred (RS-019), 1 accepted (RS-011)
 
-📂 Plan files (4 candidates)
-  • ~/.claude/plans/2026-04-30-test-suite-failures.md (looks paused)
-  • ~/.claude/plans/resume-the-v2-curried-hejlsberg.md (looks paused)
-  • ~/.claude/plans/skill-audit-report.md (status unclear)
-  • ~/.claude/plans/sunny-roaming-dahl.md (status unclear)
+📂 Plan files (project-local: 0; global ~/.claude/plans/ NOT scanned by default)
+  • Run /unforget import --plans=global to scan ~/.claude/plans/ — typically noisy, prefer to keep paused-plan rows in Section 1 captured directly via Phase 5 user-add.
 
-💬 Code comments (24)
-  • 21 TODO/FIXME/HACK in Sources/
-  • 3 MIGRATION-NOTE in Sources/Models/
+💬 Code comments (variable — typically 0–50)
+  • Word-boundary regex: // (TODO|FIXME|HACK|XXX|MIGRATION-NOTE|DEFERRED)\b
+  • Default skip — most TODOs are noise; user can opt in via /unforget import --comments
 
-📝 Memory files (3)
+📝 Memory files (filename match)
   • project_v2_v3_migration_diagnostic_apr30.md
   • project_deferred_worker_hygiene.md
-  • bug_echo_improvements_2026_04_29.md
+  • deferred_test_suite_failures_apr30.md
 
-🐙 GitHub issues — skipped (gh CLI not available, or repo private without auth)
+🐙 GitHub issues — depends on `gh` state (see "three states" rule above)
+
+🔁 Cross-surface dedup: K candidates merged from M raw matches.
 ```
 
 ### Phase 3 — Triage (per-surface yes/no/skip)
@@ -184,21 +196,23 @@ The user can skip any surface entirely. Nothing is forced.
 
 ### Phase 4 — Auto-fill defaults from source signals
 
-For each row that the user agreed to import, the skill auto-fills as many of the 10 columns as it can infer:
+For each row that the user agreed to import, the skill auto-fills as many of the 10 columns as it can infer.
+
+**Format-aware mapping** is preferred over prose-based heuristics. When the source has a structured format (radar-suite YAML ledgers with explicit `status`/`urgency`/`severity` fields; ESLint-disable directives with rule names; etc.), parse the structured fields directly. Fall back to prose heuristics only when the source is unstructured (plain markdown, code comments).
 
 | Column | Inferred from |
 |---|---|
 | **#** | Auto-assigned next ID per section (P1, P2, ...) |
-| **Target / Window** | Map "release-blocker" / "must-fix" → 🚢 THIS. "Post-release" → 🚢+1 NEXT. "Future" / no tag → 🌫️ SOMEDAY. |
-| **Finding** | Title or first line of source. Truncate at ~150 chars; full detail stays in source file. |
-| **Urgency** | Map source labels: CRITICAL/HIGH/MEDIUM/LOW pass through. ERROR/WARNING/INFO map to HIGH/MEDIUM/LOW. No tag → ⚪ LOW. |
-| **Risk: Fix** | Default ⚪ Low — needs human judgment |
+| **Target / Window** | Map "release-blocker" / "must-fix" / explicit `target: THIS` → 🚢 THIS. "Post-release" / `target: NEXT` → 🚢+1 NEXT. "Future" / no tag → 🌫️ SOMEDAY. |
+| **Finding** | Title or first line of source. Truncate at ~150 chars; full detail stays in source file (linked from the row). |
+| **Urgency** | Structured format: pass through `urgency` / `severity` field. Prose: CRITICAL/HIGH/MEDIUM/LOW pass through; ERROR/WARNING/INFO map to HIGH/MEDIUM/LOW. No tag → ⚪ LOW. |
+| **Risk: Fix** | Default ⚪ Low — needs human judgment. The skill shouldn't guess. |
 | **Risk: No Fix** | If source mentions "data loss", "crash", "user-visible" → 🟡 High. Default ⚪ Low. |
-| **ROI** | Default 🟢 Good |
-| **Blast Radius** | If source mentions file count or "single file" → ⚪ 1 file. "Many files" → 🟡 6-15 files. Default ⚪ 1 file. |
+| **ROI** | Default 🟢 Good. |
+| **Blast Radius** | If source has structured `files:` list, count and map. If prose mentions file count → map. "Many files" → 🟡 6-15 files. Default ⚪ 1 file. |
 | **Fix Effort** | Map source size estimates ("4-6 hours" → Medium, "trivial" → Trivial, "large refactor" → Large). Default Small. |
-| **Status** | Open by default. "RESOLVED" / "FIXED" / "DONE" → Fixed (auto-archive — see Phase 7). "In progress" → In Progress. |
-| **Section** | Per-source mapping: Deferred-named files → Section 1 (Paused plans). Plan files → Section 1. Audit ledgers → Section 3 (Audit findings). Memory files → Section 1 or 2 depending on content. Code comments → Section 4 (User-reported). |
+| **Status** | Open by default. "RESOLVED" / "FIXED" / "DONE" / structured `status: fixed` → Fixed (auto-archive — see Phase 7). "In progress" / structured `status: in_progress` → In Progress. Structured `status: deferred` → Deferred. Structured `status: accepted` → Skipped. |
+| **Section** | Per-source mapping: Deferred-named files → Section 1 (Paused plans). Plan files → Section 1. Audit ledgers → Section 3 (Audit findings). Memory files → Section 1 (if filename starts `project_deferred_`) or Section 2 (if filename starts `deferred_` and content is session-spillover-shaped). Code comments → Section 4 (User-reported). GitHub issues → Section 1 if labeled `paused`/`blocked`, Section 4 otherwise. |
 
 The skill is honest about not getting this perfect. Most cells will be defaults; the user upgrades them as they go via `/unforget edit`.
 
