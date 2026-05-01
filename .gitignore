@@ -1,0 +1,13 @@
+# Outreach drafts (Reddit posts, Twitter copy, etc.)
+# Kept local-only on purpose — drafts shouldn't appear in the public repo.
+marketing/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
