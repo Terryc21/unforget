@@ -1,19 +1,19 @@
 # unforget
 
-![Status](https://img.shields.io/badge/status-v0.1%20spec--only-orange) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Last Commit](https://img.shields.io/github/last-commit/Terryc21/unforget) ![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet) ![Visitors](https://komarev.com/ghpvc/?username=Terryc21&repo=unforget&label=visitors&color=blue) ![GitHub stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat)
+![Status](https://img.shields.io/badge/status-v0.1%20beta-yellow) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Last Commit](https://img.shields.io/github/last-commit/Terryc21/unforget) ![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet) ![Visitors](https://komarev.com/ghpvc/?username=Terryc21&repo=unforget&label=visitors&color=blue) ![GitHub stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat)
 
 <a href="https://buymeacoffee.com/stuffolio">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
 </a>
 
-> [!WARNING]
-> **Beta. v0.1 is spec-only.** The seven-phase init flow, four-section structure, and 10-column rating table are fully specified in [SKILL.md](SKILL.md) and validated against two real projects (one complex, one minimal). The slash-command runtime handlers (`/unforget init`, `/unforget add`, etc.) **are not yet implemented**. They ship in v0.2.
+> [!NOTE]
+> **Beta, v0.1.** The skill is functional today via Claude Code's `/skill` invocation. Drop the [SKILL.md](SKILL.md) file in your skill path, then run `/skill unforget init` (or `/skill unforget add "..."`) in any session. Claude reads the spec and follows the seven-phase flow. The same pattern as `/skill humanizer`, `/skill prompter`, and other SKILL.md-based tools.
 >
-> **What works today:** the UNFORGET.md file format itself. You can hand-create a file using the structure described below and use it manually. Several projects already do this.
+> v0.2 will ship as a polished Claude Code plugin (`.claude-plugin/` install, auto-loaded slash commands) for a cleaner install experience and to drop the `/skill` prefix from invocations. Functionality unchanged; ergonomics improved.
 >
-> **What doesn't work yet:** typing `/unforget add "..."` will not currently fire any handler. Until v0.2, all interaction is manual file edits.
+> The format itself works as plain markdown for users who'd rather edit by hand.
 >
-> **Beta testers wanted.** If you try the format on your own project (manual or AI-assisted edits), please [open an issue](https://github.com/Terryc21/unforget/issues) describing what worked, what felt wrong, or what was missing. Real-project feedback is what shapes v0.2's runtime implementation. Especially valuable: minimal repos, non-Apple-platform projects (web, Android, backend, libraries), projects with non-CLAUDE.md AI instruction files (Warp, Cursor, Aider, Continue), and continuous-deployment workflows.
+> **Beta testers wanted.** If you try the skill on your own project, please [open an issue](https://github.com/Terryc21/unforget/issues) describing what worked, what felt wrong, or what was missing. Real-project feedback is what shapes v0.2's plugin polish and any spec gaps that surface in the wild. Especially valuable: minimal repos, non-Apple-platform projects (web, Android, backend, libraries), projects with non-CLAUDE.md AI instruction files (Warp, Cursor, Aider, Continue), and continuous-deployment workflows.
 
 > A way of not losing sight or track of what is deferred.
 
@@ -168,13 +168,11 @@ There are 50 task trackers. The differentiators here:
 
 `unforget` was extracted from a real Universal app (Stuffolio: iOS, iPadOS, and macOS from a single Swift codebase) where deferred work had fragmented across five tracking surfaces. Consolidation freed roughly 3 hours of release-prep time per cycle.
 
-What's field-tested vs. what's spec at v0.1:
+What's field-tested vs. what's still maturing at v0.1:
 
 - **The 10-column table format.** Battle-tested in the source project against an actual App Store submission cycle. Rows, sections, Target column, promotion ritual all proven to work in practice.
-- **The seven-phase init flow.** Designed from the source project's actual migration experience but specified for general use; not yet field-tested on a second project.
-- **The slash-command implementations.** Currently spec-only. SKILL.md describes what each command does; the runtime handlers haven't been written yet. v0.2 closes that gap.
-
-Use the file format today (it works as plain markdown). The slash-command surface lands in v0.2.
+- **The seven-phase init flow.** Specified in detail and validated via two rounds of nondestructive testing (one complex Universal app, one minimal third-party skill). 13 spec gaps caught and fixed. Functional today via `/skill unforget`. Not yet exercised in a long-running production project beyond the source.
+- **The plugin install path.** v0.2 will package the skill as a Claude Code plugin (`.claude-plugin/`) for cleaner install and slash-command invocation without the `/skill` prefix. Functionality is the same; the ergonomics are the change.
 
 ## Companion Skills
 
