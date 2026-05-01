@@ -7,7 +7,7 @@
 </a>
 
 > [!WARNING]
-> **Beta — v0.1 is spec-only.** The seven-phase init flow, four-section structure, and 10-column rating table are fully specified in [SKILL.md](SKILL.md) and validated against two real projects (one complex, one minimal). The slash-command runtime handlers (`/unforget init`, `/unforget add`, etc.) **are not yet implemented** — they ship in v0.2.
+> **Beta. v0.1 is spec-only.** The seven-phase init flow, four-section structure, and 10-column rating table are fully specified in [SKILL.md](SKILL.md) and validated against two real projects (one complex, one minimal). The slash-command runtime handlers (`/unforget init`, `/unforget add`, etc.) **are not yet implemented**. They ship in v0.2.
 >
 > **What works today:** the UNFORGET.md file format itself. You can hand-create a file using the structure described below and use it manually. Several projects already do this.
 >
@@ -17,7 +17,7 @@
 
 > A way of not losing sight or track of what is deferred.
 
-A Claude Code skill that consolidates deferred work — paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs — into one structured file. Built so deferred items don't slip through the cracks between releases.
+A Claude Code skill that consolidates deferred work (paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs) into one structured file. Built so deferred items don't slip through the cracks between releases.
 
 ## The problem
 
@@ -39,8 +39,8 @@ Months later, when you ask "what's deferred?", the answer requires walking five 
 
 - **Initializes** `UNFORGET.md` in your project (default path: `Documentation/Development/Deferred/UNFORGET.md`)
 - **Surveys** existing deferral artifacts (Deferred.md / audit ledgers / plan files / code comments / GitHub issues / memory files) and offers to import them as rows
-- **Invites you to capture** items the survey can't find — bugs in your head, friction you've felt, "I should fix that someday" thoughts
-- **Captures** new deferrals in ≤30 seconds via `/unforget add`
+- **Invites you to capture** items the survey can't find: bugs in your head, friction you've felt, "I should fix that someday" thoughts
+- **Captures** new deferrals in 30 seconds or less via `/unforget add`
 - **Refines** rows via `/unforget edit` (upgrade auto-filled defaults to your real ratings)
 - **Re-surveys** after init via `/unforget import` (catches new artifacts as they appear)
 - **Surfaces** stale items via `/unforget scan` (rows aging past their priority threshold)
@@ -62,7 +62,7 @@ Each row gets rated across ten axes:
 
 `# | Target | Finding | Urgency | Risk: Fix | Risk: No Fix | ROI | Blast Radius | Fix Effort | Status`
 
-The signature column is **Target** — the release-cycle commitment:
+The signature column is **Target**, the release-cycle commitment:
 
 | Target | Meaning |
 |---|---|
@@ -90,15 +90,15 @@ Keeping Urgency and Target as separate columns lets either dimension shift witho
 /unforget init
 ```
 
-`init` runs a seven-phase flow that takes 5–15 minutes the first time:
+`init` runs a seven-phase flow that takes 5 to 15 minutes the first time:
 
-1. **Setup questions** (≤90 seconds) — file path, cadence preset, whether to wire CLAUDE.md / AGENTS.md.
-2. **Surface survey** — scans six tracking surfaces (Deferred.md / audit ledgers / plan files / code comments / GitHub issues / memory files) and produces a candidate list. Nothing imported yet.
-3. **Triage** — for each surface, you decide: import all / one-by-one / skip.
-4. **Auto-fill** — the skill maps source signals to the 10 columns with conservative defaults (you upgrade later via `/unforget edit`).
-5. **User-add pass** — the skill asks: "What else? Bugs in your head, friction you've felt, items in Slack DMs, things you remember from past sessions?" You rattle off items, the skill captures each with conservative defaults. This phase typically catches 5–15 rows that no survey could find — often the highest-value rows in the eventual file.
-6. **Optional deep-dump** — 8–10 guided prompts for users who want a thorough adoption-time audit. Default skip; runnable later via `/unforget import --deep`.
-7. **Diff preview, write, wire** — shows you exactly what's about to be imported, then writes UNFORGET.md, archives or redirects source files (never silent delete), and wires CLAUDE.md / AGENTS.md.
+1. **Setup questions** (90 seconds or less): file path, cadence preset, whether to wire CLAUDE.md / AGENTS.md.
+2. **Surface survey**: scans six tracking surfaces (Deferred.md / audit ledgers / plan files / code comments / GitHub issues / memory files) and produces a candidate list. Nothing imported yet.
+3. **Triage**: for each surface, you decide: import all / one-by-one / skip.
+4. **Auto-fill**: the skill maps source signals to the 10 columns with conservative defaults (you upgrade later via `/unforget edit`).
+5. **User-add pass**: the skill asks: "What else? Bugs in your head, friction you've felt, items in Slack DMs, things you remember from past sessions?" You rattle off items, the skill captures each with conservative defaults. This phase typically catches 5 to 15 rows that no survey could find. Often the highest-value rows in the eventual file.
+6. **Optional deep-dump**: 8 to 10 guided prompts for users who want a thorough adoption-time audit. Default skip; runnable later via `/unforget import --deep`.
+7. **Diff preview, write, wire**: shows you exactly what's about to be imported, then writes UNFORGET.md, archives or redirects source files (never silent delete), and wires CLAUDE.md / AGENTS.md.
 
 Then, anywhere in any session:
 
@@ -125,12 +125,12 @@ You see exactly which rows block submission. Fix them, mark them Fixed, run `/un
 | `/unforget edit <ID>` | Refine a row's columns (Target, Urgency, etc.) |
 | `/unforget import` | Re-run the surface survey after init (catches new artifacts) |
 | `/unforget list` | Show current state, filterable by section / Target / Urgency / staleness |
-| `/unforget scan` | Identify stale rows (read-only — never modifies the file) |
-| `/unforget promote` | Release-time ritual (verify THIS rows fixed; promote NEXT → THIS) |
+| `/unforget scan` | Identify stale rows (read-only, never modifies the file) |
+| `/unforget promote` | Release-time ritual (verify THIS rows fixed; promote NEXT to THIS) |
 
 ## Three preset modes
 
-Different projects ship differently. `unforget init` offers three preset table shapes — each opinionated and complete, no column-picking needed:
+Different projects ship differently. `unforget init` offers three preset table shapes. Each is opinionated and complete; no column-picking needed:
 
 | Preset | Audience | Target column |
 |---|---|---|
@@ -138,7 +138,7 @@ Different projects ship differently. `unforget init` offers three preset table s
 | **Lean** | Solo devs, side projects, junior devs | Same Target values, but only 6 columns total (Finding / Urgency / Effort / Status) |
 | **Continuous** | Web apps, services, libraries with continuous deployment | Replaces Target with Window: 🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / 🌫️ SOMEDAY |
 
-Power users can append **extra columns** (Client, Sprint, Component, etc.) without modifying the core columns. Removing or renaming core columns is intentionally not supported — it breaks comparability across projects.
+Power users can append **extra columns** (Client, Sprint, Component, etc.) without modifying the core columns. Removing or renaming core columns is intentionally not supported, because it breaks comparability across projects.
 
 ## Why this isn't "just another todo system"
 
@@ -166,24 +166,24 @@ There are 50 task trackers. The differentiators here:
 
 ## Origin
 
-`unforget` was extracted from a real iOS project (Stuffolio) where deferred work had fragmented across five tracking surfaces and the consolidation freed ~3 hours of release-prep time per cycle.
+`unforget` was extracted from a real iOS project (Stuffolio) where deferred work had fragmented across five tracking surfaces. Consolidation freed roughly 3 hours of release-prep time per cycle.
 
 What's field-tested vs. what's spec at v0.1:
 
-- **The 10-column table format** — battle-tested in the source project against an actual App Store submission cycle. Rows, sections, Target column, promotion ritual all proven to work in practice.
-- **The seven-phase init flow** — designed from the source project's actual migration experience but specified for general use; not yet field-tested on a second project.
-- **The slash-command implementations** — currently spec-only. SKILL.md describes what each command does; the runtime handlers haven't been written yet. v0.2 closes that gap.
+- **The 10-column table format.** Battle-tested in the source project against an actual App Store submission cycle. Rows, sections, Target column, promotion ritual all proven to work in practice.
+- **The seven-phase init flow.** Designed from the source project's actual migration experience but specified for general use; not yet field-tested on a second project.
+- **The slash-command implementations.** Currently spec-only. SKILL.md describes what each command does; the runtime handlers haven't been written yet. v0.2 closes that gap.
 
 Use the file format today (it works as plain markdown). The slash-command surface lands in v0.2.
 
 ## Companion Skills
 
-`unforget` came out of [Stuffolio](https://stuffolio.app)'s skill family — a set of Claude Code skills that grew from real shipping work and were extracted as standalone tools. Worth pairing with `unforget`:
+`unforget` came out of [Stuffolio](https://stuffolio.app)'s skill family. A set of Claude Code skills that grew from real shipping work and were extracted as standalone tools. Worth pairing with `unforget`:
 
 | Skill | What it does |
 |---|---|
 | [**radar-suite**](https://github.com/Terryc21/radar-suite) | 8 audit skills that find bugs in Swift/SwiftUI apps before users do. Every finding cites a real file:line pattern in your codebase, not generic advice. Audit findings that aren't fixed immediately become rows in `unforget`'s Section 3 (Audit findings). |
-| [**bug-prospector**](https://github.com/Terryc21/bug-prospector) | Mines for hidden bugs that pattern-based auditors miss — behavioral and contextual issues regex can't catch. Outputs feed naturally into `unforget`'s Section 4 (User-reported / observed). |
+| [**bug-prospector**](https://github.com/Terryc21/bug-prospector) | Mines for hidden bugs that pattern-based auditors miss. Behavioral and contextual issues regex can't catch. Outputs feed naturally into `unforget`'s Section 4 (User-reported / observed). |
 | [**bug-echo**](https://github.com/Terryc21/bug-echo) | After you fix a bug, finds other instances of the same pattern across your codebase. The instances you don't fix immediately become `unforget` rows. |
 
 All three follow the same opinionated-defaults design philosophy as `unforget` and integrate cleanly via the four-section structure.
@@ -194,7 +194,7 @@ Apache License 2.0. See LICENSE.
 
 ## Contributing
 
-This is an early-stage skill. If you try it and the format breaks down for your workflow, please open an issue describing the failure mode — that's the most useful feedback. Pull requests welcome for:
+This is an early-stage skill. If you try it and the format breaks down for your workflow, please open an issue describing the failure mode. That's the most useful feedback. Pull requests welcome for:
 
 - Additional preset modes (e.g., academic / research / open-source-maintainer)
 - Improved scan heuristics

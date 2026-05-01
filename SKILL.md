@@ -2,8 +2,8 @@
 name: unforget
 version: 0.1.0
 description: |
-  A single source of truth for deferred work — paused plans, mid-task spillover,
-  audit findings, and observed-but-not-yet-fixed bugs — organized so nothing slips
+  A single source of truth for deferred work (paused plans, mid-task spillover,
+  audit findings, and observed-but-not-yet-fixed bugs), organized so nothing slips
   through the cracks between releases. Use when the user asks "what's deferred?",
   "what's the backlog?", "prioritize my deferred work," "show me what's blocking
   release," or wants to log something for later without losing track of it.
@@ -15,13 +15,13 @@ description: |
   different places and then nobody can find them when it matters.
 
   Subcommands:
-  - /unforget init     — create UNFORGET.md, survey existing deferral artifacts, capture user-known items
-  - /unforget add      — capture a new deferral (default: Session spillover)
-  - /unforget edit     — refine an existing row's columns (Target, Urgency, etc.)
-  - /unforget import   — re-run the surface survey after init (catches NEW artifacts)
-  - /unforget list     — show current state, filterable by section / Target / Urgency
-  - /unforget scan     — surface stale rows (rows aging past their priority threshold)
-  - /unforget promote  — release-time ritual (verify THIS rows fixed; promote NEXT → THIS)
+  - /unforget init     ·  create UNFORGET.md, survey existing deferral artifacts, capture user-known items
+  - /unforget add      ·  capture a new deferral (default: Session spillover)
+  - /unforget edit     ·  refine an existing row's columns (Target, Urgency, etc.)
+  - /unforget import   ·  re-run the surface survey after init (catches NEW artifacts)
+  - /unforget list     ·  show current state, filterable by section / Target / Urgency
+  - /unforget scan     ·  surface stale rows (rows aging past their priority threshold)
+  - /unforget promote  ·  release-time ritual (verify THIS rows fixed; promote NEXT to THIS)
 license: Apache-2.0
 ---
 
@@ -31,7 +31,7 @@ license: Apache-2.0
 
 ## Why this skill exists
 
-Every developer defers things. The problem isn't the deferral — it's that deferred items end up scattered across:
+Every developer defers things. The problem isn't the deferral. The problem is that deferred items end up scattered across:
 
 - a `Deferred.md` at the repo root
 - date-prefixed plan files in some "deferred" folder
@@ -49,7 +49,7 @@ When the user asks "what's deferred?" months later, the answer requires walking 
 2. **Surfaces staleness** via a built-in scan command that flags items past their age threshold.
 3. **Standardizes the format** so any developer reading any project's UNFORGET.md instantly recognizes the structure.
 
-The pattern was extracted from a real iOS project where deferred work had fragmented across five tracking surfaces and the consolidation freed ~3 hours of release-prep time per cycle.
+The pattern was extracted from a real iOS project where deferred work had fragmented across five tracking surfaces. Consolidation freed roughly 3 hours of release-prep time per cycle.
 
 ---
 
@@ -104,33 +104,35 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 | **Lean** | Solo devs, side projects, junior devs | 6 columns: # / Target / Finding / Urgency / Effort / Status |
 | **Continuous** | Web apps, services, libraries with continuous deployment | 9 columns; replaces Target with Window (🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / 🌫️ SOMEDAY) |
 
-Users on Standard or Lean can also append **extra columns** (Client, Sprint, Component, etc.) without modifying core columns. Removing or renaming core columns is intentionally not supported — it breaks comparability across projects and tooling.
+Users on Standard or Lean can also append **extra columns** (Client, Sprint, Component, etc.) without modifying core columns. Removing or renaming core columns is intentionally not supported, because it breaks comparability across projects and tooling.
 
 ---
 
 ## /unforget init
 
-Bootstrap UNFORGET.md AND populate it with existing deferred items from across the project's tracking surfaces. Init is the highest-leverage moment in the skill's lifecycle — the deferred items the user already has are exactly the items most at risk of being lost.
+Bootstrap UNFORGET.md AND populate it with existing deferred items from across the project's tracking surfaces. Init is the highest-leverage moment in the skill's lifecycle. The deferred items the user already has are exactly the items most at risk of being lost.
 
-The flow is seven phases, in order. Phases 1–4 are automated discovery and triage. Phase 5 is user-driven capture. Phase 6 is an optional deep-dump. Phase 7 writes the file and wires recall into the project.
+The flow is seven phases, in order. Phases 1 through 4 are automated discovery and triage. Phase 5 is user-driven capture. Phase 6 is an optional deep-dump. Phase 7 writes the file and wires recall into the project.
 
-### Phase 1 — Setup questions
+### Phase 1: Setup questions
 
 Three short questions before any scanning happens:
 
-1. **File path:** The default depends on what the project already has. Check the repo first:
+1. **File path.** The default depends on what the project already has. Check the repo first:
    - If `Documentation/` exists with subdirectories: default `Documentation/Development/Deferred/UNFORGET.md` (matches projects with formal docs trees, like iOS/macOS apps)
    - If `docs/` exists: default `docs/UNFORGET.md` (matches conventional library / web projects)
    - If neither exists: default `UNFORGET.md` at repo root (matches minimal single-purpose repos like skills, CLI tools, small libraries)
 
    Always offer the user the chance to override. The point is to not impose a directory structure the project doesn't already use.
-2. **Cadence preset:**
+
+2. **Cadence preset.**
    > "How does this project ship?"
-   > - Discrete releases (mobile app, library, versioned product) → **Standard** preset (10 columns, Target column)
-   > - Continuous deployment (web app, service, internal tool) → **Continuous** preset (9 columns, Window column)
-   > - Solo / side project / want minimal columns → **Lean** preset (6 columns)
-   > - Custom — pick from a fixed pool of 12 columns
-3. **AI instructions file wiring:** Different AI tools use different conventions:
+   > - Discrete releases (mobile app, library, versioned product) routes to **Standard** preset (10 columns, Target column)
+   > - Continuous deployment (web app, service, internal tool) routes to **Continuous** preset (9 columns, Window column)
+   > - Solo / side project / want minimal columns routes to **Lean** preset (6 columns)
+   > - Custom: pick from a fixed pool of 12 columns
+
+3. **AI instructions file wiring.** Different AI tools use different conventions:
    - Claude Code: `CLAUDE.md`
    - Anthropic Agent SDK / generic: `AGENTS.md`
    - Warp: `WARP.md`
@@ -138,35 +140,35 @@ Three short questions before any scanning happens:
    - Aider: `.aider.conf.yml`
    - Continue: `.continue/`
 
-   Scan the repo for any of these. If exactly one is found, ask: "Add a 'Deferred Work Index' section to `<filename>` so future AI sessions auto-recall UNFORGET.md when you ask 'what's deferred'?" If multiple are found, list them and let the user pick which to wire (or all, or none). If none is found, ask whether to create a `CLAUDE.md` or `AGENTS.md` (recommended — without it, the recall trigger is opt-in per session).
+   Scan the repo for any of these. If exactly one is found, ask: "Add a 'Deferred Work Index' section to `<filename>` so future AI sessions auto-recall UNFORGET.md when you ask 'what's deferred'?" If multiple are found, list them and let the user pick which to wire (or all, or none). If none is found, ask whether to create a `CLAUDE.md` or `AGENTS.md`. Recommended yes; without it, the recall trigger is opt-in per session.
 
    The wiring step shouldn't hardcode filenames. It should detect what the project actually uses and adapt.
 
-These three questions take ≤90 seconds. After this, the user is hands-off until Phase 5.
+These three questions take 90 seconds or less. After this, the user is hands-off until Phase 5.
 
-### Phase 2 — Surface survey (read-only)
+### Phase 2: Surface survey (read-only)
 
-Scan the project for existing deferred-work artifacts across six tractable surfaces. NOTHING is imported yet — this phase only produces a candidate list.
+Scan the project for existing deferred-work artifacts across six tractable surfaces. NOTHING is imported yet; this phase only produces a candidate list.
 
-**Universal exclusion rule (applies to ALL surfaces):** any path containing a segment named `archive` or `Archive` is skipped. Files in archive paths are intentionally retired and importing them re-pollutes the active backlog with old work the project already moved past. Same for `.git/`, `node_modules/`, `vendor/`, `Pods/`, and the project's `Documentation/Development/Archive/` (or equivalent) folder if one exists. The skill should still REPORT the count of skipped archive files so the user knows they exist; just don't import them.
+**Universal exclusion rule (applies to ALL surfaces):** any path containing a segment named `archive` or `Archive` is skipped. Files in archive paths are intentionally retired, and importing them re-pollutes the active backlog with old work the project already moved past. Same for `.git/`, `node_modules/`, `vendor/`, `Pods/`, and the project's `Documentation/Development/Archive/` (or equivalent) folder if one exists. The skill should still REPORT the count of skipped archive files so the user knows they exist; just don't import them.
 
 | Surface | Signal | Confidence |
 |---|---|---|
 | **Deferred-named files** at repo root or `Documentation/`, `docs/`, `notes/` (excluding archive paths) | Filenames matching `Deferred.md`, `BACKLOG.md`, `TODO.md`, `*deferred*.md` | High |
 | **Audit-tool ledgers** (excluding archive paths) | `.radar-suite/ledger.yaml`, `.eslint-todos`, `.audit/`, custom audit YAML | High when present |
-| **Plan files** in `./plans/`, `./.claude/plans/` only — global `~/.claude/plans/` is **NOT** scanned by default because it produces dozens of completed-session noise hits per project | Markdown files referencing the project name; explicit status hints (`PAUSED:`, `ABORTED:`, `IN PROGRESS:` in title or first heading) | Medium — many will be done, not deferred. User can opt in to global scan via `/unforget import --plans=global` |
-| **Code comments** | Regex `// (TODO\|FIXME\|HACK\|XXX\|MIGRATION-NOTE\|DEFERRED)\b` (word boundary, NO required colon — many comment styles use space or paren after the tag) across `Sources/`, `src/`, `lib/`, etc. | Variable — typically 0–50 hits depending on project age and code-review discipline |
+| **Plan files** in `./plans/`, `./.claude/plans/` only. Global `~/.claude/plans/` is **NOT** scanned by default because it produces dozens of completed-session noise hits per project. | Markdown files referencing the project name; explicit status hints (`PAUSED:`, `ABORTED:`, `IN PROGRESS:` in title or first heading) | Medium. Many will be done, not deferred. User can opt in to global scan via `/unforget import --plans=global`. |
+| **Code comments** | Regex `// (TODO\|FIXME\|HACK\|XXX\|MIGRATION-NOTE\|DEFERRED)\b` (word boundary, NO required colon, because many comment styles use space or paren after the tag) across `Sources/`, `src/`, `lib/`, etc. | Variable, typically 0 to 50 hits depending on project age and code-review discipline |
 | **GitHub issues** (if `gh` CLI authenticated AND repo accessible) | Open issues labeled `deferred`, `wontfix-for-now`, `post-release`, `backlog` | High when labeled |
-| **Memory files** | Filename match `^deferred_*.md` or `^project_deferred_*.md` (strict — body-text "defer" matches produce too many false positives from book/feedback files that mention deferral in passing) | High when filename matches; deprioritized for body-only matches |
+| **Memory files** | Filename match `^deferred_*.md` or `^project_deferred_*.md` (strict, because body-text "defer" matches produce too many false positives from book/feedback files that mention deferral in passing) | High when filename matches; deprioritized for body-only matches |
 
 **Audit-ledger format-aware parsing:** for known formats (`radar-suite/ledger.yaml`, `eslint`, etc.), parse the structured fields (`status`, `urgency`, `severity`, `file:line`) so Phase 4 auto-fill can populate columns from real signals instead of guessing from prose. For unknown audit formats, fall back to filename-based heuristics and flag the rows as needing manual review.
 
-**Cross-surface deduplication:** before producing the candidate report, run a fuzzy-match dedup pass. If the same item appears in Deferred.md AND a plan file AND a memory file (common — e.g., a paused migration shows up in all three), merge into ONE candidate row with the multi-source pointer recorded in the Finding cell. Without this step, the survey produces 3× duplicate rows for the same logical item.
+**Cross-surface deduplication:** before producing the candidate report, run a fuzzy-match dedup pass. If the same item appears in Deferred.md AND a plan file AND a memory file (common, e.g., a paused migration shows up in all three), merge into ONE candidate row with the multi-source pointer recorded in the Finding cell. Without this step, the survey produces 3x duplicate rows for the same logical item.
 
-**GitHub issues — three states, not two:**
-- `gh` not installed → "GitHub issues skipped (`gh` CLI not available)"
-- `gh` installed but `gh auth status` fails → "GitHub issues skipped (`gh` not authenticated; run `gh auth login` to enable)"
-- `gh` authed but `gh issue list` returns empty → "GitHub issues: 0 open issues with deferral labels found"
+**GitHub issues, three states, not two:**
+- `gh` not installed: "GitHub issues skipped (`gh` CLI not available)"
+- `gh` installed but `gh auth status` fails: "GitHub issues skipped (`gh` not authenticated; run `gh auth login` to enable)"
+- `gh` authed but `gh issue list` returns empty: "GitHub issues: 0 open issues with deferral labels found"
 
 The spec must distinguish these so the user knows whether the surface is silent because empty or silent because broken.
 
@@ -180,42 +182,42 @@ Found N candidate deferred items across 6 surfaces:
   • BACKLOG.md (3 items)
 
 📋 Audit ledgers (1 active, 3 archive ledgers skipped)
-  • .radar-suite/ledger.yaml — 17 fixed, 1 deferred (RS-019), 1 accepted (RS-011)
+  • .radar-suite/ledger.yaml: 17 fixed, 1 deferred (RS-019), 1 accepted (RS-011)
 
 📂 Plan files (project-local: 0; global ~/.claude/plans/ NOT scanned by default)
-  • Run /unforget import --plans=global to scan ~/.claude/plans/ — typically noisy, prefer to keep paused-plan rows in Section 1 captured directly via Phase 5 user-add.
+  • Run /unforget import --plans=global to scan ~/.claude/plans/. Typically noisy. Prefer to keep paused-plan rows in Section 1 captured directly via Phase 5 user-add.
 
-💬 Code comments (variable — typically 0–50)
+💬 Code comments (variable, typically 0 to 50)
   • Word-boundary regex: // (TODO|FIXME|HACK|XXX|MIGRATION-NOTE|DEFERRED)\b
-  • Default skip — most TODOs are noise; user can opt in via /unforget import --comments
+  • Default skip. Most TODOs are noise; user can opt in via /unforget import --comments
 
 📝 Memory files (filename match)
   • project_v2_v3_migration_diagnostic_apr30.md
   • project_deferred_worker_hygiene.md
   • deferred_test_suite_failures_apr30.md
 
-🐙 GitHub issues — depends on `gh` state (see "three states" rule above)
+🐙 GitHub issues: depends on `gh` state (see "three states" rule above)
 
 🔁 Cross-surface dedup: K candidates merged from M raw matches.
 ```
 
-**Empty-case branch:** if ALL surfaces return zero candidates (common in minimal projects — single-skill repos, fresh greenfield codebases, small libraries), skip Phase 3 (no triage needed) and Phase 4 (nothing to auto-fill) entirely. Jump directly to Phase 5 with a different framing message:
+**Empty-case branch:** if ALL surfaces return zero candidates (common in minimal projects: single-skill repos, fresh greenfield codebases, small libraries), skip Phase 3 (no triage needed) and Phase 4 (nothing to auto-fill) entirely. Jump directly to Phase 5 with a different framing message:
 
-> "No existing deferral artifacts found. That's fine — most projects start UNFORGET.md from the user's tacit knowledge anyway. Let's go straight to capturing what's in your head."
+> "No existing deferral artifacts found. That's fine. Most projects start UNFORGET.md from the user's tacit knowledge anyway. Let's go straight to capturing what's in your head."
 
 The empty case is a feature, not a failure. Many users will adopt unforget at greenfield project start; the spec must handle that gracefully without producing a confusing "0 candidates, proceed?" prompt that has no actionable next step.
 
-### Phase 3 — Triage (per-surface yes/no/skip)
+### Phase 3: Triage (per-surface yes/no/skip)
 
 For each surface that returned candidates, ask the user a single question:
 
 - **High-confidence surfaces** (Deferred-named files, audit ledgers, memory files): "Import all N rows from `<source>`?" Default yes.
-- **Medium-confidence surfaces** (plan files): "Review N plan files one-by-one?" Default yes — for each plan, offer import / skip / "uncertain, mark as needs-review".
-- **Low-confidence surfaces** (code comments): "Skim 24 code comments now?" Default skip — most TODOs are noise; the user can run `/unforget import --comments` later if desired.
+- **Medium-confidence surfaces** (plan files): "Review N plan files one-by-one?" Default yes. For each plan, offer import / skip / "uncertain, mark as needs-review".
+- **Low-confidence surfaces** (code comments): "Skim 24 code comments now?" Default skip. Most TODOs are noise; the user can run `/unforget import --comments` later if desired.
 
 The user can skip any surface entirely. Nothing is forced.
 
-### Phase 4 — Auto-fill defaults from source signals
+### Phase 4: Auto-fill defaults from source signals
 
 For each row that the user agreed to import, the skill auto-fills as many of the 10 columns as it can infer.
 
@@ -224,20 +226,20 @@ For each row that the user agreed to import, the skill auto-fills as many of the
 | Column | Inferred from |
 |---|---|
 | **#** | Auto-assigned next ID per section (P1, P2, ...) |
-| **Target / Window** | Map "release-blocker" / "must-fix" / explicit `target: THIS` → 🚢 THIS. "Post-release" / `target: NEXT` → 🚢+1 NEXT. "Future" / no tag → 🌫️ SOMEDAY. |
+| **Target / Window** | Map "release-blocker" / "must-fix" / explicit `target: THIS` to 🚢 THIS. "Post-release" / `target: NEXT` to 🚢+1 NEXT. "Future" / no tag to 🌫️ SOMEDAY. |
 | **Finding** | Title or first line of source. Truncate at ~150 chars; full detail stays in source file (linked from the row). |
-| **Urgency** | Structured format: pass through `urgency` / `severity` field. Prose: CRITICAL/HIGH/MEDIUM/LOW pass through; ERROR/WARNING/INFO map to HIGH/MEDIUM/LOW. No tag → ⚪ LOW. |
-| **Risk: Fix** | Default ⚪ Low — needs human judgment. The skill shouldn't guess. |
-| **Risk: No Fix** | If source mentions "data loss", "crash", "user-visible" → 🟡 High. Default ⚪ Low. |
+| **Urgency** | Structured format: pass through `urgency` / `severity` field. Prose: CRITICAL/HIGH/MEDIUM/LOW pass through; ERROR/WARNING/INFO map to HIGH/MEDIUM/LOW. No tag becomes ⚪ LOW. |
+| **Risk: Fix** | Default ⚪ Low. Needs human judgment. The skill shouldn't guess. |
+| **Risk: No Fix** | If source mentions "data loss", "crash", "user-visible", set to 🟡 High. Default ⚪ Low. |
 | **ROI** | Default 🟢 Good. |
-| **Blast Radius** | If source has structured `files:` list, count and map. If prose mentions file count → map. "Many files" → 🟡 6-15 files. Default ⚪ 1 file. |
-| **Fix Effort** | Map source size estimates ("4-6 hours" → Medium, "trivial" → Trivial, "large refactor" → Large). Default Small. |
-| **Status** | Open by default. "RESOLVED" / "FIXED" / "DONE" / structured `status: fixed` → Fixed (auto-archive — see Phase 7). "In progress" / structured `status: in_progress` → In Progress. Structured `status: deferred` → Deferred. Structured `status: accepted` → Skipped. |
-| **Section** | Per-source mapping: Deferred-named files → Section 1 (Paused plans). Plan files → Section 1. Audit ledgers → Section 3 (Audit findings). Memory files → Section 1 (if filename starts `project_deferred_`) or Section 2 (if filename starts `deferred_` and content is session-spillover-shaped). Code comments → Section 4 (User-reported). GitHub issues → Section 1 if labeled `paused`/`blocked`, Section 4 otherwise. |
+| **Blast Radius** | If source has structured `files:` list, count and map. If prose mentions file count, map. "Many files" becomes 🟡 6-15 files. Default ⚪ 1 file. |
+| **Fix Effort** | Map source size estimates ("4-6 hours" to Medium, "trivial" to Trivial, "large refactor" to Large). Default Small. |
+| **Status** | Open by default. "RESOLVED" / "FIXED" / "DONE" / structured `status: fixed` becomes Fixed (auto-archive; see Phase 7). "In progress" / structured `status: in_progress` becomes In Progress. Structured `status: deferred` becomes Deferred. Structured `status: accepted` becomes Skipped. |
+| **Section** | Per-source mapping: Deferred-named files to Section 1 (Paused plans). Plan files to Section 1. Audit ledgers to Section 3 (Audit findings). Memory files to Section 1 (if filename starts `project_deferred_`) or Section 2 (if filename starts `deferred_` and content is session-spillover-shaped). Code comments to Section 4 (User-reported). GitHub issues to Section 1 if labeled `paused`/`blocked`, Section 4 otherwise. |
 
 The skill is honest about not getting this perfect. Most cells will be defaults; the user upgrades them as they go via `/unforget edit`.
 
-### Phase 5 — User-add pass (the most important phase)
+### Phase 5: User-add pass (the most important phase)
 
 The survey can't find items that exist only in the user's head, in a Slack DM, in a personal notes app, or in tacit knowledge from past sessions. After Phase 4, the skill explicitly invites the user to surface these.
 
@@ -251,7 +253,7 @@ The survey can't find items that exist only in the user's head, in a Slack DM, i
 
 **The prompt list adapts to project type** (inferred from the cadence preset chosen in Phase 1):
 
-**For user-facing applications** (Standard preset — mobile/desktop apps):
+**For user-facing applications** (Standard preset, mobile/desktop apps):
 > Common things the survey can't find:
 > - Bugs you've noticed but haven't logged anywhere
 > - Friction you've felt while using the app
@@ -282,20 +284,20 @@ In all cases, the closing line is the same:
 
 For each item the user types, the skill:
 
-1. **Picks a section automatically** based on phrasing (bug language → Section 4; "I started ... but didn't finish" → Section 1; everything else → Section 2). User can override.
+1. **Picks a section automatically** based on phrasing (bug language to Section 4; "I started ... but didn't finish" to Section 1; everything else to Section 2). User can override.
 2. **Auto-assigns the next ID** in that section.
 3. **Sets conservative defaults** for the 10 columns (Target = 🌫️ SOMEDAY, Urgency = ⚪ LOW, etc.).
 4. **Echoes** the captured row and moves to the next item.
 
-The user is rattling off items, not filling out forms. Triage refinement happens later via `/unforget edit`. Speed matters more than completeness here — every item captured is one less item lost.
+The user is rattling off items, not filling out forms. Triage refinement happens later via `/unforget edit`. Speed matters more than completeness here. Every item captured is one less item lost.
 
-This phase typically catches 5–15 rows on a real project's first init. They're often the highest-value rows in the eventual file because no other surface contains them.
+This phase typically catches 5 to 15 rows on a real project's first init. They're often the highest-value rows in the eventual file because no other surface contains them.
 
-### Phase 6 — Deep-dump pass (optional, default skip)
+### Phase 6: Deep-dump pass (optional, default skip)
 
 For users who want to do a thorough deferral audit at adoption time:
 
-> "Want to do a deeper deferral inventory? I can ask you 8–10 questions to surface items you might not remember on first pass. Takes 5–10 minutes. [yes / no / maybe later]"
+> "Want to do a deeper deferral inventory? I can ask you 8 to 10 questions to surface items you might not remember on first pass. Takes 5 to 10 minutes. [yes / no / maybe later]"
 
 If yes, the skill walks through prompts like:
 
@@ -308,13 +310,13 @@ If yes, the skill walks through prompts like:
 - "Are there tests you've muted or skipped that you want to fix later?"
 - "Are there docs that are out of date or missing entirely?"
 
-Each prompt that surfaces an item gets captured as a row (same flow as Phase 5 — section auto-pick, conservative defaults, fast capture).
+Each prompt that surfaces an item gets captured as a row (same flow as Phase 5: section auto-pick, conservative defaults, fast capture).
 
-Most users skip Phase 6 the first time and run it later when they have more time. That's fine — `/unforget import --deep` makes Phase 6 re-runnable on demand.
+Most users skip Phase 6 the first time and run it later when they have more time. That's fine. `/unforget import --deep` makes Phase 6 re-runnable on demand.
 
-### Phase 7 — Diff preview, write file, wire recall
+### Phase 7: Diff preview, write file, wire recall
 
-Before any file is written, show the user a summary diff. **Empty sections collapse to a single line** so the preview stays readable on minimal projects:
+Before any file is written, show the user a summary diff. **Empty sections collapse to a single line** so the preview stays readable on minimal projects.
 
 **Populated case (most sections have rows):**
 ```
@@ -339,7 +341,7 @@ Total: 33 rows imported, 0 needing date stamps, 18 RESOLVED items moved to archi
 Proceed? [yes / preview each section / cancel]
 ```
 
-**Minimal case (most sections empty — common on greenfield or single-purpose repos):**
+**Minimal case (most sections empty, common on greenfield or single-purpose repos):**
 ```
 About to create UNFORGET.md at <path> with:
 
@@ -351,7 +353,7 @@ Total: 3 rows imported.
 Proceed? [yes / preview the rows / cancel]
 ```
 
-The collapsed form removes noise on minimal projects where most sections are empty. Each section header still gets written to UNFORGET.md so future `/unforget add` calls have a place to land — but the preview doesn't enumerate each empty section.
+The collapsed form removes noise on minimal projects where most sections are empty. Each section header still gets written to UNFORGET.md so future `/unforget add` calls have a place to land. The preview just doesn't enumerate each empty section.
 
 User can preview the rows before committing. If they cancel, no files are touched. If they proceed:
 
@@ -366,7 +368,7 @@ User can preview the rows before committing. If they cancel, no files are touche
 After init runs:
 
 - UNFORGET.md exists at the chosen path with rows imported from existing surfaces and items captured from the user's memory.
-- Source files (Deferred.md, ledgers, etc.) are either archived or replaced with redirects — never silently deleted.
+- Source files (Deferred.md, ledgers, etc.) are either archived or replaced with redirects, never silently deleted.
 - CLAUDE.md / AGENTS.md has a Deferred Work Index section so future AI sessions auto-recall UNFORGET.md.
 - The user can run `/unforget list --target=THIS` and see exactly what's blocking the next release, in one screen.
 
@@ -379,9 +381,9 @@ Refine a row's columns after import. Most useful immediately after `/unforget in
 ### Usage
 
 ```
-/unforget edit P3                       — open row P3 for editing
-/unforget edit P3 --target=THIS          — change just the Target cell
-/unforget edit P3 --status=Fixed         — mark Fixed (next promotion will archive)
+/unforget edit P3                       ·  open row P3 for editing
+/unforget edit P3 --target=THIS          ·  change just the Target cell
+/unforget edit P3 --status=Fixed         ·  mark Fixed (next promotion will archive)
 /unforget edit S5 --urgency=HIGH --roi=Excellent
 ```
 
@@ -389,7 +391,7 @@ Refine a row's columns after import. Most useful immediately after `/unforget in
 
 1. Find the row by ID. Show its current 10 columns.
 2. Prompt for which cells to update (or accept flag overrides if passed inline).
-3. Show the diff (old → new for each changed cell).
+3. Show the diff (old value to new value for each changed cell).
 4. Apply the change to UNFORGET.md.
 
 `/unforget edit` is the everyday command for keeping rows accurate. Pair with `/unforget list --age=30+` to find rows that need review.
@@ -408,15 +410,15 @@ Re-run the Phase 2 surface survey after `/unforget init` has already created the
 ### Usage
 
 ```
-/unforget import                         — re-run the standard survey (Phases 2–4 + 7)
-/unforget import --comments              — include code comments (skipped by default)
-/unforget import --deep                  — run the Phase 6 deep-dump questions
-/unforget import --source=<path>         — survey a specific file or directory only
+/unforget import                         ·  re-run the standard survey (Phases 2 to 4 + 7)
+/unforget import --comments              ·  include code comments (skipped by default)
+/unforget import --deep                  ·  run the Phase 6 deep-dump questions
+/unforget import --source=<path>         ·  survey a specific file or directory only
 ```
 
 ### Steps
 
-Same as `/unforget init` Phases 2–4 and Phase 7, but operates against an EXISTING UNFORGET.md:
+Same as `/unforget init` Phases 2 to 4 and Phase 7, but operates against an EXISTING UNFORGET.md:
 
 - New rows get appended with auto-assigned IDs (continuing the per-section sequence).
 - Duplicate detection: if a survey row matches an existing UNFORGET.md row by similarity (fuzzy match on Finding text + source pointer), the skill flags it and asks whether to skip or import as a separate row.
@@ -428,7 +430,7 @@ Same as `/unforget init` Phases 2–4 and Phase 7, but operates against an EXIST
 
 ## /unforget add
 
-Capture a new deferral. The friction point that makes or breaks the skill — must be fast.
+Capture a new deferral. The friction point that makes or breaks the skill. Must be fast.
 
 ### Usage
 
@@ -454,15 +456,15 @@ Capture a new deferral. The friction point that makes or breaks the skill — mu
 
 ### Subsection flags (optional)
 
-- `--paused` → Section 1 (Paused plans). Triggers an extra prompt for the detail-file pointer.
-- `--audit` → Section 3 (Audit findings). Asks for the originating audit tool and finding ID.
-- `--observed` → Section 4 (User-reported / observed).
-- `--target=THIS|NEXT|LATER|SOMEDAY` → set Target without prompting.
-- `--urgent` → shorthand for `--target=THIS --urgency=HIGH`.
+- `--paused` routes to Section 1 (Paused plans). Triggers an extra prompt for the detail-file pointer.
+- `--audit` routes to Section 3 (Audit findings). Asks for the originating audit tool and finding ID.
+- `--observed` routes to Section 4 (User-reported / observed).
+- `--target=THIS|NEXT|LATER|SOMEDAY` sets Target without prompting.
+- `--urgent` is shorthand for `--target=THIS --urgency=HIGH`.
 
 ### Speed target
 
-≤30 seconds end-to-end for default usage. If the skill ever takes longer than 30 seconds to capture an item, it has failed at its core promise.
+30 seconds or less, end-to-end, for default usage. If the skill ever takes longer than 30 seconds to capture an item, it has failed at its core promise.
 
 ---
 
@@ -473,12 +475,12 @@ Show current state. Default view is sorted by Target (🚢 THIS first), then Urg
 ### Usage
 
 ```
-/unforget list                        — full table
-/unforget list --target=THIS          — only ship-blockers
-/unforget list --section=audit        — only Section 3
-/unforget list --status=Open          — exclude Fixed/Skipped
-/unforget list --stale                — only rows past their staleness threshold
-/unforget list --age=30+              — only rows older than 30 days
+/unforget list                        ·  full table
+/unforget list --target=THIS          ·  only ship-blockers
+/unforget list --section=audit        ·  only Section 3
+/unforget list --status=Open          ·  exclude Fixed/Skipped
+/unforget list --stale                ·  only rows past their staleness threshold
+/unforget list --age=30+              ·  only rows older than 30 days
 ```
 
 ### Output format
@@ -493,7 +495,7 @@ For the simplest case (`/unforget list` alone), this is the answer the user was 
 
 ## /unforget scan
 
-Identify rows past their staleness threshold. Read-only — never modifies the file.
+Identify rows past their staleness threshold. Read-only. Never modifies the file.
 
 ### Staleness thresholds (default)
 
@@ -511,7 +513,7 @@ These thresholds can be customized in a config block at the top of UNFORGET.md.
 ### Output structure
 
 ```
-# UNFORGET.md Stale-Scan — <date>
+# UNFORGET.md Stale-Scan, <date>
 
 **Ledger snapshot:** N rows across 4 sections.
 **Stale rows:** N
@@ -539,12 +541,12 @@ the most attention, any patterns worth surfacing.>
 
 For each stale row, the scan picks ONE:
 
-- **investigate** — stale and may need fresh diagnosis
-- **promote** — should move toward THIS (e.g., NEXT deferred too long)
-- **demote** — Urgency was overstated; downgrade Target
-- **archive** — no longer relevant; move to historical archive
+- **investigate**: stale and may need fresh diagnosis
+- **promote**: should move toward THIS (e.g., NEXT deferred too long)
+- **demote**: Urgency was overstated; downgrade Target
+- **archive**: no longer relevant; move to historical archive
 
-Default to **investigate** if uncertain. The scan never modifies UNFORGET.md — it only reports.
+Default to **investigate** if uncertain. The scan never modifies UNFORGET.md. It only reports.
 
 ### Scheduling
 
@@ -559,9 +561,9 @@ Release-time ritual. Run at every release submission.
 ### Steps
 
 1. **Verify** every `🚢 THIS` row has Status = Fixed. List any that don't and require an explicit demotion or fix.
-2. **Promote** all `🚢+1 NEXT` rows → `🚢 THIS` (they are now the next release's blockers).
-3. **Re-triage** all `🚢+2 LATER` rows that are still relevant → `🚢+1 NEXT`. Items no longer relevant get archived.
-4. **Re-rank `🌫️ SOMEDAY`** items ≥180 days old: prompt user for promote / demote / archive.
+2. **Promote** all `🚢+1 NEXT` rows to `🚢 THIS` (they are now the next release's blockers).
+3. **Re-triage** all `🚢+2 LATER` rows that are still relevant to `🚢+1 NEXT`. Items no longer relevant get archived.
+4. **Re-rank `🌫️ SOMEDAY`** items 180 days or older: prompt user for promote / demote / archive.
 5. **Stamp** the "Last promoted" line at the top of UNFORGET.md with new build/version + date.
 
 This command DOES modify UNFORGET.md (unlike `/unforget scan`), so the user is shown a preview of every change before it's applied.
@@ -579,8 +581,8 @@ The skill works best when the project's main AI instructions file has a section 
 
 Read this file when:
 - The user asks "what's deferred?", "what's the backlog?", "prioritize my plans," or any variant.
-- Before suggesting a release / submission — to check 🚢 THIS rows for unresolved blockers.
-- When a task in the current session needs to be deferred — log a row here, do NOT create a new tracking file unless the entry needs detail beyond one row.
+- Before suggesting a release / submission, to check 🚢 THIS rows for unresolved blockers.
+- When a task in the current session needs to be deferred, log a row here. Do NOT create a new tracking file unless the entry needs detail beyond one row.
 
 **Format:** 10-column rating table per section. **Sections:** Paused plans / Session spillover / Audit findings / User-reported.
 
@@ -589,7 +591,7 @@ Read this file when:
 Never log deferred items elsewhere. Memory files, plan files, and audit ledgers are detail stores; UNFORGET.md is the index.
 ```
 
-This block is what makes the skill's recall trigger work — without it, future AI sessions don't know to read UNFORGET.md when the user asks about deferred work.
+This block is what makes the skill's recall trigger work. Without it, future AI sessions don't know to read UNFORGET.md when the user asks about deferred work.
 
 ---
 
@@ -602,7 +604,7 @@ Things this skill deliberately does NOT do, and why:
 - **Per-row column visibility.** Hiding columns on some rows but not others. Devolves into chaos.
 - **Renaming core columns.** "Call Urgency 'Priority' instead." Skill becomes incompatible with itself.
 - **Multiple files.** UNFORGET.md is the index. Detail files (per-plan markdown) are linked FROM rows, not duplicates of them.
-- **Auto-deferring things the AI thinks should be deferred.** Deferral is a user decision. The skill captures, organizes, and surfaces — it doesn't decide on the user's behalf.
+- **Auto-deferring things the AI thinks should be deferred.** Deferral is a user decision. The skill captures, organizes, and surfaces; it doesn't decide on the user's behalf.
 
 ---
 
