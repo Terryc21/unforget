@@ -22,7 +22,7 @@ description: |
   - /unforget list     — show current state, filterable by section / Target / Urgency
   - /unforget scan     — surface stale rows (rows aging past their priority threshold)
   - /unforget promote  — release-time ritual (verify THIS rows fixed; promote NEXT → THIS)
-license: MIT
+license: Apache-2.0
 ---
 
 # unforget
@@ -553,4 +553,4 @@ Things this skill deliberately does NOT do, and why:
 
 ## License
 
-MIT. See LICENSE.
+Apache License 2.0. See LICENSE.

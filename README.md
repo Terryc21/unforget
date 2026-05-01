@@ -163,7 +163,7 @@ Use the file format today (it works as plain markdown). The slash-command surfac
 
 ## License
 
-MIT. See LICENSE.
+Apache License 2.0. See LICENSE.
 
 ## Contributing
 
