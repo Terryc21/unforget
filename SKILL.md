@@ -118,14 +118,29 @@ The flow is seven phases, in order. Phases 1–4 are automated discovery and tri
 
 Three short questions before any scanning happens:
 
-1. **File path:** Default `Documentation/Development/Deferred/UNFORGET.md`. Other common choices: `UNFORGET.md` at root, `.deferred/UNFORGET.md`, `docs/UNFORGET.md`.
+1. **File path:** The default depends on what the project already has. Check the repo first:
+   - If `Documentation/` exists with subdirectories: default `Documentation/Development/Deferred/UNFORGET.md` (matches projects with formal docs trees, like iOS/macOS apps)
+   - If `docs/` exists: default `docs/UNFORGET.md` (matches conventional library / web projects)
+   - If neither exists: default `UNFORGET.md` at repo root (matches minimal single-purpose repos like skills, CLI tools, small libraries)
+
+   Always offer the user the chance to override. The point is to not impose a directory structure the project doesn't already use.
 2. **Cadence preset:**
    > "How does this project ship?"
    > - Discrete releases (mobile app, library, versioned product) → **Standard** preset (10 columns, Target column)
    > - Continuous deployment (web app, service, internal tool) → **Continuous** preset (9 columns, Window column)
    > - Solo / side project / want minimal columns → **Lean** preset (6 columns)
    > - Custom — pick from a fixed pool of 12 columns
-3. **CLAUDE.md / AGENTS.md wiring:** "Add a 'Deferred Work Index' section to the project's main AI instructions file?" — recommended yes; without it, future AI sessions don't auto-recall UNFORGET.md when the user asks "what's deferred."
+3. **AI instructions file wiring:** Different AI tools use different conventions:
+   - Claude Code: `CLAUDE.md`
+   - Anthropic Agent SDK / generic: `AGENTS.md`
+   - Warp: `WARP.md`
+   - Cursor: `.cursorrules` or `.cursor/rules/`
+   - Aider: `.aider.conf.yml`
+   - Continue: `.continue/`
+
+   Scan the repo for any of these. If exactly one is found, ask: "Add a 'Deferred Work Index' section to `<filename>` so future AI sessions auto-recall UNFORGET.md when you ask 'what's deferred'?" If multiple are found, list them and let the user pick which to wire (or all, or none). If none is found, ask whether to create a `CLAUDE.md` or `AGENTS.md` (recommended — without it, the recall trigger is opt-in per session).
+
+   The wiring step shouldn't hardcode filenames. It should detect what the project actually uses and adapt.
 
 These three questions take ≤90 seconds. After this, the user is hands-off until Phase 5.
 
@@ -184,6 +199,12 @@ Found N candidate deferred items across 6 surfaces:
 🔁 Cross-surface dedup: K candidates merged from M raw matches.
 ```
 
+**Empty-case branch:** if ALL surfaces return zero candidates (common in minimal projects — single-skill repos, fresh greenfield codebases, small libraries), skip Phase 3 (no triage needed) and Phase 4 (nothing to auto-fill) entirely. Jump directly to Phase 5 with a different framing message:
+
+> "No existing deferral artifacts found. That's fine — most projects start UNFORGET.md from the user's tacit knowledge anyway. Let's go straight to capturing what's in your head."
+
+The empty case is a feature, not a failure. Many users will adopt unforget at greenfield project start; the spec must handle that gracefully without producing a confusing "0 candidates, proceed?" prompt that has no actionable next step.
+
 ### Phase 3 — Triage (per-surface yes/no/skip)
 
 For each surface that returned candidates, ask the user a single question:
@@ -218,18 +239,46 @@ The skill is honest about not getting this perfect. Most cells will be defaults;
 
 ### Phase 5 — User-add pass (the most important phase)
 
-The survey can't find items that exist only in the user's head, in a Slack DM, in a personal notes app, or in tacit knowledge from past sessions. After Phase 4, the skill explicitly invites the user to surface these:
+The survey can't find items that exist only in the user's head, in a Slack DM, in a personal notes app, or in tacit knowledge from past sessions. After Phase 4, the skill explicitly invites the user to surface these.
 
-> "Survey complete. N rows queued for import. Anything else you want to add before I write UNFORGET.md?
->
+**The opening sentence and prompt list both branch on context.**
+
+**If Phase 2 found rows** (N > 0):
+> "Survey complete. N rows queued for import. Anything else you want to add before I write UNFORGET.md?"
+
+**If Phase 2 found nothing** (empty-case from Phase 2):
+> "Let's start the brain dump. What deferred work is in your head right now?"
+
+**The prompt list adapts to project type** (inferred from the cadence preset chosen in Phase 1):
+
+**For user-facing applications** (Standard preset — mobile/desktop apps):
 > Common things the survey can't find:
 > - Bugs you've noticed but haven't logged anywhere
 > - Friction you've felt while using the app
 > - Items mentioned in Slack DMs, notes apps, or paper notebooks
 > - Things you remember from past sessions that aren't in any file
-> - 'I should really fix that someday' thoughts you've had
->
-> Add items one at a time. Type 'done' when finished, or 'skip' to proceed without adding any."
+> - "I should really fix that someday" thoughts you've had
+
+**For services / web apps** (Continuous preset):
+> Common things the survey can't find:
+> - Edge cases you've seen in logs but haven't reproduced
+> - Performance issues you've felt but haven't measured
+> - Tech debt items mentioned in PR review but not filed
+> - Monitoring / alerting gaps you've noticed
+> - Configuration drift between staging and prod
+
+**For libraries / tools / skills** (Lean preset, or Continuous on a non-app project):
+> Common things the survey can't find:
+> - Edge cases you've seen but didn't handle
+> - Tests you skipped or muted
+> - Documentation gaps you've noticed
+> - Behavior that feels off but you couldn't pin down
+> - Breaking changes you've been delaying
+> - "I should refactor that" notes that never made it to a file
+
+In all cases, the closing line is the same:
+
+> "Add items one at a time. Type 'done' when finished, or 'skip' to proceed without adding any."
 
 For each item the user types, the skill:
 
@@ -265,8 +314,9 @@ Most users skip Phase 6 the first time and run it later when they have more time
 
 ### Phase 7 — Diff preview, write file, wire recall
 
-Before any file is written, show the user a summary diff:
+Before any file is written, show the user a summary diff. **Empty sections collapse to a single line** so the preview stays readable on minimal projects:
 
+**Populated case (most sections have rows):**
 ```
 About to create UNFORGET.md at <path> with:
 
@@ -289,7 +339,21 @@ Total: 33 rows imported, 0 needing date stamps, 18 RESOLVED items moved to archi
 Proceed? [yes / preview each section / cancel]
 ```
 
-User can preview each section before committing. If they cancel, no files are touched. If they proceed:
+**Minimal case (most sections empty — common on greenfield or single-purpose repos):**
+```
+About to create UNFORGET.md at <path> with:
+
+  Section 2 (Session spillover): 3 rows from Phase 5 user-add
+  (Sections 1, 3, 4 will be created with headers but no rows yet.)
+
+Total: 3 rows imported.
+
+Proceed? [yes / preview the rows / cancel]
+```
+
+The collapsed form removes noise on minimal projects where most sections are empty. Each section header still gets written to UNFORGET.md so future `/unforget add` calls have a place to land — but the preview doesn't enumerate each empty section.
+
+User can preview the rows before committing. If they cancel, no files are touched. If they proceed:
 
 1. **Write UNFORGET.md** with all imported rows in their assigned sections.
 2. **Move RESOLVED / FIXED items** to a separate archive file (`UNFORGET-archive-<date>.md` in the same directory).
