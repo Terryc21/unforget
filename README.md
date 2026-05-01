@@ -1,5 +1,11 @@
 # unforget
 
+![Status](https://img.shields.io/badge/status-v0.1%20spec--only-orange) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Last Commit](https://img.shields.io/github/last-commit/Terryc21/unforget) ![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet) ![Visitors](https://komarev.com/ghpvc/?username=Terryc21&repo=unforget&label=visitors&color=blue) ![GitHub stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat)
+
+<a href="https://buymeacoffee.com/stuffolio">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
+</a>
+
 > A way of not losing sight or track of what is deferred.
 
 A Claude Code skill that consolidates deferred work — paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs — into one structured file. Built so deferred items don't slip through the cracks between releases.
@@ -160,6 +166,18 @@ What's field-tested vs. what's spec at v0.1:
 - **The slash-command implementations** — currently spec-only. SKILL.md describes what each command does; the runtime handlers haven't been written yet. v0.2 closes that gap.
 
 Use the file format today (it works as plain markdown). The slash-command surface lands in v0.2.
+
+## Companion Skills
+
+`unforget` came out of [Stuffolio](https://stuffolio.app)'s skill family — a set of Claude Code skills that grew from real shipping work and were extracted as standalone tools. Worth pairing with `unforget`:
+
+| Skill | What it does |
+|---|---|
+| [**radar-suite**](https://github.com/Terryc21/radar-suite) | 8 audit skills that find bugs in Swift/SwiftUI apps before users do. Every finding cites a real file:line pattern in your codebase, not generic advice. Audit findings that aren't fixed immediately become rows in `unforget`'s Section 3 (Audit findings). |
+| [**bug-prospector**](https://github.com/Terryc21/bug-prospector) | Mines for hidden bugs that pattern-based auditors miss — behavioral and contextual issues regex can't catch. Outputs feed naturally into `unforget`'s Section 4 (User-reported / observed). |
+| [**bug-echo**](https://github.com/Terryc21/bug-echo) | After you fix a bug, finds other instances of the same pattern across your codebase. The instances you don't fix immediately become `unforget` rows. |
+
+All three follow the same opinionated-defaults design philosophy as `unforget` and integrate cleanly via the four-section structure.
 
 ## License
 
