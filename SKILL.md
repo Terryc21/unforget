@@ -49,7 +49,7 @@ When the user asks "what's deferred?" months later, the answer requires walking 
 2. **Surfaces staleness** via a built-in scan command that flags items past their age threshold.
 3. **Standardizes the format** so any developer reading any project's UNFORGET.md instantly recognizes the structure.
 
-The pattern was extracted from a real iOS project where deferred work had fragmented across five tracking surfaces. Consolidation freed roughly 3 hours of release-prep time per cycle.
+The pattern was extracted from a real Universal app (iOS, iPadOS, macOS) where deferred work had fragmented across five tracking surfaces. Consolidation freed roughly 3 hours of release-prep time per cycle.
 
 ---
 

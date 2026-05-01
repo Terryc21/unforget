@@ -13,7 +13,7 @@
 >
 > **What doesn't work yet:** typing `/unforget add "..."` will not currently fire any handler. Until v0.2, all interaction is manual file edits.
 >
-> **Beta testers wanted.** If you try the format on your own project (manual or AI-assisted edits), please [open an issue](https://github.com/Terryc21/unforget/issues) describing what worked, what felt wrong, or what was missing. Real-project feedback is what shapes v0.2's runtime implementation. Especially valuable: minimal repos, non-iOS projects, projects with non-CLAUDE.md AI instruction files (Warp, Cursor, Aider, Continue), and continuous-deployment workflows.
+> **Beta testers wanted.** If you try the format on your own project (manual or AI-assisted edits), please [open an issue](https://github.com/Terryc21/unforget/issues) describing what worked, what felt wrong, or what was missing. Real-project feedback is what shapes v0.2's runtime implementation. Especially valuable: minimal repos, non-Apple-platform projects (web, Android, backend, libraries), projects with non-CLAUDE.md AI instruction files (Warp, Cursor, Aider, Continue), and continuous-deployment workflows.
 
 > A way of not losing sight or track of what is deferred.
 
@@ -166,7 +166,7 @@ There are 50 task trackers. The differentiators here:
 
 ## Origin
 
-`unforget` was extracted from a real iOS project (Stuffolio) where deferred work had fragmented across five tracking surfaces. Consolidation freed roughly 3 hours of release-prep time per cycle.
+`unforget` was extracted from a real Universal app (Stuffolio: iOS, iPadOS, and macOS from a single Swift codebase) where deferred work had fragmented across five tracking surfaces. Consolidation freed roughly 3 hours of release-prep time per cycle.
 
 What's field-tested vs. what's spec at v0.1:
 
