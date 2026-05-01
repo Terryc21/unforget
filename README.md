@@ -23,7 +23,11 @@ Months later, when you ask "what's deferred?", the answer requires walking five 
 ## What it does
 
 - **Initializes** `UNFORGET.md` in your project (default path: `Documentation/Development/Deferred/UNFORGET.md`)
+- **Surveys** existing deferral artifacts (Deferred.md / audit ledgers / plan files / code comments / GitHub issues / memory files) and offers to import them as rows
+- **Invites you to capture** items the survey can't find — bugs in your head, friction you've felt, "I should fix that someday" thoughts
 - **Captures** new deferrals in ≤30 seconds via `/unforget add`
+- **Refines** rows via `/unforget edit` (upgrade auto-filled defaults to your real ratings)
+- **Re-surveys** after init via `/unforget import` (catches new artifacts as they appear)
 - **Surfaces** stale items via `/unforget scan` (rows aging past their priority threshold)
 - **Promotes** items toward shipping at each release via `/unforget promote`
 - **Wires** itself into your project's CLAUDE.md / AGENTS.md so future AI sessions automatically read it when you ask "what's deferred?"
@@ -71,13 +75,15 @@ Keeping Urgency and Target as separate columns lets either dimension shift witho
 /unforget init
 ```
 
-You'll be asked:
+`init` runs a seven-phase flow that takes 5–15 minutes the first time:
 
-1. **Where should UNFORGET.md live?** (default: `Documentation/Development/Deferred/UNFORGET.md`)
-2. **How does this project ship?** (Discrete releases / Continuous deployment / Solo / Custom)
-3. **Should I wire this into your CLAUDE.md / AGENTS.md?** (recommended: yes)
-
-The skill creates the file, scaffolds the four sections, and adds a "Deferred Work Index" block to your AI instructions file so future sessions automatically read UNFORGET.md when you ask about deferred work.
+1. **Setup questions** (≤90 seconds) — file path, cadence preset, whether to wire CLAUDE.md / AGENTS.md.
+2. **Surface survey** — scans six tracking surfaces (Deferred.md / audit ledgers / plan files / code comments / GitHub issues / memory files) and produces a candidate list. Nothing imported yet.
+3. **Triage** — for each surface, you decide: import all / one-by-one / skip.
+4. **Auto-fill** — the skill maps source signals to the 10 columns with conservative defaults (you upgrade later via `/unforget edit`).
+5. **User-add pass** — the skill asks: "What else? Bugs in your head, friction you've felt, items in Slack DMs, things you remember from past sessions?" You rattle off items, the skill captures each with conservative defaults. This phase typically catches 5–15 rows that no survey could find — often the highest-value rows in the eventual file.
+6. **Optional deep-dump** — 8–10 guided prompts for users who want a thorough adoption-time audit. Default skip; runnable later via `/unforget import --deep`.
+7. **Diff preview, write, wire** — shows you exactly what's about to be imported, then writes UNFORGET.md, archives or redirects source files (never silent delete), and wires CLAUDE.md / AGENTS.md.
 
 Then, anywhere in any session:
 
@@ -94,6 +100,18 @@ When you're ready to ship:
 ```
 
 You see exactly which rows block submission. Fix them, mark them Fixed, run `/unforget promote`, and ship.
+
+### Subcommand reference
+
+| Command | What it does |
+|---|---|
+| `/unforget init` | Bootstrap UNFORGET.md, survey existing artifacts, capture user-known items |
+| `/unforget add` | Capture a new deferral (default section: Session spillover) |
+| `/unforget edit <ID>` | Refine a row's columns (Target, Urgency, etc.) |
+| `/unforget import` | Re-run the surface survey after init (catches new artifacts) |
+| `/unforget list` | Show current state, filterable by section / Target / Urgency / staleness |
+| `/unforget scan` | Identify stale rows (read-only — never modifies the file) |
+| `/unforget promote` | Release-time ritual (verify THIS rows fixed; promote NEXT → THIS) |
 
 ## Three preset modes
 
@@ -133,7 +151,15 @@ There are 50 task trackers. The differentiators here:
 
 ## Origin
 
-`unforget` was extracted from a real iOS project (Stuffolio) where deferred work had fragmented across five tracking surfaces and the consolidation freed ~3 hours of release-prep time per cycle. The 10-column table format and Target/promotion ritual are battle-tested against an actual App Store submission cycle.
+`unforget` was extracted from a real iOS project (Stuffolio) where deferred work had fragmented across five tracking surfaces and the consolidation freed ~3 hours of release-prep time per cycle.
+
+What's field-tested vs. what's spec at v0.1:
+
+- **The 10-column table format** — battle-tested in the source project against an actual App Store submission cycle. Rows, sections, Target column, promotion ritual all proven to work in practice.
+- **The seven-phase init flow** — designed from the source project's actual migration experience but specified for general use; not yet field-tested on a second project.
+- **The slash-command implementations** — currently spec-only. SKILL.md describes what each command does; the runtime handlers haven't been written yet. v0.2 closes that gap.
+
+Use the file format today (it works as plain markdown). The slash-command surface lands in v0.2.
 
 ## License
 
