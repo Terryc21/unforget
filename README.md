@@ -6,6 +6,15 @@
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
 </a>
 
+> [!WARNING]
+> **Beta — v0.1 is spec-only.** The seven-phase init flow, four-section structure, and 10-column rating table are fully specified in [SKILL.md](SKILL.md) and validated against two real projects (one complex, one minimal). The slash-command runtime handlers (`/unforget init`, `/unforget add`, etc.) **are not yet implemented** — they ship in v0.2.
+>
+> **What works today:** the UNFORGET.md file format itself. You can hand-create a file using the structure described below and use it manually. Several projects already do this.
+>
+> **What doesn't work yet:** typing `/unforget add "..."` will not currently fire any handler. Until v0.2, all interaction is manual file edits.
+>
+> **Beta testers wanted.** If you try the format on your own project (manual or AI-assisted edits), please [open an issue](https://github.com/Terryc21/unforget/issues) describing what worked, what felt wrong, or what was missing. Real-project feedback is what shapes v0.2's runtime implementation. Especially valuable: minimal repos, non-iOS projects, projects with non-CLAUDE.md AI instruction files (Warp, Cursor, Aider, Continue), and continuous-deployment workflows.
+
 > A way of not losing sight or track of what is deferred.
 
 A Claude Code skill that consolidates deferred work — paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs — into one structured file. Built so deferred items don't slip through the cracks between releases.
