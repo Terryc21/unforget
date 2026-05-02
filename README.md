@@ -13,6 +13,12 @@
 
 A Claude Code skill that consolidates deferred work (paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs) into one structured file. Built so deferred items don't slip through the cracks between releases.
 
+If unforget saves you a release-prep cycle, a [coffee](https://buymeacoffee.com/stuffolio) is appreciated. Issue reports about what worked or didn't are even more useful at v0.1.
+
+<a href="https://buymeacoffee.com/stuffolio">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
+</a>
+
 ## The problem
 
 Every developer defers things. The problem isn't the deferral. It's that deferred items end up scattered across:
@@ -156,15 +162,9 @@ In v0.1 every command is prefixed with `/skill`. In v0.2 (when this ships as a p
 | `/skill unforget scan` | Find rows that have been sitting too long for their priority. Doesn't change the file; just tells you what's stale. |
 | `/skill unforget promote` | Release-time check. Verifies all 🚢 THIS rows are Fixed, then promotes 🚢+1 NEXT rows up to 🚢 THIS for the next cycle. |
 
-## Support
+## Feedback wanted
 
-If `unforget` saves you a release-prep cycle and you'd like to say thanks:
-
-<a href="https://buymeacoffee.com/stuffolio">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
-</a>
-
-Far more valuable to me at v0.1: [open an issue](https://github.com/Terryc21/unforget/issues) describing how the skill held up on your project. What worked, what felt wrong, what was missing. Real-project feedback is what shapes v0.2 and catches gaps the source project never surfaced. Especially helpful: small repos, non-Apple projects (web, Android, backend, libraries), projects that use Cursor / Aider / Copilot instead of Claude Code, and continuous-deployment workflows.
+[Open an issue](https://github.com/Terryc21/unforget/issues) describing how the skill held up on your project: what worked, what felt wrong, what was missing. Real-project feedback is what shapes v0.2 and catches gaps the source project never surfaced. Especially helpful: small repos, non-Apple projects (web, Android, backend, libraries), projects that use Cursor / Aider / Copilot instead of Claude Code, and continuous-deployment workflows.
 
 ## Three preset modes
 
