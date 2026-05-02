@@ -27,6 +27,8 @@ license: Apache-2.0
 
 # unforget
 
+> Installed as a Claude Code plugin in v0.2+. Manual install via `~/.claude/skills/unforget/` (invoked as `/skill unforget`) still works as a v0.1 fallback.
+
 > A way of not losing sight or track of what is deferred.
 
 ## Why this skill exists
