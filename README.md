@@ -1,10 +1,6 @@
 # unforget
 
-![Status](https://img.shields.io/badge/status-v0.1%20beta-yellow) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Last Commit](https://img.shields.io/github/last-commit/Terryc21/unforget) ![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet) ![Visitors](https://komarev.com/ghpvc/?username=Terryc21&repo=unforget&label=visitors&color=blue) ![GitHub stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat)
-
-<a href="https://buymeacoffee.com/stuffolio">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
-</a>
+![Status](https://img.shields.io/badge/status-v0.1%20beta-yellow) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-blueviolet)
 
 > [!NOTE]
 > **Beta, v0.1.** The skill works today. Install it once (instructions below), then run `/skill unforget init` in any project session. Claude reads the skill file and walks you through setup.
@@ -12,8 +8,6 @@
 > v0.2 will ship as a Claude Code plugin so you can install with one command and drop the `/skill` prefix when invoking it. Same features, smoother install.
 >
 > If you'd rather not use Claude at all, UNFORGET.md is plain markdown. You can edit it by hand in any text editor.
->
-> **Beta testers wanted.** Try it on your own project, then [open an issue](https://github.com/Terryc21/unforget/issues) telling me what worked, what felt wrong, or what was missing. Especially helpful: small repos, non-Apple projects (web, Android, backend, libraries), projects that use Cursor / Aider / Copilot instead of Claude Code, and continuous-deployment workflows.
 
 > A way of not losing sight or track of what is deferred.
 
@@ -161,6 +155,16 @@ In v0.1 every command is prefixed with `/skill`. In v0.2 (when this ships as a p
 | `/skill unforget list` | Show what's in the file. Filter by section, Target, Urgency, or staleness. |
 | `/skill unforget scan` | Find rows that have been sitting too long for their priority. Doesn't change the file; just tells you what's stale. |
 | `/skill unforget promote` | Release-time check. Verifies all 🚢 THIS rows are Fixed, then promotes 🚢+1 NEXT rows up to 🚢 THIS for the next cycle. |
+
+## Support
+
+If `unforget` saves you a release-prep cycle and you'd like to say thanks:
+
+<a href="https://buymeacoffee.com/stuffolio">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
+</a>
+
+Far more valuable to me at v0.1: [open an issue](https://github.com/Terryc21/unforget/issues) describing how the skill held up on your project. What worked, what felt wrong, what was missing. Real-project feedback is what shapes v0.2 and catches gaps the source project never surfaced. Especially helpful: small repos, non-Apple projects (web, Android, backend, libraries), projects that use Cursor / Aider / Copilot instead of Claude Code, and continuous-deployment workflows.
 
 ## Three preset modes
 
