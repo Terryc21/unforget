@@ -103,6 +103,10 @@ mkdir -p ~/.claude/skills/unforget
 cp ~/Downloads/SKILL.md ~/.claude/skills/unforget/
 ```
 
+### See an example before installing
+
+If you'd like to see what a populated UNFORGET.md looks like before deciding to install, check out [`examples/UNFORGET.md`](examples/UNFORGET.md) in this repo. It's a sanitized version of a real project's file with all four sections filled in, varied Targets and Statuses, and a closed-with-spawn pattern (P3 → P6) showing how follow-up work gets tracked.
+
 ## Quick start
 
 In any Claude Code session inside your project, run:
@@ -201,6 +205,46 @@ There are dozens of task trackers out there. Here's what's different about this 
 - **Other AI assistants (Cursor, Copilot, Aider, Continue, Warp):** The pattern is just a markdown file plus an instruction line in your project's AI instruction file. Any AI that reads project instructions can be told to look at UNFORGET.md. The interactive setup flow is Claude-specific, but you can write the file by hand and any AI can read it.
 - **No AI at all:** UNFORGET.md is plain markdown. You can create and maintain it by hand in any text editor. The format is what matters; the skill is just there to make adoption faster.
 - **Teams:** UNFORGET.md commits to git like any other markdown file. If two teammates edit the same row at the same time, you'll get a normal git merge conflict; resolve it the way you'd resolve any markdown conflict.
+
+## Recovering a broken UNFORGET.md
+
+UNFORGET.md is plain markdown, but the skill's commands (`add`, `list`, `promote`, `scan`) depend on the format being intact. If someone (or some tool) breaks it, here's how to recover.
+
+### The format-protection header
+
+Every UNFORGET.md created by `init` includes a notice at the top calling out what's allowed and what isn't:
+
+> **Allowed:** add new rows, edit row content, move rows between sections, mark rows Fixed / Deferred / Skipped, edit detail block content.
+>
+> **Not allowed:** rename columns, reorder columns, add or remove core columns, rename the four section headers, split this file across multiple files, delete the "Example row" near the top, renumber existing IDs, reuse retired IDs.
+
+If you're reading this section because you (or a teammate, or an AI) did one of the "not allowed" things, the recovery path depends on which:
+
+| What broke | How to fix |
+|---|---|
+| **Renamed a column header** (e.g., `Urg` -> `Urgency Level`) | Rename it back. Column headers must match the example UNFORGET.md exactly. |
+| **Reordered columns** | Reorder back to the original 10-column sequence: `# / Target / Finding / Urg / RFix / RNo / ROI / Blast / Effort / Status`. |
+| **Added or removed core columns** | The skill won't recognize extra columns and will silently miscount when removing. Restore the 10 core columns. Extra columns (Owner, Sprint, Component) are fine **after** the core columns; they don't break anything. |
+| **Renamed a section header** | Rename to one of the four canonical headers: `## 1. Paused plans`, `## 2. Session spillover`, `## 3. Audit findings`, `## 4. User-reported / observed`. |
+| **Split the file into multiple files** | Concatenate them back into one. UNFORGET.md is intentionally a single file; multi-file splits defeat the "one ledger" promise. |
+| **Renumbered or reused IDs** | This one is harder. If you can find git history for the file, restore the prior IDs and stop renumbering forever. If you can't, accept the loss: cross-references in plan files, commits, and detail blocks now point at wrong rows. Pick a fresh starting integer (e.g., P100) for new rows so old references at least don't conflict. |
+| **Deleted the example row** | Restore from `examples/UNFORGET.md` in this repo. The example row is referenced by the skill's onboarding documentation. |
+
+### The format-version marker
+
+At the top of UNFORGET.md you'll see:
+
+```html
+<!-- unforget-format: v1 -->
+```
+
+This marker tells future skill versions which format the file was created against. Don't remove it. If a future v0.2 changes the format, the skill will read this marker first and either auto-migrate or warn you before doing anything destructive.
+
+### When in doubt
+
+- Compare against `examples/UNFORGET.md` in this repo. That's the canonical reference for what a valid file looks like.
+- If `git status` shows recent changes to UNFORGET.md and the skill commands started failing after, `git diff` shows what was changed. `git checkout HEAD -- path/to/UNFORGET.md` reverts to the last committed version.
+- If you can't recover, [open an issue](https://github.com/Terryc21/unforget/issues) describing what happened. Recovery patterns we missed will get added to this list.
 
 ## Origin
 
