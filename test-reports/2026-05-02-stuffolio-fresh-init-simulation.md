@@ -167,6 +167,37 @@ This won't catch the 25 tacit-knowledge items. For those, recommend Phase 6 (dee
 
 ---
 
+### T-11: 🔴 CRITICAL — The unforget repo's own roadmap is invisible to its own skill (eating dogfood)
+
+**Where:** Phase 2, Surface 1 (Deferred-named files) plus Phase 2 in general.
+
+**What goes wrong:** While planning v0.2, this question came up: would the skill, run on the unforget public repo itself, find the v0.2 work that's tracked there?
+
+The repo's deferred-work tracking lives in `v0.2-roadmap.md`. Walking SKILL.md's Phase 2 surfaces against this repo:
+
+- **Deferred-named files:** `v0.2-roadmap.md` doesn't match the regex (`Deferred.md`, `BACKLOG.md`, `TODO.md`, `*deferred*.md`). Missed.
+- **Audit-tool ledgers:** none.
+- **Plan files:** none in `./plans/` or `./.claude/plans/`.
+- **Code comments:** repo has no source code, only markdown.
+- **GitHub issues:** none yet.
+- **Memory files:** none for this project.
+
+**The skill finds zero items in its own roadmap.** ~30 distinct v0.2 proposals across 6 tiers, all invisible to the skill that's supposed to surface deferred work.
+
+This is T-10 happening in real time on the unforget repo itself. The skill can't find its own backlog.
+
+**Why this is the strongest evidence for T-10's must-ship status:** any skill that fails its own self-test is in trouble. We can't reasonably expect adopters to trust the skill on their projects when it doesn't work on the project that built it. The fix isn't a future nice-to-have — it's the difference between v0.2 being honest about its own state and v0.2 shipping with a credibility hole.
+
+**Fix proposal:** Either:
+1. **Add roadmap-shaped filenames to Surface 1 regex.** Append `*roadmap*.md`, `ROADMAP.md`, `*plan*.md` (case insensitive). Easy. Catches the unforget case directly.
+2. **Add a content-shape heuristic.** Any markdown file containing 3+ headings that look like priority tiers ("Tier N", "Phase N", "Priority N") gets flagged as a deferral artifact. Slower but more robust.
+
+Recommend doing both. Filename regex is the cheap catch; content-shape catches the cases where users don't follow the naming convention.
+
+**Action:** This finding is now Tier 6 item T-11 in `v0.2-roadmap.md` and should be folded into the must-ship subset alongside T-10.
+
+---
+
 ## Summary
 
 | # | Severity | Status |
@@ -181,6 +212,7 @@ This won't catch the 25 tacit-knowledge items. For those, recommend Phase 6 (dee
 | T-8 | 🟡 HIGH | Spec gap |
 | T-9 | 🟢 MEDIUM | Spec gap |
 | T-10 | 🔴 CRITICAL | Coverage gap |
+| T-11 | 🔴 CRITICAL | Self-test failure (the skill misses its own roadmap) |
 
 **Pattern:** SKILL.md was written assuming a relatively clean project — one Deferred.md, one ledger, plans in `./plans/`, memory files in a known location. Real Stuffolio after several months of active use has multiple deferral surfaces in non-standard locations, an audit tool whose schema has evolved past what the spec assumes, redirect pointers from prior migrations, and complex memory directories. A fresh adopter running v0.1 init verbatim against Stuffolio would get a partial UNFORGET.md (~9 of ~60 rows), would incorrectly import ~22 archive rows, would miss ~50 real rows, and would have no way to know any of this was wrong.
 
@@ -199,3 +231,9 @@ If re-running this test after spec fixes land:
 6. Don't run Phases 3-7 unless the surface coverage is above ~70% of live rows. Below that threshold, the test exits with a coverage-gap finding and the rest of the flow doesn't add information.
 
 The test took ~30 minutes end-to-end. Most of the time was reading SKILL.md and inspecting actual project file shapes. Minutes spent on actual surface scans: ~5.
+
+### Scratch directory retention
+
+The scratch copy used for this test is at `~/Desktop/unforget-test-2026-05-02/` (~141MB). Kept after the test rather than deleted, because Tier 6 spec fixes (T-2, T-5, T-6, T-10, T-11) all need re-test runs against the same surfaces. Re-creating the scratch copy each time is ~2 minutes of rsync, but keeping the existing copy avoids drift between test runs.
+
+**Cleanup trigger:** delete after v0.2 ships, or after any Stuffolio change that would invalidate the scratch (e.g., a major reorganization of `Documentation/`, `.radar-suite/`, or the deferred-work tracker location). Until then, the path is a stable testing fixture.
