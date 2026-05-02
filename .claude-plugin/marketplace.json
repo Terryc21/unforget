@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "unforget",
+  "description": "Single source of truth for deferred work — paused plans, audit findings, session spillover, observed-but-not-yet-fixed bugs",
+  "owner": {
+    "name": "Terry Nyberg"
+  },
+  "plugins": [
+    {
+      "name": "unforget",
+      "version": "0.2.0-phase1",
+      "source": "./",
+      "description": "A single source of truth for deferred work. Enforces ONE file per project (UNFORGET.md) with four sections of 10-column rating tables and a release-cycle Target column that promotes items toward shipping.",
+      "author": {
+        "name": "Terry Nyberg"
+      },
+      "homepage": "https://github.com/Terryc21/unforget",
+      "license": "Apache-2.0",
+      "category": "productivity"
+    }
+  ]
+}
