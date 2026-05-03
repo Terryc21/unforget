@@ -349,10 +349,10 @@ The skill is honest about not getting this perfect. Most cells will be defaults;
 | **Target / Window** | `🌫️ SOMEDAY` | Source explicitly says "release-blocker" / `target: THIS` / similar. Never auto-promote to THIS without an explicit signal. |
 | **Urgency** | `🟢 MEDIUM` | Source explicitly says CRITICAL / HIGH / LOW. Treat ERROR as HIGH, WARNING as MEDIUM, INFO as LOW. |
 | **Risk: Fix** | `⚪ Low` | No automatic override. Risk: Fix needs human judgment; the skill never guesses higher than Low. |
-| **Risk: No Fix** | `⚪ Low` | Source body contains "data loss", "crash", "user-visible", "corruption", or "security" — promote to `🟡 High`. |
+| **Risk: No Fix** | `⚪ Low` | Promote to `🟡 High` when the source body contains "data loss", "crash", "user-visible", "corruption", or "security". |
 | **ROI** | `🟢 Good` | No automatic override. The user upgrades to `🟠 Excellent` or downgrades to `🟡 Marginal` / `🔴 Poor` via `/unforget edit`. |
-| **Blast Radius** | `⚪ 1 file` | Source has a structured `files:` list — count and map (1 → ⚪, 2-5 → 🟢, 6-15 → 🟡, >15 → 🔴). Prose "many files" → 🟡 6-15 files. |
-| **Fix Effort** | `Small` | Source explicitly says "trivial" / "4-6 hours" / "large refactor" — map accordingly. Default Small (not Medium) keeps the bar for promoting effort intentionally low. |
+| **Blast Radius** | `⚪ 1 file` | If the source has a structured `files:` list, count and map (1 → ⚪, 2-5 → 🟢, 6-15 → 🟡, >15 → 🔴). Prose "many files" maps to 🟡 6-15 files. |
+| **Fix Effort** | `Small` | When the source explicitly says "trivial" / "4-6 hours" / "large refactor", map accordingly. Default Small (not Medium) keeps the bar for promoting effort intentionally low. |
 | **Status** | `Open` | Source explicitly says "RESOLVED" / "FIXED" / "DONE" / `status: fixed` → Fixed. `status: in_progress` → In Progress. `status: deferred` → Deferred. `status: accepted` → Skipped. |
 
 These defaults are the contract: a row imported with no signal looks identical regardless of which surface produced it. The user's first pass after init is to upgrade the rows that matter; the defaults are the floor, not the ceiling.
