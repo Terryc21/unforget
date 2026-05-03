@@ -163,6 +163,13 @@ Scan the project for existing deferred-work artifacts across six tractable surfa
 | **GitHub issues** (if `gh` CLI authenticated AND repo accessible) | Open issues labeled `deferred`, `wontfix-for-now`, `post-release`, `backlog` | High when labeled |
 | **Memory files** | Filename match `^deferred_*.md` or `^project_deferred_*.md` (strict, because body-text "defer" matches produce too many false positives from book/feedback files that mention deferral in passing) | High when filename matches; deprioritized for body-only matches |
 
+**Redirect-pointer pre-check (Surface 1):** before parsing a Surface 1-matched file, check whether it is a redirect pointer rather than a real backlog. A file qualifies as a redirect pointer if BOTH conditions hold:
+
+1. The file is fewer than 30 lines.
+2. The file body contains at least one of: the literal phrase `MOVED`, the literal phrase `see also`, or a relative or absolute path reference to `UNFORGET.md` or another deferral file (e.g., `Documentation/Development/Deferred/UNFORGET.md`).
+
+When both conditions hold, skip the file with a status note: `<file>: redirect pointer skipped (points to <target>)`. Do not parse it as a backlog. The user is informed the file was found but not imported. Stuffolio repro: a project's root `Deferred.md` is a 12-line redirect to `Documentation/Development/Deferred/UNFORGET.md`. Without this pre-check, the redirect text would be parsed as deferral entries.
+
 ### Surface 1b: General documentation scanning
 
 The six surfaces above catch deferral artifacts in conventional locations (Deferred-named files, audit ledgers, plan dirs, code, GitHub issues, memory). They miss the much larger set of deferred work that lives inside ordinary project documentation: dated planning notes, scratch audit reports, design docs with "Deferred" sections, hand-written backlog rollups. In a complex project, these locations hold roughly 80% of the actively-deferred items.
