@@ -1,9 +1,9 @@
 # unforget
 
-![Status](https://img.shields.io/badge/status-v0.2%20beta-yellow) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet)
+![Status](https://img.shields.io/badge/status-v0.2.0-blue) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet)
 
 > [!NOTE]
-> **Beta, v0.2.** The skill installs as a Claude Code plugin. Two one-line commands (instructions below) and `/unforget` is available in any project session. Claude reads the skill file and walks you through setup.
+> **v0.2.0 (2026-05-02).** The skill installs as a Claude Code plugin. Two one-line commands (instructions below) and `/unforget` is available in any project session. Claude reads the skill file and walks you through setup.
 >
 > v0.1 install path (`git clone` into `~/.claude/skills/unforget/`, invoke as `/skill unforget`) still works as a fallback. v0.2 keeps the same features; the install experience is smoother.
 >

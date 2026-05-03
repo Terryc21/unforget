@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "unforget",
-      "version": "0.2.0-phase4",
+      "version": "0.2.0",
       "source": "./",
       "description": "A single source of truth for deferred work. Enforces ONE file per project (UNFORGET.md) with four sections of 10-column rating tables and a release-cycle Target column that promotes items toward shipping.",
       "author": {

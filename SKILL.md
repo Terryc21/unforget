@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 0.1.0
+version: 0.2.0
 description: |
   A single source of truth for deferred work (paused plans, mid-task spillover,
   audit findings, and observed-but-not-yet-fixed bugs), organized so nothing slips
