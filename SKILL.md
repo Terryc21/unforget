@@ -515,6 +515,93 @@ Refine a row's columns after import. Most useful immediately after `/unforget in
 
 `/unforget edit` is the everyday command for keeping rows accurate. Pair with `/unforget list --age=30+` to find rows that need review.
 
+### Closure recommendation prose (when marking a row Fixed)
+
+When `/unforget edit <ID> --status=Fixed` runs against a row whose closure narrative is non-trivial (the new detail block exceeds ~50 chars and is not a Skipped/Deferred entry), emit a structured "Suggested next steps" block immediately after confirming the status change:
+
+```
+Row <ID> closed.
+
+Suggested next steps (the post-fix sweep — see /unforget post-fix-sweep section below):
+
+  1. Verify the closure is real. Stale Open ledger entries are common when
+     a fix was shipped without updating the ledger.
+       /radar-suite focus on <symbol-from-closure>
+       (install: https://github.com/Terryc21/radar-suite)
+
+  2. Generalize the fix to find unfired echoes elsewhere in the codebase.
+     Extract the anti-pattern in one sentence, then run:
+       /bug-echo "<your one-sentence pattern>"
+       (install: https://github.com/Terryc21/bug-echo)
+
+  Skip if: the fix was localized (typo, single-character bug, isolated state).
+  Worth doing when: the fix touched architecture, types, or a shared pattern.
+```
+
+**Detect-then-recommend logic:** before printing each `(install: ...)` URL, check whether the recommended skill is already installed. The skill is considered installed if any of these are true:
+
+- A directory matching `~/.claude/skills/<skill-name>/` exists (single-skill plugin layout)
+- A directory matching `~/.claude/skills/<skill-name>/skills/<skill-name>/` exists (suite layout — radar-suite uses this)
+- A `<skill-name>` entry appears in the project's plugin manifest (if Claude Code exposes one)
+
+If the skill is detected as installed, omit the `(install: ...)` line. The user sees a clean two-step prompt; they don't need to be told where to get something they already have. If detection is uncertain (filesystem access failed, plugin manifest unavailable), include the install URL as a fallback — it's better to over-inform than under-inform.
+
+**When to suppress the prose entirely:**
+- Status change was Open → Skipped or Open → Deferred (the row isn't actually fixed)
+- Status change was Fixed → Fixed (no-op)
+- The closure narrative is too short to suggest a meaningful pattern (under 50 chars or unchanged from the prior detail block)
+- The row is in Section 2 (Session spillover) and represents a non-code observation (skill/process improvement)
+
+For any row that does receive the prose, the recommendation is informational, not blocking. The user can ignore it and move on.
+
+---
+
+## /unforget post-fix-sweep (workflow, not a command)
+
+This is a **workflow that chains three skills**, not a single command. It's documented here because `/unforget` is the entry point most users hit first — the row that's about to be closed is the trigger for the rest of the loop.
+
+### The three stages
+
+1. **Surface** — `/unforget` (this skill) shows you a row that's been deferred. You're about to mark it Fixed because you think you fixed it (or someone else did).
+
+2. **Verify** — Before trusting the closure, confirm the fix is real and the anti-pattern is actually gone from the current code. Use `/radar-suite focus on <symbol>` (or read the file directly) to check. **Stale Open rows are surprisingly common.** A fix can ship without anyone updating the ledger; six weeks later the row still says Open and a future audit assumes it's a live bug.
+
+3. **Generalize** — If the fix replaced an anti-pattern with a corrected pattern, the same anti-pattern likely exists elsewhere in the codebase. Use `/bug-echo` with a one-sentence description of what the fix replaced. bug-echo scans the entire codebase for the same shape and rates each match BUG / OK / REVIEW. The output is bugs **that haven't fired yet** but are sitting in code with the same crash conditions as the one you just fixed.
+
+### Why this loop is high-leverage
+
+A standard audit skill (radar-suite, ESLint, custom linters) finds bugs by matching against a pre-built pattern catalog. The catalog reflects what the audit author thought was a bug at the time the rule was written.
+
+The post-fix sweep finds bugs by matching against a pattern that **just demonstrated it was a real bug in your specific codebase**. The fix is the proof. Pattern matching after a real fix is dramatically more accurate than pattern matching from theory.
+
+The other half of the leverage: bugs that haven't crashed yet are the highest-ROI thing in any audit cycle. They cost the same to fix as a crashed bug, but you don't pay the cost of the crash (lost user trust, support tickets, root-cause investigation under deadline). The post-fix sweep is the systematic way to find them.
+
+### Example
+
+A real-world run from the unforget development codebase:
+
+1. **Surface:** `/unforget` showed an Open row "iPhone crash tap item: collapsibleSectionsStack" (had been Open for a month).
+2. **Verify:** `/radar-suite focus on collapsibleSectionsStack` reported the bug had actually been fixed weeks earlier in two commits. The current code already had the corrected pattern. The UNFORGET row was stale. Marked Fixed with the historical narrative captured in the detail block.
+3. **Generalize:** Extracted the anti-pattern in one sentence ("VStack with 12+ if-conditional children in one scope can crash on physical iPhone with SubstGenericParametersFromMetadata") and ran `/bug-echo` with that description. bug-echo found one BUG (a list-row view with the same density) and three WATCH sites (10–12 conditionals each, near the threshold). The list-row bug had never crashed because users hadn't accumulated enough records yet — but the conditions were identical. Fixed with the same split pattern.
+
+Three skills, one loop. Total time: ~90 minutes. The unfired list-row bug — invisible to every standard audit because it hadn't fired — was the highest-leverage finding in the cycle.
+
+### When to skip the loop
+
+- Trivial fixes (typos, single-character changes, isolated state edits)
+- Fixes to one-off code with no callers (truly localized)
+- Fixes that are themselves cleanup of a prior failed migration (the pattern is already on its way out)
+- When the user has explicit time pressure and just wants to ship the close
+
+### Companion skill install URLs
+
+If your prior `/unforget edit --status=Fixed` recommendation showed install URLs, those are:
+
+- **radar-suite:** `https://github.com/Terryc21/radar-suite` — verifies the closure is real; multiple audit dimensions per skill in the suite
+- **bug-echo:** `https://github.com/Terryc21/bug-echo` — generalizes the fix; produces a rated report
+
+Both are Apache-2.0 licensed and install via the standard Claude Code plugin pattern (clone the repo, copy the skill directory into `~/.claude/skills/`, restart Claude Code) or one-line marketplace commands when those land.
+
 ---
 
 ## /unforget import
