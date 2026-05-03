@@ -210,12 +210,13 @@ For **unknown audit formats**, fall back to filename-based heuristics and flag t
 
 **Cross-surface deduplication:** before producing the candidate report, run a fuzzy-match dedup pass. If the same item appears in Deferred.md AND a plan file AND a memory file (common, e.g., a paused migration shows up in all three), merge into ONE candidate row with the multi-source pointer recorded in the Finding cell. Without this step, the survey produces 3x duplicate rows for the same logical item.
 
-**GitHub issues, three states, not two:**
+**GitHub issues, four states, not two:**
 - `gh` not installed: "GitHub issues skipped (`gh` CLI not available)"
 - `gh` installed but `gh auth status` fails: "GitHub issues skipped (`gh` not authenticated; run `gh auth login` to enable)"
-- `gh` authed but `gh issue list` returns empty: "GitHub issues: 0 open issues with deferral labels found"
+- `gh` available but project is not on GitHub: "GitHub issues skipped (project not on GitHub)". Detection runs before invoking `gh`. Conditions: `git rev-parse --git-dir` succeeds AND `git remote get-url origin 2>/dev/null` returns a URL containing `github.com`. If either check fails (no `.git/` directory, missing `origin` remote, or `origin` points at GitLab / Bitbucket / a self-hosted Git server), surface this fourth state and skip the `gh` invocation entirely.
+- `gh` authed and project is on GitHub but `gh issue list` returns empty: "GitHub issues: 0 open issues with deferral labels found"
 
-The spec must distinguish these so the user knows whether the surface is silent because empty or silent because broken.
+The spec must distinguish these so the user knows whether the surface is silent because empty or silent because broken. The fourth state matters because invoking `gh issue list` against a non-GitHub repo prints a confusing error rather than a clean "skipped" status.
 
 Output of Phase 2 is a candidate report. Example (numbers will vary; treat as illustrative, not as expected counts):
 
@@ -241,7 +242,7 @@ Found N candidate deferred items across 6 surfaces:
   • project_deferred_worker_hygiene.md
   • deferred_test_suite_failures_apr30.md
 
-🐙 GitHub issues: depends on `gh` state (see "three states" rule above)
+🐙 GitHub issues: depends on `gh` state (see "four states" rule above)
 
 🔁 Cross-surface dedup: K candidates merged from M raw matches.
 ```
