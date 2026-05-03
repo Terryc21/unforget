@@ -170,6 +170,18 @@ Scan the project for existing deferred-work artifacts across six tractable surfa
 
 When both conditions hold, skip the file with a status note: `<file>: redirect pointer skipped (points to <target>)`. Do not parse it as a backlog. The user is informed the file was found but not imported. Stuffolio repro: a project's root `Deferred.md` is a 12-line redirect to `Documentation/Development/Deferred/UNFORGET.md`. Without this pre-check, the redirect text would be parsed as deferral entries.
 
+**Memory directory location, per detected AI tool (Surface 6):** the memory-file scan needs to know where memory files live. The location depends on which AI assistant the project is wired to (detected during Phase 1: `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.aider.conf.yml`, etc.). If multiple AI tools are wired, scan each detected tool's memory directory and merge results.
+
+| Detected AI tool | Memory directory |
+|---|---|
+| **Claude Code** (`CLAUDE.md` or `AGENTS.md` present) | `~/.claude/projects/<encoded-project-path>/memory/` |
+| **Cursor** (`.cursorrules` present) | TODO: research and pin in v0.3. For v0.2, fall back to filename-only scan in repo root. |
+| **Aider** (`.aider.conf.yml` present) | TODO: research and pin in v0.3. For v0.2, fall back to filename-only scan in repo root. |
+
+**Claude Code path-encoding rule:** the current working directory is converted to a dash-separated string with each `/` replaced by `-`. The leading `/` becomes a leading `-`. Spaces are preserved as-is (no escaping). Example: working directory `/Volumes/2 TB Drive/Coding/GitHubDeskTop/Stufflio` encodes to `-Volumes-2 TB Drive-Coding-GitHubDeskTop-Stufflio`, so memory files live at `~/.claude/projects/-Volumes-2 TB Drive-Coding-GitHubDeskTop-Stufflio/memory/`. The skill must compute this path from the cwd at scan time, not hardcode it.
+
+If the encoded directory does not exist, the surface reports "Memory files: directory not found at `<path>`" rather than silently scanning zero files. The user knows the surface tried and where it looked.
+
 ### Surface 1b: General documentation scanning
 
 The six surfaces above catch deferral artifacts in conventional locations (Deferred-named files, audit ledgers, plan dirs, code, GitHub issues, memory). They miss the much larger set of deferred work that lives inside ordinary project documentation: dated planning notes, scratch audit reports, design docs with "Deferred" sections, hand-written backlog rollups. In a complex project, these locations hold roughly 80% of the actively-deferred items.
