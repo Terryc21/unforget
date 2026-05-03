@@ -13,7 +13,7 @@
 
 A Claude Code skill that consolidates deferred work (paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs) into one structured file. Built so deferred items don't slip through the cracks between releases.
 
-If unforget saves you a release-prep cycle, a [coffee](https://buymeacoffee.com/stuffolio) is appreciated. Issue reports about what worked or didn't are even more useful at v0.1.
+If unforget saves you a release-prep cycle, a [coffee](https://buymeacoffee.com/stuffolio) is appreciated. Issue reports about what worked or didn't are even more useful while v0.2 is finalizing.
 
 <a href="https://buymeacoffee.com/stuffolio">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
@@ -258,7 +258,7 @@ At the top of UNFORGET.md you'll see:
 <!-- unforget-format: v1 -->
 ```
 
-This marker tells future skill versions which format the file was created against. Don't remove it. If a future v0.2 changes the format, the skill will read this marker first and either auto-migrate or warn you before doing anything destructive.
+This marker tells future skill versions which format the file was created against. Don't remove it. If a future version changes the format, the skill will read this marker first and either auto-migrate or warn you before doing anything destructive.
 
 ### When in doubt
 
