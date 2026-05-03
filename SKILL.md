@@ -620,6 +620,43 @@ Things this skill deliberately does NOT do, and why:
 
 ---
 
+## Backups and recovery
+
+Every `/unforget promote` (without `--dry-run`) writes a timestamped backup of the current UNFORGET.md before applying changes. Backups make destructive operations safe to refine: if a promote produces unexpected output, the previous file is one rename away.
+
+### Naming
+
+Backups land in the same directory as UNFORGET.md, named `UNFORGET.md.bak-YYYY-MM-DD-HHMMSS`. The timestamp uses local time. Example: `UNFORGET.md.bak-2026-05-02-143027`.
+
+### Retention
+
+The skill keeps the 5 most recent backups. During each `promote`, backups older than the 5 most recent are pruned silently. The retention count is fixed in v0.2 and is not user-configurable.
+
+If a user wants to preserve a specific backup beyond the 5-deep window, they should rename it to remove the `.bak-` infix (for example, `UNFORGET.md.bak-2026-05-02-143027` to `UNFORGET-pre-build33.md`). Renamed files are no longer recognized as backups and will not be pruned.
+
+### `.gitignore` recommendation
+
+Backup files are local recovery artifacts, not project history, and should not be committed. The recommended `.gitignore` line is:
+
+```
+UNFORGET.md.bak-*
+```
+
+The init flow can offer to add this entry when the project is first wired up.
+
+### Recovering from a broken UNFORGET.md
+
+If UNFORGET.md becomes unparseable (manual edit error, merge conflict left in place, mistaken structural change), the user has two paths:
+
+1. Rename the most recent backup back to `UNFORGET.md`, replacing the broken file. This restores the state from before the most recent `promote`.
+2. Follow the "Recovering a broken UNFORGET.md" section in the project's `README.md`, which covers manual repair when no backup is available.
+
+Path 1 is fastest when the break happened during or after the most recent `promote`. Path 2 is the fallback when the break predates the oldest retained backup.
+
+`--dry-run` mode never creates a backup, so dry-runs cannot be used as an explicit checkpoint. Use the inline diff output of `--dry-run` for review; rely on the auto-backup written by the real `promote` for rollback.
+
+---
+
 ## Compatibility notes
 
 - **Non-Claude-Code use:** UNFORGET.md is plain markdown. The format works fine in any editor, on GitHub, in Linear, etc. The slash commands require Claude Code, but the file itself is portable.
