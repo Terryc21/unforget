@@ -185,6 +185,7 @@ The plugin install (v0.2+) drops the `/skill` prefix. If you installed via the v
 | `/unforget list` | Show what's in the file. Filter by section, Target, Urgency, or staleness. |
 | `/unforget scan` | Find rows that have been sitting too long for their priority. Doesn't change the file; just tells you what's stale. |
 | `/unforget promote` | Release-time check. Verifies all 🚢 THIS rows are Fixed, then promotes 🚢+1 NEXT rows up to 🚢 THIS for the next cycle. |
+| `/unforget --version` | Print version, install path, and supported format-version. Useful for verifying a fresh install loaded correctly without running `init` against a real project. |
 
 ## Feedback wanted
 
