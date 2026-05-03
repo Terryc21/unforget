@@ -152,7 +152,7 @@ These three questions take 90 seconds or less. After this, the user is hands-off
 
 Scan the project for existing deferred-work artifacts across six tractable surfaces. NOTHING is imported yet; this phase only produces a candidate list.
 
-**Universal exclusion rule (applies to ALL surfaces):** any path containing a segment named `archive` or `Archive` is skipped. Files in archive paths are intentionally retired, and importing them re-pollutes the active backlog with old work the project already moved past. Same for `.git/`, `node_modules/`, `vendor/`, `Pods/`, and the project's `Documentation/Development/Archive/` (or equivalent) folder if one exists. The skill should still REPORT the count of skipped archive files so the user knows they exist; just don't import them.
+**Universal exclusion rule (applies to ALL surfaces):** any path containing a segment named `archive` or `Archive` is skipped. Files in archive paths are intentionally retired, and importing them re-pollutes the active backlog with old work the project already moved past. Same for `.git/`, `node_modules/`, `vendor/`, `Pods/`, and the project's `Documentation/Development/Archive/` (or equivalent) folder if one exists. **In addition, any markdown file whose filename matches `*archive*.md` (case insensitive) is skipped regardless of path** so that files like `Deferred-archive-2026-05-01.md` sitting in an active directory are not wrongly imported as fresh deferrals. The skill should still REPORT the count of skipped archive files (path-based and filename-based combined) so the user knows they exist; just don't import them.
 
 | Surface | Signal | Confidence |
 |---|---|---|
