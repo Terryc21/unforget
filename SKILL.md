@@ -96,6 +96,30 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 
 **Invariant:** `🚢 THIS` is the only Target that blocks shipping. At submission time, every `🚢 THIS` row must be Status = Fixed or have been demoted with a one-line reason.
 
+### Detail blocks
+
+Each section table is followed by a `### Detail - <section name>` subsection. Detail blocks hold the prose context that doesn't fit in the 10-column table (the why, the file paths, the linked plan refs, the resolution history). One detail bullet per ID; the bullet starts with the ID in bold (`- **P1** - ...`).
+
+**Detail block format (three parts in order):**
+
+1. **Closure pointer (only if the row is closed).** Lead the body with `**CLOSED YYYY-MM-DD: [one-sentence summary of how it closed].**` This pointer is what makes a closed row's outcome scannable; future readers see "what happened" without reading the full body. For Open rows, skip this part entirely.
+2. **Body.** History, files, plan refs, context, gotchas. Free-form prose. Length is whatever the row needs; some rows are one sentence, some are five paragraphs. The Finding cell in the table is the headline; the body is the article.
+3. **Spawn links (only if the row is part of a chain).** `Spawned-from: <ID>` if this row was created by closing another row (e.g., a workaround that spawned a real-fix follow-up). `Spawns: <ID>` if closing this row created a follow-up row. Both directions are recorded so the chain can be walked from either end.
+
+**Example (closed row with a spawned follow-up):**
+
+```
+- **P3** - **CLOSED 2026-04-20: hidden the menu entry until server signing lands. Spawns: P6.** Every item that showed the Wallet feature failed when the user completed the flow. Blocked on server `/api/wallet/sign-pass` + Apple Pass Type ID. Pre-submission decision: complete the worker endpoint OR hide the menu item (~30 min if hiding). Chose hiding for build 13; future endpoint work tracked at row P6.
+```
+
+**Example (open row with no spawn link):**
+
+```
+- **P4** - Search relevance overhaul. Phases 1-4 (term weighting, stop words, fuzzy match, synonym expansion) shipped in build 11. Phases 5-7 (personalization, click-through learning, query rewriting) require a Cloudflare D1 schema we don't have yet. Plan: `~/.claude/plans/search-overhaul.md`.
+```
+
+The format is intentionally simple: closure pointer, body, spawn links. The skill's `add` / `edit` / `promote` flows preserve this structure when they touch a detail block. Hand-editing a detail block is fine as long as the three parts stay in order and the closure pointer (if present) stays at the top.
+
 ### Presets
 
 `unforget init` offers three presets at setup. Each is opinionated and complete; users pick the closest fit, and the skill adapts the table format accordingly.
@@ -115,6 +139,16 @@ Users on Standard or Lean can also append **extra columns** (Client, Sprint, Com
 Bootstrap UNFORGET.md AND populate it with existing deferred items from across the project's tracking surfaces. Init is the highest-leverage moment in the skill's lifecycle. The deferred items the user already has are exactly the items most at risk of being lost.
 
 The flow is seven phases, in order. Phases 1 through 4 are automated discovery and triage. Phase 5 is user-driven capture. Phase 6 is an optional deep-dump. Phase 7 writes the file and wires recall into the project.
+
+**Re-running init policy:** if `init` runs against a project that already has an UNFORGET.md (at the recommended `Documentation/Development/Deferred/UNFORGET.md` path or any other path the user previously chose), abort BEFORE Phase 1 with this message:
+
+> UNFORGET.md already exists at `<path>`. Init is intended to bootstrap a project, not re-bootstrap it.
+>
+> - To add new items that have appeared since init (a new audit report, a new plan file, items you've thought of since), run `/unforget import`.
+> - To capture a single new item, run `/unforget add "<finding>"`.
+> - To start over from scratch (rare, usually only after a format-version migration or a corrupted file), delete or rename `<path>` and re-run `/unforget init`.
+
+The skill must NOT silently overwrite or merge into an existing UNFORGET.md. The init flow makes destructive changes (renames source files, archives RESOLVED rows, wires the AI instruction file); running it twice would re-do all of that against a file that already has user data and risk losing rows. The abort is the safety net.
 
 ### Phase 1: Setup questions
 
@@ -307,6 +341,21 @@ For each row that the user agreed to import, the skill auto-fills as many of the
 | **Section** | Per-source mapping: Deferred-named files to Section 1 (Paused plans). Plan files to Section 1. Audit ledgers to Section 3 (Audit findings). Memory files to Section 1 (if filename starts `project_deferred_`) or Section 2 (if filename starts `deferred_` and content is session-spillover-shaped). Code comments to Section 4 (User-reported). GitHub issues to Section 1 if labeled `paused`/`blocked`, Section 4 otherwise. |
 
 The skill is honest about not getting this perfect. Most cells will be defaults; the user upgrades them as they go via `/unforget edit`.
+
+**Conservative defaults (when no signal is present):** when a source provides no signal for a column, the skill must use exactly these values rather than guessing. Pinning these values in the spec keeps behavior consistent across versions and across implementations.
+
+| Column | Conservative default | Override condition |
+|---|---|---|
+| **Target / Window** | `🌫️ SOMEDAY` | Source explicitly says "release-blocker" / `target: THIS` / similar. Never auto-promote to THIS without an explicit signal. |
+| **Urgency** | `🟢 MEDIUM` | Source explicitly says CRITICAL / HIGH / LOW. Treat ERROR as HIGH, WARNING as MEDIUM, INFO as LOW. |
+| **Risk: Fix** | `⚪ Low` | No automatic override. Risk: Fix needs human judgment; the skill never guesses higher than Low. |
+| **Risk: No Fix** | `⚪ Low` | Source body contains "data loss", "crash", "user-visible", "corruption", or "security" — promote to `🟡 High`. |
+| **ROI** | `🟢 Good` | No automatic override. The user upgrades to `🟠 Excellent` or downgrades to `🟡 Marginal` / `🔴 Poor` via `/unforget edit`. |
+| **Blast Radius** | `⚪ 1 file` | Source has a structured `files:` list — count and map (1 → ⚪, 2-5 → 🟢, 6-15 → 🟡, >15 → 🔴). Prose "many files" → 🟡 6-15 files. |
+| **Fix Effort** | `Small` | Source explicitly says "trivial" / "4-6 hours" / "large refactor" — map accordingly. Default Small (not Medium) keeps the bar for promoting effort intentionally low. |
+| **Status** | `Open` | Source explicitly says "RESOLVED" / "FIXED" / "DONE" / `status: fixed` → Fixed. `status: in_progress` → In Progress. `status: deferred` → Deferred. `status: accepted` → Skipped. |
+
+These defaults are the contract: a row imported with no signal looks identical regardless of which surface produced it. The user's first pass after init is to upgrade the rows that matter; the defaults are the floor, not the ceiling.
 
 ### Phase 5: User-add pass (the most important phase)
 
