@@ -570,6 +570,16 @@ Release-time ritual. Run at every release submission.
 
 This command DOES modify UNFORGET.md (unlike `/unforget scan`), so the user is shown a preview of every change before it's applied.
 
+### Dry-run mode
+
+`/unforget promote --dry-run` runs the same steps above but writes nothing. The skill renders the would-apply changes as a markdown diff inline in the Claude Code conversation. Each row that would be promoted, demoted, archived, re-stamped, or re-triaged appears as a before/after diff block.
+
+To apply the same changes after reviewing the dry-run output, the user replies `apply` (or any explicit confirmation). The skill then re-runs `/unforget promote` without the `--dry-run` flag, picks up the same set of changes, creates the auto-backup (see "Backups and recovery" below), and writes the file.
+
+To abandon the changes, the user replies `cancel` or anything else that is not an explicit confirmation. The skill exits without touching UNFORGET.md.
+
+`--dry-run` does not create a backup file. Backups are only written by the real `promote`, on the path that actually modifies UNFORGET.md.
+
 ---
 
 ## How to use unforget alongside CLAUDE.md / AGENTS.md
