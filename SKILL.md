@@ -163,6 +163,29 @@ Scan the project for existing deferred-work artifacts across six tractable surfa
 | **GitHub issues** (if `gh` CLI authenticated AND repo accessible) | Open issues labeled `deferred`, `wontfix-for-now`, `post-release`, `backlog` | High when labeled |
 | **Memory files** | Filename match `^deferred_*.md` or `^project_deferred_*.md` (strict, because body-text "defer" matches produce too many false positives from book/feedback files that mention deferral in passing) | High when filename matches; deprioritized for body-only matches |
 
+### Surface 1b: General documentation scanning
+
+The six surfaces above catch deferral artifacts in conventional locations (Deferred-named files, audit ledgers, plan dirs, code, GitHub issues, memory). They miss the much larger set of deferred work that lives inside ordinary project documentation: dated planning notes, scratch audit reports, design docs with "Deferred" sections, hand-written backlog rollups. In a complex project, these locations hold roughly 80% of the actively-deferred items.
+
+**Scan paths (excluding archive paths and the universal exclusions):**
+- `Documentation/Development/*.md`
+- `Documentation/Notes/*.md`
+- `scratch/*.md`
+- Equivalents (`docs/notes/`, `notes/`, `dev-docs/`, etc.) discovered during Phase 1 setup
+
+**Heuristics (six total). Any single match flags the file as a candidate:**
+
+1. Heading text contains the literal word **`Deferred`** (case insensitive).
+2. Heading text contains the literal word **`Pending`** (case insensitive).
+3. Heading text contains the literal word **`TODO`** (case insensitive).
+4. Heading text matches the pattern **`Phase N pending`** / **`Phase N deferred`** / **`Phase N todo`** (case insensitive, N is any digit).
+5. Filename starts with a **date prefix** (`YYYY-MM-DD-*.md`), which conventionally marks a session/incident write-up that often contains rollup deferrals.
+6. Heading begins with the explicit prefix **`DEFERRED:`** (case insensitive).
+
+**Behavior on match: each candidate prompts the user.** Surface 1b never auto-imports. Prose-shape detection is fuzzy by nature; a heading containing the word "Deferred" can mean "items being deferred from this work" or "deferred work that was already completed and archived in this doc" or "discussion of deferred work in general". The user is the safety net that distinguishes those cases. The skill's job is to surface candidates and the user's job is to decide.
+
+**Output format:** report each match as a one-line candidate (`<file>: <heading text> (heuristic <N>)`) under a `📄 General documentation` group in the Phase 2 summary. Counts roll up the same way as the six core surfaces.
+
 **Audit-tool format-aware parsing:**
 
 For **radar-suite v3+** (the supported version; pin compatibility to v3 and above), the deferred-work source is split across two files per audit run:
