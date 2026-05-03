@@ -3,9 +3,9 @@
 ![Status](https://img.shields.io/badge/status-v0.2.0-blue) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet)
 
 > [!NOTE]
-> **v0.2.0 (2026-05-02).** The skill installs as a Claude Code plugin. Two one-line commands (instructions below) and `/unforget` is available in any project session. Claude reads the skill file and walks you through setup.
+> **v0.2.0 (shipped 2026-05-02).** The skill installs as a Claude Code plugin: two one-line commands (instructions below) and `/unforget` is available in any project session. Claude reads the skill file and walks you through setup.
 >
-> v0.1 install path (`git clone` into `~/.claude/skills/unforget/`, invoke as `/skill unforget`) still works as a fallback. v0.2 keeps the same features; the install experience is smoother.
+> The v0.1 install path (`git clone` into `~/.claude/skills/unforget/`, invoke as `/skill unforget`) still works as a fallback. v0.2 keeps the same features; only the install experience is smoother.
 >
 > If you'd rather not use Claude at all, UNFORGET.md is plain markdown. You can edit it by hand in any text editor.
 
@@ -13,7 +13,7 @@
 
 A Claude Code skill that consolidates deferred work (paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs) into one structured file. Built so deferred items don't slip through the cracks between releases.
 
-If unforget saves you a release-prep cycle, a [coffee](https://buymeacoffee.com/stuffolio) is appreciated. Issue reports about what worked or didn't are even more useful while v0.2 is finalizing.
+If unforget saves you a release-prep cycle, a [coffee](https://buymeacoffee.com/stuffolio) is appreciated. Issue reports about what worked or didn't are equally useful — the skill ships at v0.2 but real-project feedback is what shapes v0.3.
 
 <a href="https://buymeacoffee.com/stuffolio">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
@@ -44,7 +44,7 @@ Months later, when you ask "what's deferred?", the answer requires walking five 
 - **Lets you refine any row later** with `/unforget edit` if the auto-filled defaults don't match what you actually think.
 - **Re-scans on demand** with `/unforget import` to catch new audit reports or plan files that appeared since the first run.
 - **Flags stale rows** with `/unforget scan` when items have been sitting too long for their priority level. Read-only; never modifies the file.
-- **Walks you through release prep** with `/unforget promote`. At each release, this verifies all 🚢 THIS rows are Fixed, then bumps NEXT into THIS so the next cycle is set up.
+- **Walks you through release prep** with `/unforget promote`. At each release, this verifies all 🔴 THIS rows are Fixed, then bumps NEXT into THIS so the next cycle is set up.
 - **Updates your project's AI instruction file** (CLAUDE.md, AGENTS.md, or whichever your editor uses) so future AI sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
 
 ## The format
@@ -66,12 +66,12 @@ The signature column is **Target**, the release-cycle commitment:
 
 | Target | Meaning |
 |---|---|
-| 🚢 **THIS** | Must ship in current release cycle. Blocks submission. |
-| 🚢+1 **NEXT** | First post-release point update. |
-| 🚢+2 **LATER** | Two cycles out or more. |
-| 🌫️ **SOMEDAY** | No commitment. Captured so it doesn't get lost. |
+| 🔴 **THIS** | Must ship in current release cycle. Blocks submission. |
+| 🔵 **NEXT** | First post-release point update. |
+| 🟡 **LATER** | Two cycles out or more. |
+| ⚪ **SOMEDAY** | No commitment. Captured so it doesn't get lost. |
 
-**Invariant:** 🚢 THIS is the only Target that blocks shipping. Everything else is post-release by definition. When you ship, NEXT auto-promotes to THIS, LATER promotes to NEXT, and you re-triage SOMEDAY.
+**Invariant:** 🔴 THIS is the only Target that blocks shipping. Everything else is post-release by definition. When you ship, NEXT auto-promotes to THIS, LATER promotes to NEXT, and you re-triage SOMEDAY.
 
 ## Why a Target column
 
@@ -79,7 +79,7 @@ Most backlog tools have one Priority field that tries to answer two different qu
 
 - An item rated 🟡 HIGH urgency might still wait for the next update, because the current release is going out the door tomorrow and you can't fit one more change.
 - An item rated 🟢 MEDIUM urgency might jump into "this release" because it turned out to be a one-line fix you stumbled into while reviewing other code.
-- An item rated ⚪ LOW might sit in the backlog for three release cycles, then suddenly become 🚢 THIS because real user feedback made it more urgent.
+- An item rated ⚪ LOW might sit in the backlog for three release cycles, then suddenly become 🔴 THIS because real user feedback made it more urgent.
 
 Keeping Urgency and Target as separate columns lets either one change without rewriting the other. Sort by Target when you're asking "what blocks shipping?" Sort by Urgency × ROI when you're asking "what should I work on first?" Same rows, different lens.
 
@@ -151,7 +151,7 @@ After init, capturing a new deferred item takes 30 seconds:
 /unforget add "API rate limiter sometimes returns 429 even when under quota"
 ```
 
-I assign an ID, default the Target to 🌫️ SOMEDAY (you can promote it later when it matters more), and append the row to Section 2 (Session spillover).
+I assign an ID, default the Target to ⚪ SOMEDAY (you can promote it later when it matters more), and append the row to Section 2 (Session spillover).
 
 When you're ready to ship a release:
 
@@ -184,7 +184,7 @@ The plugin install (v0.2+) drops the `/skill` prefix. If you installed via the v
 | `/unforget import` | Re-scan your project for new deferred items that appeared after init (a new audit report, a new plan file, etc.). |
 | `/unforget list` | Show what's in the file. Filter by section, Target, Urgency, or staleness. |
 | `/unforget scan` | Find rows that have been sitting too long for their priority. Doesn't change the file; just tells you what's stale. |
-| `/unforget promote` | Release-time check. Verifies all 🚢 THIS rows are Fixed, then promotes 🚢+1 NEXT rows up to 🚢 THIS for the next cycle. |
+| `/unforget promote` | Release-time check. Verifies all 🔴 THIS rows are Fixed, then promotes 🔵 NEXT rows up to 🔴 THIS for the next cycle. |
 | `/unforget --version` | Print version, install path, and supported format-version. Useful for verifying a fresh install loaded correctly without running `init` against a real project. |
 
 ## Feedback wanted
@@ -197,9 +197,9 @@ Not every project ships the same way. During `init` you'll pick one of three tab
 
 | Preset | Best for | What's different |
 |---|---|---|
-| **Standard** | Mobile or desktop apps that ship discrete releases (App Store, Play Store, GitHub Releases) | Full 10-column table with Target values 🚢 THIS / 🚢+1 NEXT / 🚢+2 LATER / 🌫️ SOMEDAY |
+| **Standard** | Mobile or desktop apps that ship discrete releases (App Store, Play Store, GitHub Releases) | Full 10-column table with Target values 🔴 THIS / 🔵 NEXT / 🟡 LATER / ⚪ SOMEDAY |
 | **Lean** | Solo developers, side projects, anyone learning the format | Same Target column, but only 6 columns total (Finding, Urgency, Effort, Status, plus Target). Less to fill in per row. |
-| **Continuous** | Web apps, services, libraries that deploy multiple times a day | Replaces "Target" (release-based) with "Window" (time-based): 🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / 🌫️ SOMEDAY |
+| **Continuous** | Web apps, services, libraries that deploy multiple times a day | Replaces "Target" (release-based) with "Window" (time-based): 🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / ⚪ SOMEDAY |
 
 If your team needs extra fields (a Client column, a Sprint number, a Component tag), you can add them. What you can't do is remove or rename the core columns; that breaks the format and makes it hard to compare projects, share rows across teams, or use future tooling.
 
@@ -266,7 +266,7 @@ When you mark a row Fixed in unforget, the closure flow detects which of these a
 - **Claude Code:** This is its native home. All the slash commands in this README work in Claude Code today.
 - **Other AI assistants (Cursor, Copilot, Aider, Continue, Warp):** The pattern is just a markdown file plus an instruction line in your project's AI instruction file. Any AI that reads project instructions can be told to look at UNFORGET.md. The interactive setup flow is Claude-specific, but you can write the file by hand and any AI can read it.
 - **No AI at all:** UNFORGET.md is plain markdown. You can create and maintain it by hand in any text editor. The format is what matters; the skill is just there to make adoption faster.
-- **Teams:** UNFORGET.md commits to git like any other markdown file. If two teammates edit the same row at the same time, you'll get a normal git merge conflict; resolve it the way you'd resolve any markdown conflict.
+- **Teams:** UNFORGET.md commits to git like any other markdown file. If two teammates edit the same row at the same time, you'll get a normal git merge conflict. One thing to watch: the table cells are pipe-separated, and a botched conflict resolution can silently corrupt the column shape (a stray `|` or a missing one breaks rendering for the whole table). After resolving, render the file in a markdown viewer to confirm the tables still look right before committing.
 
 ## Recovering a broken UNFORGET.md
 
@@ -310,12 +310,12 @@ This marker tells future skill versions which format the file was created agains
 
 ## Origin
 
-`unforget` came out of a real shipping app: Stuffolio, a Universal app for iOS, iPadOS, and macOS built from a single Swift codebase. Deferred work in that project had spread across five different tracking surfaces (a Deferred.md, plan files, audit ledgers, memory entries, and code comments). Pulling everything into one file freed roughly 3 hours of release-prep time per cycle, mostly because nobody had to walk five surfaces anymore to answer "what's left before we ship?"
+`unforget` came out of a real shipping app: [Stuffolio](https://stuffolio.app), a Universal app for iOS, iPadOS, and macOS built from a single Swift codebase, currently shipping at build 33. Deferred work in that project had spread across five different tracking surfaces (a Deferred.md, plan files, audit ledgers, memory entries, and code comments). Consolidating to a single file removed a chunk of pre-release-prep time, mostly because nobody had to walk five surfaces anymore to answer "what's left before we ship?"
 
-Here's an honest look at what's solid in v0.1 and what's still earning its stripes:
+Here's an honest look at what's solid and where outside feedback would help most:
 
 - **The 10-column table format is solid.** It's been used through an actual App Store submission cycle in the source project. Rows, sections, the Target column, and the promotion ritual all do what they say.
-- **The setup flow (the seven phases) is specified in detail and tested.** Two rounds of nondestructive testing (one complex multiplatform app, one minimal third-party skill) caught 13 small gaps in the spec, all fixed. It works today, but it hasn't been used for months in a production project other than the source. Your real-world feedback is what makes v0.2 better.
+- **The setup flow (the seven phases) is specified in detail and tested.** Two rounds of nondestructive testing (one complex multiplatform app, one minimal third-party skill) caught 13 small gaps in the spec, all fixed. It works today; what would sharpen it most is feedback from projects whose shape differs from the source — non-Apple stacks, continuous-deployment workflows, libraries, anything other than "mobile app shipping discrete releases."
 - **The install path got smoother in v0.2.** v0.1 required cloning a git repo and invoking with `/skill unforget`. v0.2 ships as a Claude Code plugin: two one-line commands to install, and you invoke as `/unforget` (no prefix). The features don't change; only the install experience does. The clone-and-copy fallback still works for environments where plugin install isn't available yet.
 
 ## Companion Skills
@@ -336,7 +336,7 @@ Apache License 2.0. See LICENSE.
 
 ## Contributing
 
-This skill is early-stage, so the most valuable thing you can do is try it and tell me where the format broke down for your workflow. [Open an issue](https://github.com/Terryc21/unforget/issues) describing what didn't fit. Real failures are more useful than feature suggestions.
+The format is stable through v0.2 but the project shape it knows best is the one it came from (a single-developer mobile app shipping discrete releases). The most valuable thing you can do is try it on a project shape it hasn't seen and tell me where the format broke down. [Open an issue](https://github.com/Terryc21/unforget/issues) describing what didn't fit. Real failures are more useful than feature suggestions.
 
 Pull requests are welcome for:
 

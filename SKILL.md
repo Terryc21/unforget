@@ -90,12 +90,12 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 
 | Target | Meaning |
 |---|---|
-| 🚢 **THIS** | Must ship in current release cycle. Blocks submission. |
-| 🚢+1 **NEXT** | First post-release point update. Triaged as fixable but not blocking. |
-| 🚢+2 **LATER** | Two cycles out or more. Real work, not yet scheduled. |
-| 🌫️ **SOMEDAY** | No commitment. Captured so it doesn't get lost. May stay here forever. |
+| 🔴 **THIS** | Must ship in current release cycle. Blocks submission. |
+| 🔵 **NEXT** | First post-release point update. Triaged as fixable but not blocking. |
+| 🟡 **LATER** | Two cycles out or more. Real work, not yet scheduled. |
+| ⚪ **SOMEDAY** | No commitment. Captured so it doesn't get lost. May stay here forever. |
 
-**Invariant:** `🚢 THIS` is the only Target that blocks shipping. At submission time, every `🚢 THIS` row must be Status = Fixed or have been demoted with a one-line reason.
+**Invariant:** `🔴 THIS` is the only Target that blocks shipping. At submission time, every `🔴 THIS` row must be Status = Fixed or have been demoted with a one-line reason.
 
 ### Detail blocks
 
@@ -129,7 +129,7 @@ The format is intentionally simple: closure pointer, body, spawn links. The skil
 |---|---|---|
 | **Standard** | Mobile/desktop apps shipping discrete releases | All 10 columns above with Target |
 | **Lean** | Solo devs, side projects, junior devs | 6 columns: # / Target / Finding / Urgency / Effort / Status |
-| **Continuous** | Web apps, services, libraries with continuous deployment | 9 columns; replaces Target with Window (🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / 🌫️ SOMEDAY) |
+| **Continuous** | Web apps, services, libraries with continuous deployment | 9 columns; replaces Target with Window (🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / ⚪ SOMEDAY) |
 
 Users on Standard or Lean can also append **extra columns** (Client, Sprint, Component, etc.) without modifying core columns. Removing or renaming core columns is intentionally not supported, because it breaks comparability across projects and tooling.
 
@@ -330,7 +330,7 @@ For each row that the user agreed to import, the skill auto-fills as many of the
 | Column | Inferred from |
 |---|---|
 | **#** | Auto-assigned next ID per section (P1, P2, ...) |
-| **Target / Window** | Map "release-blocker" / "must-fix" / explicit `target: THIS` to 🚢 THIS. "Post-release" / `target: NEXT` to 🚢+1 NEXT. "Future" / no tag to 🌫️ SOMEDAY. |
+| **Target / Window** | Map "release-blocker" / "must-fix" / explicit `target: THIS` to 🔴 THIS. "Post-release" / `target: NEXT` to 🔵 NEXT. "Future" / no tag to ⚪ SOMEDAY. |
 | **Finding** | Title or first line of source. Truncate at ~150 chars; full detail stays in source file (linked from the row). |
 | **Urgency** | Structured format: pass through `urgency` / `severity` field. Prose: CRITICAL/HIGH/MEDIUM/LOW pass through; ERROR/WARNING/INFO map to HIGH/MEDIUM/LOW. No tag becomes ⚪ LOW. |
 | **Risk: Fix** | Default ⚪ Low. Needs human judgment. The skill shouldn't guess. |
@@ -347,7 +347,7 @@ The skill is honest about not getting this perfect. Most cells will be defaults;
 
 | Column | Conservative default | Override condition |
 |---|---|---|
-| **Target / Window** | `🌫️ SOMEDAY` | Source explicitly says "release-blocker" / `target: THIS` / similar. Never auto-promote to THIS without an explicit signal. |
+| **Target / Window** | `⚪ SOMEDAY` | Source explicitly says "release-blocker" / `target: THIS` / similar. Never auto-promote to THIS without an explicit signal. |
 | **Urgency** | `🟢 MEDIUM` | Source explicitly says CRITICAL / HIGH / LOW. Treat ERROR as HIGH, WARNING as MEDIUM, INFO as LOW. |
 | **Risk: Fix** | `⚪ Low` | No automatic override. Risk: Fix needs human judgment; the skill never guesses higher than Low. |
 | **Risk: No Fix** | `⚪ Low` | Promote to `🟡 High` when the source body contains "data loss", "crash", "user-visible", "corruption", or "security". |
@@ -405,7 +405,7 @@ For each item the user types, the skill:
 
 1. **Picks a section automatically** based on phrasing (bug language to Section 4; "I started ... but didn't finish" to Section 1; everything else to Section 2). User can override.
 2. **Auto-assigns the next ID** in that section.
-3. **Sets conservative defaults** for the 10 columns (Target = 🌫️ SOMEDAY, Urgency = ⚪ LOW, etc.).
+3. **Sets conservative defaults** for the 10 columns (Target = ⚪ SOMEDAY, Urgency = ⚪ LOW, etc.).
 4. **Echoes** the captured row and moves to the next item.
 
 The user is rattling off items, not filling out forms. Triage refinement happens later via `/unforget edit`. Speed matters more than completeness here. Every item captured is one less item lost.
@@ -649,7 +649,7 @@ Capture a new deferral. The friction point that makes or breaks the skill. Must 
 1. **Read UNFORGET.md** to find the next available ID in the chosen section.
 2. **Default to Section 2 (Session spillover)** unless the user specifies a section. Section 2 is where most mid-task captures naturally belong.
 3. **Auto-fill defaults** for the rating columns:
-   - Target: `🌫️ SOMEDAY` (most conservative; user can promote later)
+   - Target: `⚪ SOMEDAY` (most conservative; user can promote later)
    - Urgency: `⚪ LOW`
    - Risk: Fix / Risk: No Fix: `⚪ Low`
    - ROI: `🟢 Good`
@@ -676,7 +676,7 @@ Capture a new deferral. The friction point that makes or breaks the skill. Must 
 
 ## /unforget list
 
-Show current state. Default view is sorted by Target (🚢 THIS first), then Urgency (CRITICAL first).
+Show current state. Default view is sorted by Target (🔴 THIS first), then Urgency (CRITICAL first).
 
 ### Usage
 
@@ -693,7 +693,7 @@ Show current state. Default view is sorted by Target (🚢 THIS first), then Urg
 
 The skill renders the matching rows in the same 10-column format as UNFORGET.md, with a one-line summary at the top:
 
-> "12 rows total: 2 🚢 THIS (release blockers), 5 🚢+1 NEXT, 5 🌫️ SOMEDAY. Stale: 1."
+> "12 rows total: 2 🔴 THIS (release blockers), 5 🔵 NEXT, 5 ⚪ SOMEDAY. Stale: 1."
 
 For the simplest case (`/unforget list` alone), this is the answer the user was actually looking for when they asked "what's deferred?"
 
@@ -708,9 +708,9 @@ Identify rows past their staleness threshold. Read-only. Never modifies the file
 | Status / Target | Stale after |
 |---|---|
 | Status = Open or In Progress | 30 days |
-| Status = Deferred AND Target = 🚢+1 NEXT | 90 days |
-| Status = Deferred AND Target = 🚢+2 LATER | 180 days |
-| Status = Deferred AND Target = 🌫️ SOMEDAY | 365 days |
+| Status = Deferred AND Target = 🔵 NEXT | 90 days |
+| Status = Deferred AND Target = 🟡 LATER | 180 days |
+| Status = Deferred AND Target = ⚪ SOMEDAY | 365 days |
 | Status = Skipped | never stale |
 | Status = Fixed | never stale (but flag as ready-for-archive) |
 
@@ -766,10 +766,10 @@ Release-time ritual. Run at every release submission.
 
 ### Steps
 
-1. **Verify** every `🚢 THIS` row has Status = Fixed. List any that don't and require an explicit demotion or fix.
-2. **Promote** all `🚢+1 NEXT` rows to `🚢 THIS` (they are now the next release's blockers).
-3. **Re-triage** all `🚢+2 LATER` rows that are still relevant to `🚢+1 NEXT`. Items no longer relevant get archived.
-4. **Re-rank `🌫️ SOMEDAY`** items 180 days or older: prompt user for promote / demote / archive.
+1. **Verify** every `🔴 THIS` row has Status = Fixed. List any that don't and require an explicit demotion or fix.
+2. **Promote** all `🔵 NEXT` rows to `🔴 THIS` (they are now the next release's blockers).
+3. **Re-triage** all `🟡 LATER` rows that are still relevant to `🔵 NEXT`. Items no longer relevant get archived.
+4. **Re-rank `⚪ SOMEDAY`** items 180 days or older: prompt user for promote / demote / archive.
 5. **Stamp** the "Last promoted" line at the top of UNFORGET.md with new build/version + date.
 
 This command DOES modify UNFORGET.md (unlike `/unforget scan`), so the user is shown a preview of every change before it's applied.
@@ -825,12 +825,12 @@ The skill works best when the project's main AI instructions file has a section 
 
 Read this file when:
 - The user asks "what's deferred?", "what's the backlog?", "prioritize my plans," or any variant.
-- Before suggesting a release / submission, to check 🚢 THIS rows for unresolved blockers.
+- Before suggesting a release / submission, to check 🔴 THIS rows for unresolved blockers.
 - When a task in the current session needs to be deferred, log a row here. Do NOT create a new tracking file unless the entry needs detail beyond one row.
 
 **Format:** 10-column rating table per section. **Sections:** Paused plans / Session spillover / Audit findings / User-reported.
 
-**Target column** is the release-cycle commitment: 🚢 THIS / 🚢+1 NEXT / 🚢+2 LATER / 🌫️ SOMEDAY.
+**Target column** is the release-cycle commitment: 🔴 THIS / 🔵 NEXT / 🟡 LATER / ⚪ SOMEDAY.
 
 Never log deferred items elsewhere. Memory files, plan files, and audit ledgers are detail stores; UNFORGET.md is the index.
 ```
