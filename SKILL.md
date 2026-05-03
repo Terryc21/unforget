@@ -157,13 +157,23 @@ Scan the project for existing deferred-work artifacts across six tractable surfa
 | Surface | Signal | Confidence |
 |---|---|---|
 | **Deferred-named files** at repo root or `Documentation/`, `docs/`, `notes/` (excluding archive paths) | Filenames matching `Deferred.md`, `BACKLOG.md`, `TODO.md`, `*deferred*.md` | High |
-| **Audit-tool ledgers** (excluding archive paths) | `.radar-suite/ledger.yaml`, `.eslint-todos`, `.audit/`, custom audit YAML | High when present |
+| **Audit-tool reports** (excluding archive paths) | radar-suite v3+: per-finding source is `scratch/*-radar-*-YYYY-MM-DD.md` (markdown); `.radar-suite/ledger.yaml` is read for audit-run metadata only. Other tools: `.eslint-todos`, `.audit/`, custom audit YAML. | High when present |
 | **Plan files** in `./plans/`, `./.claude/plans/` only. Global `~/.claude/plans/` is **NOT** scanned by default because it produces dozens of completed-session noise hits per project. | Markdown files referencing the project name; explicit status hints (`PAUSED:`, `ABORTED:`, `IN PROGRESS:` in title or first heading) | Medium. Many will be done, not deferred. User can opt in to global scan via `/unforget import --plans=global`. |
 | **Code comments** | Regex `// (TODO\|FIXME\|HACK\|XXX\|MIGRATION-NOTE\|DEFERRED)\b` (word boundary, NO required colon, because many comment styles use space or paren after the tag) across `Sources/`, `src/`, `lib/`, etc. | Variable, typically 0 to 50 hits depending on project age and code-review discipline |
 | **GitHub issues** (if `gh` CLI authenticated AND repo accessible) | Open issues labeled `deferred`, `wontfix-for-now`, `post-release`, `backlog` | High when labeled |
 | **Memory files** | Filename match `^deferred_*.md` or `^project_deferred_*.md` (strict, because body-text "defer" matches produce too many false positives from book/feedback files that mention deferral in passing) | High when filename matches; deprioritized for body-only matches |
 
-**Audit-ledger format-aware parsing:** for known formats (`radar-suite/ledger.yaml`, `eslint`, etc.), parse the structured fields (`status`, `urgency`, `severity`, `file:line`) so Phase 4 auto-fill can populate columns from real signals instead of guessing from prose. For unknown audit formats, fall back to filename-based heuristics and flag the rows as needing manual review.
+**Audit-tool format-aware parsing:**
+
+For **radar-suite v3+** (the supported version; pin compatibility to v3 and above), the deferred-work source is split across two files per audit run:
+
+- `scratch/*-radar-*-YYYY-MM-DD.md` is the per-finding source. These are markdown reports containing the actual deferred items in prose form, with severity tags (🔴 / 🟡 / 🟢), heading-level findings, and inline file:line references. Use prose heuristics to extract Finding text + urgency from each section.
+- `.radar-suite/ledger.yaml` is read for audit-run metadata only. Map: `audit_started` → row date stamp; `sessions[].skill` → audit-tool name (which radar skill produced the finding); `sessions[].timestamp` → recency signal for staleness scoring. Do NOT attempt to extract per-finding rows from `ledger.yaml`; the v3 schema records audit-run summaries (counts, grades, baselines), not individual findings.
+- All other yaml files in `.radar-suite/` (`*-handoff.yaml`, `project.yaml`, `session-prefs.yaml`, etc.) are inter-skill state or config and are explicitly skipped.
+
+For **other known formats** (`.eslint-todos`, etc.), parse the structured fields (`status`, `urgency`, `severity`, `file:line`) directly so Phase 4 auto-fill can populate columns from real signals.
+
+For **unknown audit formats**, fall back to filename-based heuristics and flag the rows as needing manual review.
 
 **Cross-surface deduplication:** before producing the candidate report, run a fuzzy-match dedup pass. If the same item appears in Deferred.md AND a plan file AND a memory file (common, e.g., a paused migration shows up in all three), merge into ONE candidate row with the multi-source pointer recorded in the Finding cell. Without this step, the survey produces 3x duplicate rows for the same logical item.
 
