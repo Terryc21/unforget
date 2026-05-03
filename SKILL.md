@@ -173,7 +173,7 @@ The six surfaces above catch deferral artifacts in conventional locations (Defer
 - `scratch/*.md`
 - Equivalents (`docs/notes/`, `notes/`, `dev-docs/`, etc.) discovered during Phase 1 setup
 
-**Heuristics (six total). Any single match flags the file as a candidate:**
+**Heuristics (seven total). Any single match flags the file as a candidate:**
 
 1. Heading text contains the literal word **`Deferred`** (case insensitive).
 2. Heading text contains the literal word **`Pending`** (case insensitive).
@@ -181,10 +181,13 @@ The six surfaces above catch deferral artifacts in conventional locations (Defer
 4. Heading text matches the pattern **`Phase N pending`** / **`Phase N deferred`** / **`Phase N todo`** (case insensitive, N is any digit).
 5. Filename starts with a **date prefix** (`YYYY-MM-DD-*.md`), which conventionally marks a session/incident write-up that often contains rollup deferrals.
 6. Heading begins with the explicit prefix **`DEFERRED:`** (case insensitive).
+7. **Audit-report shape (scoped):** heading text matches a severity-tier prefix (`HIGH Issues`, `MEDIUM Issues`, `LOW Issues`, `CRITICAL Issues`) OR a per-finding ID pattern (regex `^#+\s+[A-Z]+-[A-Z][0-9]+:`, e.g., `### CONC-H1: ...`, `### RS-019: ...`). **This heuristic only fires on files Surface 2 already identified as audit reports** (post-T-12: any file matching `scratch/audit-*-YYYY-MM-DD.md` or another known audit-tool format). It never fires on prose docs that happen to use `## HIGH PRIORITY` headings, eliminating a large false-positive class.
 
 **Behavior on match: each candidate prompts the user.** Surface 1b never auto-imports. Prose-shape detection is fuzzy by nature; a heading containing the word "Deferred" can mean "items being deferred from this work" or "deferred work that was already completed and archived in this doc" or "discussion of deferred work in general". The user is the safety net that distinguishes those cases. The skill's job is to surface candidates and the user's job is to decide.
 
-**Output format:** report each match as a one-line candidate (`<file>: <heading text> (heuristic <N>)`) under a `📄 General documentation` group in the Phase 2 summary. Counts roll up the same way as the six core surfaces.
+**Audit-report rollup (heuristic 7):** when heuristic 7 fires, treat each per-finding ID heading inside the report as a candidate finding row. The severity-tier section header (`## HIGH Issues`, etc.) provides the urgency signal for findings beneath it (HIGH → 🟡 HIGH, MEDIUM → 🟢 MEDIUM, LOW → ⚪ LOW, CRITICAL → 🔴 CRITICAL). To avoid prompt fatigue on reports with 10+ findings, the user prompt rolls up per-report rather than per-finding: "Import N findings from `<audit-file>`?" with a yes / no / per-finding-review choice.
+
+**Output format:** report each match as a one-line candidate (`<file>: <heading text> (heuristic <N>)`) under a `📄 General documentation` group in the Phase 2 summary. Audit-report files (heuristic 7) report as a single grouped line per file: `<file>: N findings (heuristic 7)`. Counts roll up the same way as the six core surfaces.
 
 **Audit-tool format-aware parsing:**
 
