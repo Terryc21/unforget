@@ -182,6 +182,15 @@ When both conditions hold, skip the file with a status note: `<file>: redirect p
 
 If the encoded directory does not exist, the surface reports "Memory files: directory not found at `<path>`" rather than silently scanning zero files. The user knows the surface tried and where it looked.
 
+**Memory meta-file content-shape pre-check (Surface 6):** filename matching alone catches both real findings and meta-docs. Files that match `^deferred_*.md` or `^project_deferred_*.md` but whose body describes the deferral system rather than containing actual findings should not be auto-imported. Before importing a Surface 6 match, scan the body for meta-doc phrases:
+
+- The literal phrase `single source of truth`
+- The literal phrase `format:` (lowercase, with colon, indicating a format-spec doc)
+- The literal phrase `how to use`
+- The literal phrase `index of` or `pointer to`
+
+If any phrase is detected, prompt the user instead of auto-importing: `<file>: looks like a meta-doc (matched: '<phrase>'). Import anyway? [yes / no / preview]`. Stuffolio repro: `deferred_work_index.md` is a meta-doc that points at `Documentation/Development/Deferred/UNFORGET.md`; it contains zero deferred-work rows. Without this pre-check, its prose ("single source of truth is now `Documentation/Development/Deferred/DEFERRED.md`") would be parsed as a finding.
+
 ### Surface 1b: General documentation scanning
 
 The six surfaces above catch deferral artifacts in conventional locations (Deferred-named files, audit ledgers, plan dirs, code, GitHub issues, memory). They miss the much larger set of deferred work that lives inside ordinary project documentation: dated planning notes, scratch audit reports, design docs with "Deferred" sections, hand-written backlog rollups. In a complex project, these locations hold roughly 80% of the actively-deferred items.
