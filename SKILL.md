@@ -22,6 +22,7 @@ description: |
   - /unforget list     ·  show current state, filterable by section / Target / Urgency
   - /unforget scan     ·  surface stale rows (rows aging past their priority threshold)
   - /unforget promote  ·  release-time ritual (verify THIS rows fixed; promote NEXT to THIS)
+  - /unforget --version ·  print skill version, install path, and supported format-version (install-verification)
 license: Apache-2.0
 ---
 
@@ -695,6 +696,34 @@ To apply the same changes after reviewing the dry-run output, the user replies `
 To abandon the changes, the user replies `cancel` or anything else that is not an explicit confirmation. The skill exits without touching UNFORGET.md.
 
 `--dry-run` does not create a backup file. Backups are only written by the real `promote`, on the path that actually modifies UNFORGET.md.
+
+---
+
+## /unforget --version
+
+Print the installed skill's version, install path, and the format-version it supports. Useful for verifying a fresh install loaded correctly without running `init` against a real project.
+
+### Output format
+
+```
+unforget v0.2.0
+Install path: ~/.claude/plugins/unforget/  (Claude Code plugin)
+Supported format-version: v1
+Subcommands: init, add, edit, import, list, scan, promote, --version
+```
+
+The version string is read from the SKILL.md frontmatter `version` field. The install path is detected at runtime: plugin installs report the plugin directory, manual v0.1 installs report `~/.claude/skills/unforget/`. Supported format-version comes from the spec (currently `v1`; future versions will list multiple if backward compatibility is preserved).
+
+### Why this exists
+
+After install, the user has no way to verify the skill loaded short of trying to use it. `/unforget --version` provides a no-side-effect health check. If the command does not respond, the install did not take. If it responds with the wrong version, the user knows to update before running `init` against a real project.
+
+### Behavior
+
+- Read-only. Touches no files.
+- Always succeeds (or fails to respond entirely; there is no error case).
+- Does not require a project context; works from any directory.
+- Does not check for an existing UNFORGET.md or scan any surface.
 
 ---
 
