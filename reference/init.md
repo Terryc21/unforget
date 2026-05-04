@@ -269,7 +269,7 @@ The collapsed form removes noise on minimal projects where most sections are emp
 
 User can preview the rows before committing. If they cancel, no files are touched. If they proceed:
 
-1. **Write UNFORGET.md** with all imported rows in their assigned sections.
+1. **Write UNFORGET.md** with all imported rows in their assigned sections. If Surface 6 returned candidates and the scan emitted `pin_action.action == "write"`, write `<!-- unforget-config: memory-dir=<encoded> -->` on its own line immediately under the `<!-- unforget-format: vN -->` marker. The pin caches "this directory worked for this project" so subsequent `/unforget import` runs skip the cwd-encode + ancestor-walk resolution. Skip the pin write when `pin_action.action == "none"` (no files found, or directory resolved to zero matches). See `reference/surfaces.md` § Memory-dir config pin (post-resolution) for the full read order.
 2. **Move RESOLVED / FIXED items** to a separate archive file (`UNFORGET-archive-<date>.md` in the same directory).
 3. **Optionally rename / replace the source files**: e.g., replace root `Deferred.md` with a redirect pointer to UNFORGET.md (preserving git history). Always ask before modifying any source file.
 4. **Wire CLAUDE.md / AGENTS.md** with the Deferred Work Index section (if user agreed in Phase 1).

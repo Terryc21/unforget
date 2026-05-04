@@ -110,6 +110,10 @@ META_DOC_PHRASES = (
     "index of",
     "pointer to",
 )
+MEMORY_DIR_PIN_RE = re.compile(
+    r"<!--\s*unforget-config:\s*memory-dir=([^\s>]+)\s*-->"
+)
+PIN_HEADER_LINES_TO_SCAN = 30
 
 
 def is_excluded_path(p: Path) -> bool:
@@ -368,22 +372,62 @@ def scan_github_issues(root: Path) -> dict:
     return {"state": "github-detected-defer-to-gh-cli", "notes": notes}
 
 
-def scan_memory_files(root: Path) -> dict:
-    """Use scripts/encode_project_path.py logic to find Claude Code memory dir."""
+def read_memory_dir_pin(unforget_md: Path | None) -> str | None:
+    """Read the unforget-config: memory-dir=<encoded> pin if present."""
+    if unforget_md is None or not unforget_md.exists():
+        return None
+    text = unforget_md.read_text(encoding="utf-8", errors="replace")
+    for line in text.splitlines()[:PIN_HEADER_LINES_TO_SCAN]:
+        match = MEMORY_DIR_PIN_RE.search(line)
+        if match:
+            return match.group(1)
+    return None
+
+
+def scan_memory_files(root: Path, unforget_md: Path | None = None) -> dict:
+    """Find Claude Code memory dir.
+
+    Resolution order (per reference/surfaces.md § Memory-dir config pin):
+      1. Pinned encoded path from UNFORGET.md (if --unforget-md was passed)
+      2. cwd-encoded path
+      3. Ancestor-walk (up to 4 levels)
+
+    Emits pin_action describing whether the caller should write/refresh the pin.
+    The script never writes the pin itself; it stays read-only.
+    """
     candidates = []
     notes = []
+    pin_action: dict = {"action": "none", "reason": ""}
     home = Path.home()
     abs_root = root.resolve()
-    encoded = re.sub(r"[/\s]", "-", str(abs_root))
-    primary = home / ".claude" / "projects" / encoded / "memory"
+    cwd_encoded = re.sub(r"[/\s]", "-", str(abs_root))
 
-    paths_to_scan: list[Path] = []
-    if primary.is_dir():
-        paths_to_scan.append(primary)
-        notes.append(f"primary memory dir: {primary}")
-    else:
-        notes.append(f"primary memory dir not found: {primary}")
-        # Ancestor walk fallback (up to 4 levels)
+    paths_to_scan: list[tuple[Path, str]] = []  # (memdir, source-label)
+    resolved_encoded: str | None = None
+
+    # 1. Try the pin first
+    pinned = read_memory_dir_pin(unforget_md)
+    if pinned:
+        pinned_dir = home / ".claude" / "projects" / pinned / "memory"
+        if pinned_dir.is_dir():
+            paths_to_scan.append((pinned_dir, "pinned"))
+            resolved_encoded = pinned
+            notes.append(f"used memory-dir pin: {pinned}")
+        else:
+            notes.append(f"pinned memory-dir does not exist: {pinned_dir}; falling back")
+
+    # 2. Try cwd-encoded path (if pin missing or pin failed)
+    if not paths_to_scan:
+        primary = home / ".claude" / "projects" / cwd_encoded / "memory"
+        if primary.is_dir():
+            paths_to_scan.append((primary, "cwd-encoded"))
+            resolved_encoded = cwd_encoded
+            notes.append(f"primary memory dir: {primary}")
+        else:
+            notes.append(f"primary memory dir not found: {primary}")
+
+    # 3. Ancestor-walk fallback
+    if not paths_to_scan:
         cur = abs_root
         for _ in range(4):
             cur = cur.parent
@@ -392,10 +436,13 @@ def scan_memory_files(root: Path) -> dict:
             ancestor_encoded = re.sub(r"[/\s]", "-", str(cur))
             ancestor_dir = home / ".claude" / "projects" / ancestor_encoded / "memory"
             if ancestor_dir.is_dir():
-                paths_to_scan.append(ancestor_dir)
+                paths_to_scan.append((ancestor_dir, "ancestor"))
+                resolved_encoded = ancestor_encoded
                 notes.append(f"ancestor memory dir: {ancestor_dir}")
+                break  # use the first hit
 
-    for memdir in paths_to_scan:
+    # Now scan whatever we found
+    for memdir, _source in paths_to_scan:
         for p in memdir.glob("*.md"):
             if not MEMORY_FILENAME_RE.match(p.name):
                 continue
@@ -409,7 +456,31 @@ def scan_memory_files(root: Path) -> dict:
                     "looks_like_meta": bool(meta_hits),
                 }
             )
-    return {"candidates": candidates, "notes": notes}
+
+    # Decide pin_action: only write the pin if we actually found files
+    # (the pin caches "this dir worked", not "this dir exists")
+    if candidates and resolved_encoded:
+        if pinned == resolved_encoded:
+            pin_action = {"action": "none", "reason": "pin already correct"}
+        elif pinned:
+            pin_action = {
+                "action": "rewrite",
+                "encoded": resolved_encoded,
+                "reason": f"pin was {pinned!r}, resolved to {resolved_encoded!r}",
+            }
+        else:
+            pin_action = {
+                "action": "write",
+                "encoded": resolved_encoded,
+                "reason": "no pin present; caller should write one",
+            }
+    elif resolved_encoded and not candidates:
+        pin_action = {
+            "action": "none",
+            "reason": "directory resolved but found 0 files; not pinning",
+        }
+
+    return {"candidates": candidates, "notes": notes, "pin_action": pin_action}
 
 
 def main() -> int:
@@ -422,12 +493,19 @@ def main() -> int:
         action="store_true",
         help="Include code-comment surface (skipped by default)",
     )
+    parser.add_argument(
+        "--unforget-md",
+        default=None,
+        help="Path to UNFORGET.md (read memory-dir pin from its header)",
+    )
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
     if not root.is_dir():
         print(json.dumps({"error": f"root not found: {root}"}), file=sys.stderr)
         return 2
+
+    unforget_md = Path(args.unforget_md).resolve() if args.unforget_md else None
 
     surfaces = {
         "deferred_named_files": scan_deferred_named(root),
@@ -436,7 +514,7 @@ def main() -> int:
         "plan_files": scan_plan_files(root),
         "code_comments": scan_code_comments(root, args.include_comments),
         "github_issues": scan_github_issues(root),
-        "memory_files": scan_memory_files(root),
+        "memory_files": scan_memory_files(root, unforget_md),
     }
 
     total_candidates = 0

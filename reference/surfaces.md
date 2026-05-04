@@ -56,6 +56,28 @@ The script returns a JSON object `{"path": "<input>", "encoded": "<encoded>", "m
 
 If the encoded directory does not exist, the surface reports "Memory files: directory not found at `<path>`" rather than silently scanning zero files. The user knows the surface tried and where it looked.
 
+### Memory-dir config pin (post-resolution)
+
+The cwd-encoding + ancestor-walk rule above is brittle: it depends on the cwd at scan time, the encoding rule itself, and the ancestor-walk heuristic. After the first successful scan resolves a working memory directory (one that returned at least one file matching the Surface 6 filename regex), pin the result to UNFORGET.md as a config comment so subsequent imports skip the resolution dance:
+
+```html
+<!-- unforget-config: memory-dir=<encoded-project-path> -->
+```
+
+The pin lives near the top of the file, on its own line, immediately under the `<!-- unforget-format: vN -->` marker. It encodes only the resolved directory name (e.g., `-Volumes-2-TB-Drive-Coding-GitHubDeskTop-Stufflio`), not the full `~/.claude/projects/...` path. The `~/.claude/projects/` prefix and `/memory/` suffix are constants computed from the pin at read time.
+
+**Read order on subsequent scans:**
+
+1. Read the `unforget-config: memory-dir=<encoded>` pin. If present, scan `~/.claude/projects/<encoded>/memory/` directly. If that directory exists and returns files, this is the answer; skip steps 2-3.
+2. If the pin is absent, OR the pinned directory does not exist (user moved the project, encoded directory was renamed), fall back to the cwd-encoded path.
+3. If the cwd-encoded path does not exist, fall back to the ancestor-walk.
+
+When step 2 or 3 succeeds, **rewrite the pin with the new resolved value** so the next scan starts from step 1 again.
+
+**When NOT to write the pin.** If the scan resolves the directory but finds zero files matching the Surface 6 filename regex, the directory might just be empty rather than wrong. Don't write the pin in that case; let the next scan re-resolve. The pin is a cache of "this directory worked for this project," not "this directory exists."
+
+**Implementation note for `scan_surfaces.py`.** Pass `--unforget-md <path>` so the script can read the pin from the existing UNFORGET.md and apply the three-tier read order. The script returns `pin_action` on the `memory_files` surface with `action`: `none` (pin already correct, or zero files found and a write would cache a useless directory), `write` (no pin present and a directory resolved with files), or `rewrite` (pin present but resolved to a different encoded path). The script never edits UNFORGET.md itself; it emits the action and the caller (`/unforget init` or `/unforget import`) writes the marker as part of its own write pass.
+
 ### Surface 6: Memory meta-file content-shape pre-check
 
 Filename matching alone catches both real findings and meta-docs. Files that match `^deferred_*.md` or `^project_deferred_*.md` but whose body describes the deferral system rather than containing actual findings should not be auto-imported. Before importing a Surface 6 match, scan the body for meta-doc phrases:

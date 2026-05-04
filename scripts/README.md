@@ -14,7 +14,7 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 | Script | Purpose | Used by |
 |---|---|---|
 | `encode_project_path.py` | Encode an absolute path to Claude Code's per-project memory-dir name (slash → dash, whitespace → dash, leading dash). | `reference/surfaces.md` § Surface 6 |
-| `scan_surfaces.py` | Scan a project root for deferred-work artifacts across the six surfaces + Surface 1b. Read-only. | `reference/init.md` Phase 2; `reference/commands.md` § `/unforget import` |
+| `scan_surfaces.py` | Scan a project root for deferred-work artifacts across the six surfaces + Surface 1b. Read-only. Pass `--unforget-md <path>` to enable memory-dir pin resolution and emit `pin_action` for Surface 6. | `reference/init.md` Phase 2; `reference/commands.md` § `/unforget import` |
 | `dedup_findings.py` | Fuzzy-merge duplicate candidate findings across surfaces (Jaccard on tokenized headlines). | `reference/surfaces.md` § Cross-surface deduplication |
 | `check_format_version.py` | Read `<!-- unforget-format: vN -->` marker; report whether the skill can write or must operate read-only. | `SKILL.md` § Format-version contract |
 | `prune_backups.py` | Backup rotation. Lists `UNFORGET.md.bak-YYYY-MM-DD-HHMMSS`, sorts by timestamp, deletes any beyond the most recent N (default 5). | `reference/promotion.md` § Retention |
@@ -38,6 +38,9 @@ python3 scripts/check_format_version.py /path/to/UNFORGET.md
 
 # Discover deferred-work artifacts across a project
 python3 scripts/scan_surfaces.py --root /path/to/project
+
+# Discover artifacts AND get a pin_action for Surface 6 memory-dir
+python3 scripts/scan_surfaces.py --root /path/to/project --unforget-md /path/to/UNFORGET.md
 
 # Pipe scan output through dedup
 python3 scripts/scan_surfaces.py --root . | python3 scripts/dedup_findings.py --candidates -
