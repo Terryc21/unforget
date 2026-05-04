@@ -2,27 +2,11 @@
 name: unforget
 version: 0.2.0
 description: |
-  A single source of truth for deferred work (paused plans, mid-task spillover,
-  audit findings, and observed-but-not-yet-fixed bugs), organized so nothing slips
-  through the cracks between releases. Use when the user asks "what's deferred?",
-  "what's the backlog?", "prioritize my deferred work," "show me what's blocking
-  release," or wants to log something for later without losing track of it.
-
-  unforget enforces ONE file per project (UNFORGET.md by default), structured as
-  four sections of 10-column rating tables, with a release-cycle Target column
-  that promotes deferred items toward shipping at each release. The skill exists
-  to prevent the most common deferral failure mode: items get logged in five
-  different places and then nobody can find them when it matters.
-
-  Subcommands:
-  - /unforget init     ·  create UNFORGET.md, survey existing deferral artifacts, capture user-known items
-  - /unforget add      ·  capture a new deferral (default: Session spillover)
-  - /unforget edit     ·  refine an existing row's columns (Target, Urgency, etc.)
-  - /unforget import   ·  re-run the surface survey after init (catches NEW artifacts)
-  - /unforget list     ·  show current state, filterable by section / Target / Urgency
-  - /unforget scan     ·  surface stale rows (rows aging past their priority threshold)
-  - /unforget promote  ·  release-time ritual (verify THIS rows fixed; promote NEXT to THIS)
-  - /unforget --version ·  print skill version, install path, and supported format-version (install-verification)
+  A single source of truth for deferred work: paused plans, mid-task spillover,
+  audit findings, and observed bugs. Kept in one UNFORGET.md per project so
+  nothing slips between releases. Activate when the user asks "what's deferred?",
+  "what's the backlog?", "prioritize my plans," "show me what's blocking release,"
+  or wants to log something for later without losing it.
 license: Apache-2.0
 ---
 
@@ -68,7 +52,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 
 **Invariant:** `🔴 THIS` is the only Target that blocks shipping. At submission time, every `🔴 THIS` row must be Status = Fixed or have been demoted with a one-line reason.
 
-**Full format spec — column meanings, Status enum, detail-block format (closure pointer → body → spawn links), Standard / Lean / Continuous presets, and anti-patterns — lives in `reference/format.md`.** Read that file when writing or validating a row.
+**Full format spec lives in `reference/format.md`:** column meanings, Status enum, detail-block format (closure pointer → body → spawn links), Standard / Lean / Continuous presets, and anti-patterns. Read that file when writing or validating a row.
 
 ---
 
@@ -85,7 +69,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 | `/unforget promote` | Release-time ritual: verify 🔴 THIS rows fixed, promote 🔵 NEXT to 🔴 THIS | `reference/promotion.md` (with backups in same file) |
 | `/unforget --version` | Print version, install path, supported format-version; install-verification | `reference/commands.md` |
 
-**Decision flowchart — which subcommand do I run?**
+**Decision flowchart: which subcommand do I run?**
 
 - **No UNFORGET.md exists in the project yet** → `/unforget init`
 - **You want to capture one new item, fast** → `/unforget add "<finding>"`

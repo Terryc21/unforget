@@ -1,7 +1,7 @@
 {
   "name": "unforget",
   "version": "0.2.0",
-  "description": "A single source of truth for deferred work (paused plans, mid-task spillover, audit findings, observed-but-not-yet-fixed bugs). Enforces ONE file per project (UNFORGET.md), four sections of 10-column rating tables, with a release-cycle Target column that promotes deferred items toward shipping at each release. Prevents the most common deferral failure mode: items get logged in five different places and then nobody can find them when it matters.",
+  "description": "A single source of truth for deferred work, kept in one UNFORGET.md per project so nothing slips between releases. Activate when the user asks what's deferred, what's the backlog, or wants to log something for later without losing it.",
   "author": {
     "name": "Terry Nyberg"
   },
@@ -18,7 +18,7 @@
   "skills": [
     {
       "name": "unforget",
-      "description": "Single source of truth for deferred work. Subcommands: /unforget init, add, edit, import, list, scan, promote."
+      "description": "Single source of truth for deferred work, kept in one UNFORGET.md per project."
     }
   ]
 }
