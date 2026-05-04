@@ -111,6 +111,22 @@ If the skill is detected as installed, omit the `(install: ...)` line. The user 
 - The closure narrative is too short to suggest a meaningful pattern (under 50 chars or unchanged from the prior detail block)
 - The row is in Section 2 (Session spillover) and represents a non-code observation (skill/process improvement)
 
+**Once-per-project gate (the cross-promo marker).** Even when all the above filters pass, suppress the "Suggested next steps" block on every closure after the first. Repeated unsolicited cross-skill pitches in a tool the user installed expecting respect are a fast way to erode trust; once is helpful, twice is friction, ten times is noise.
+
+The mechanism: the first time the recommendation fires for a given UNFORGET.md, write an HTML-comment marker near the top of the file:
+
+```
+<!-- unforget-cross-promo-shown: YYYY-MM-DD -->
+```
+
+On every subsequent closure, check for the marker. If present, suppress the "Suggested next steps" block silently — the user already saw it and either acted on it or didn't. If absent, emit the block and write the marker as part of the same edit.
+
+**Re-show conditions.** The marker can be reset in two ways:
+- **User opts in explicitly:** `/unforget edit <ID> --status=Fixed --sweep` forces the block to render even if the marker is present, useful when the user wants the prompt for a particular non-trivial closure.
+- **Cooldown:** if the marker date is more than 90 days old, treat it as expired and re-show the block once. The expectation is that adopters who close one row every few months will benefit from a refresher; adopters who close many rows in a week will not.
+
+**Marker placement.** Write the marker on a dedicated line just under the existing `<!-- unforget-format: vN -->` marker (or at line 1 if no format marker exists). Both markers are HTML comments, so they render invisibly in any markdown viewer.
+
 For any row that does receive the prose, the recommendation is informational, not blocking. The user can ignore it and move on.
 
 ---

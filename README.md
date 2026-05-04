@@ -2,22 +2,33 @@
 
 ![Status](https://img.shields.io/badge/status-v0.2.0-blue) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet)
 
-> [!NOTE]
-> **v0.2.0 (shipped 2026-05-02).** The skill installs as a Claude Code plugin: two one-line commands (instructions below) and `/unforget` is available in any project session. Claude reads the skill file and walks you through setup.
->
-> The v0.1 install path (`git clone` into `~/.claude/skills/unforget/`, invoke as `/skill unforget`) still works as a fallback. v0.2 keeps the same features; only the install experience is smoother.
->
-> If you'd rather not use Claude at all, UNFORGET.md is plain markdown. You can edit it by hand in any text editor.
-
 > A way of not losing sight or track of what is deferred.
 
 A Claude Code skill that consolidates deferred work (paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs) into one structured file. Built so deferred items don't slip through the cracks between releases.
 
-If unforget saves you a release-prep cycle, a [coffee](https://buymeacoffee.com/stuffolio) is appreciated. Issue reports about what worked or didn't are equally useful — the skill ships at v0.2 but real-project feedback is what shapes v0.3.
+## See it first
 
-<a href="https://buymeacoffee.com/stuffolio">
-  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
-</a>
+Here's what an UNFORGET.md actually looks like (excerpt from [`examples/UNFORGET.md`](examples/UNFORGET.md), which is a sanitized version of a real shipping project's file):
+
+```markdown
+## 1. Paused plans
+
+| #  | Target     | Finding                                              | Urg     | RFix    | RNo     | ROI          | Blast      | Effort | Status   |
+|----|------------|------------------------------------------------------|---------|---------|---------|--------------|------------|--------|----------|
+| P1 | 🟡 LATER   | Schema v3 migration paused (rollback path unclear)   | 🟢 MED  | 🟡 High | 🟢 Med  | 🟢 Good      | 🟢 ~7 fls  | Med    | Deferred |
+| P2 | 🔵 NEXT    | Test suite: 23 flaky tests, 4 root causes            | 🟡 HIGH | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟡 ~10 fls | Med    | Deferred |
+| P3 | 🔴 THIS    | Wallet pass server signing not yet implemented       | 🟡 HIGH | 🟢 Med  | 🟡 High | 🟠 Excellent | 🟢 ~4 fls  | Med    | Fixed    |
+| P4 | 🟡 LATER   | Search relevance overhaul (phases 1-4 done, 5-7 TBD) | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟡 ~8 fls  | Lrg    | Open     |
+| P5 | ⚪ SOMEDAY | Third-party API access REJECTED 2026-03-10           | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | ⚪ 0 fls   | Triv   | Deferred |
+
+### Detail - Paused plans
+
+- **P3** - **CLOSED 2026-04-20: hidden the menu entry until server signing lands. Spawns: P6.** Every item that showed the Wallet feature failed when the user completed the flow. Blocked on server `/api/wallet/sign-pass` + Apple Pass Type ID. Chose hiding for build 13; future endpoint work tracked at row P6.
+```
+
+That's the format: one file, four sections, one rating table per section, one detail block per row. The Target column on the left is the release-cycle commitment (🔴 THIS / 🔵 NEXT / 🟡 LATER / ⚪ SOMEDAY); the rest of the columns rate the row across the standard axes (urgency, risk if you fix it, risk if you don't, ROI, blast radius, effort, current status). The detail block under the table holds the prose context, including the closure pointer that makes a closed row's outcome scannable from the next reader's first glance.
+
+The full `examples/UNFORGET.md` shows all four sections populated with varied Targets, Statuses, and a closed-with-spawn pattern (P3 → P6).
 
 ## The problem
 
@@ -85,7 +96,8 @@ Keeping Urgency and Target as separate columns lets either one change without re
 
 ## Install
 
-**Recommended: Claude Code plugin (v0.2+)**
+> [!NOTE]
+> **v0.2.0 (shipped 2026-05-02).** The skill installs as a Claude Code plugin: two one-line commands and `/unforget` is available in any project session. Claude reads the skill file and walks you through setup. If you'd rather not use Claude at all, UNFORGET.md is plain markdown; you can edit it by hand in any text editor.
 
 Run these two commands **one at a time** in Claude Code. Wait for Step 1 to confirm "Successfully added marketplace" before running Step 2.
 
@@ -105,9 +117,10 @@ The skill is now available. To verify, type `/unforget` in any project session; 
 
 > **Why two separate blocks?** If you copy both `/plugin` lines at once and paste them into Claude Code, the slash-command dispatcher treats the first `/plugin` as the command and the rest of the paste as its arguments. Run them one at a time to avoid that trap.
 
-**Fallback: clone and copy (v0.1 install path)**
+<details>
+<summary><strong>v0.1 manual install (legacy fallback)</strong></summary>
 
-If you can't use the plugin path yet, the v0.1 manual install still works:
+If the v0.2 plugin path isn't available in your environment, the v0.1 manual install still works:
 
 ```bash
 mkdir -p ~/.claude/skills
@@ -123,9 +136,7 @@ mkdir -p ~/.claude/skills/unforget
 cp ~/Downloads/SKILL.md ~/.claude/skills/unforget/
 ```
 
-### See an example before installing
-
-If you'd like to see what a populated UNFORGET.md looks like before deciding to install, check out [`examples/UNFORGET.md`](examples/UNFORGET.md) in this repo. It's a sanitized version of a real project's file with all four sections filled in, varied Targets and Statuses, and a closed-with-spawn pattern (P3 → P6) showing how follow-up work gets tracked.
+</details>
 
 ## Quick start
 
@@ -191,13 +202,14 @@ The plugin install (v0.2+) drops the `/skill` prefix. If you installed via the v
 
 [Open an issue](https://github.com/Terryc21/unforget/issues) describing how the skill held up on your project: what worked, what felt wrong, what was missing. Real-project feedback is what shapes v0.2 and catches gaps the source project never surfaced. Especially helpful: small repos, non-Apple projects (web, Android, backend, libraries), projects that use Cursor / Aider / Copilot instead of Claude Code, and continuous-deployment workflows.
 
-## Three preset modes
+## Four preset modes
 
-Not every project ships the same way. During `init` you'll pick one of three table shapes. Each one is ready to go; you don't have to design columns yourself.
+Not every project ships the same way. During `init` you'll pick one of four table shapes. Each one is ready to go; you don't have to design columns yourself.
 
 | Preset | Best for | What's different |
 |---|---|---|
 | **Standard** | Mobile or desktop apps that ship discrete releases (App Store, Play Store, GitHub Releases) | Full 10-column table with Target values 🔴 THIS / 🔵 NEXT / 🟡 LATER / ⚪ SOMEDAY |
+| **Compact** | Same release-cycle semantics as Standard, but you want a narrower table (terminal use, narrow screens) | 9 columns. Target is dropped as a dedicated column and inlined as a leading badge inside the Finding cell (e.g., `**🔴 THIS · Apple Wallet pass broken promise**`). All other columns identical to Standard. |
 | **Lean** | Solo developers, side projects, anyone learning the format | Same Target column, but only 6 columns total (Finding, Urgency, Effort, Status, plus Target). Less to fill in per row. |
 | **Continuous** | Web apps, services, libraries that deploy multiple times a day | Replaces "Target" (release-based) with "Window" (time-based): 🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / ⚪ SOMEDAY |
 
@@ -212,6 +224,25 @@ There are dozens of task trackers out there. Here's what's different about this 
 3. **Your AI assistant reads it automatically.** When you ask Claude (or Cursor, or Aider) "what's deferred?", it already knows where to look. The skill wires this up during init so you never have to remember to point at the file.
 4. **It catches stale items before users do.** Most trackers grow forever. `unforget scan` flags rows that have been sitting too long for their priority level so you can decide whether to fix them, downgrade them, or close them.
 5. **Capture is fast.** If logging a deferred item ever takes longer than 30 seconds, this skill has failed at its main job. That's the bar to beat.
+
+## When to use unforget vs an existing tracker (Jira, Linear, GitHub Projects)
+
+If your team already pays for a project tracker, the obvious question is: "why would I add another one?" Honest answer:
+
+**Use unforget when:**
+
+- You're a solo or small-team developer.
+- Deferred items currently scatter across `Deferred.md`, plan files, memory files, and audit ledgers (the five-surfaces problem this skill exists to solve).
+- You want a tracker that the AI can read alongside your code (Claude, Cursor, Aider, Copilot all read project files; UNFORGET.md is just one more).
+- You don't have a separate non-developer audience (PMs, designers, support) that needs to file or read tickets.
+
+**Use Jira / Linear / GitHub Projects when:**
+
+- You have a separate non-developer audience that files or reads tickets.
+- You need ticket assignment, sprints, story points, custom workflows, or integrations with non-development systems.
+- The tracker is your team's source of truth for *all* work, not just deferrals.
+
+**Coexistence pattern:** UNFORGET.md is for *code-adjacent technical debt with release-cycle commitment*. The external tracker is for cross-functional work. Cross-link as needed: an UNFORGET.md row's detail block can point at `JIRA-1234`, and the Jira ticket can link to the row in the file. The two systems don't fight; they just answer different questions.
 
 ## How it works with other tools
 
@@ -352,3 +383,11 @@ A few things this skill **won't** accept, and why (the SKILL.md "Anti-patterns" 
 - **Splitting UNFORGET.md across multiple files.** "One file, four sections" is the whole point. Splitting it puts you back in the scattered-across-five-surfaces problem this skill exists to solve.
 
 The strict opinions about format are the value, even when they're inconvenient.
+
+## Support this project
+
+If unforget saves you a release-prep cycle, a coffee is appreciated. Issue reports about what worked or didn't are equally useful: the skill ships at v0.2 but real-project feedback is what shapes v0.3.
+
+<a href="https://buymeacoffee.com/stuffolio">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="150">
+</a>
