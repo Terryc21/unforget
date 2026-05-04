@@ -42,7 +42,7 @@ The pattern was extracted from a real Universal app (iOS, iPadOS, macOS) where d
 
 ## Format at-a-glance
 
-UNFORGET.md is a single markdown file with **4 sections**, each containing a **10-column rating table**.
+UNFORGET.md is a single markdown file with **4 sections**, each containing a rating table whose width depends on the preset (10 columns for Standard, 9 for Compact / Continuous, 6 for Lean).
 
 **Sections:** 1. Paused plans (P) · 2. Session spillover (S) · 3. Audit findings (A) · 4. User-reported / observed (U)
 
@@ -52,7 +52,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 
 **Invariant:** `🔴 THIS` is the only Target that blocks shipping. At submission time, every `🔴 THIS` row must be Status = Fixed or have been demoted with a one-line reason.
 
-**Full format spec lives in `reference/format.md`:** column meanings, Status enum, detail-block format (closure pointer → body → spawn links), Standard / Lean / Continuous presets, and anti-patterns. Read that file when writing or validating a row.
+**Full format spec lives in `reference/format.md`:** column meanings, Status enum, detail-block format (closure pointer → body → spawn links), Standard / Compact / Lean / Continuous presets, and anti-patterns. Read that file when writing or validating a row.
 
 ---
 

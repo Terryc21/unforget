@@ -76,10 +76,26 @@ The format is intentionally simple: closure pointer, body, spawn links. The skil
 | Preset | Audience | Columns |
 |---|---|---|
 | **Standard** | Mobile/desktop apps shipping discrete releases | All 10 columns above with Target |
+| **Compact** | Projects that prefer a narrower table; same release-cycle semantics as Standard | 9 columns. Drops the dedicated Target column and inlines Target as a leading badge inside the Finding cell (e.g., `**🔴 THIS · Apple Wallet pass broken promise**`). All other columns identical to Standard. |
 | **Lean** | Solo devs, side projects, junior devs | 6 columns: # / Target / Finding / Urgency / Effort / Status |
 | **Continuous** | Web apps, services, libraries with continuous deployment | 9 columns; replaces Target with Window (🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / ⚪ SOMEDAY) |
 
-Users on Standard or Lean can also append **extra columns** (Client, Sprint, Component, etc.) without modifying core columns. Removing or renaming core columns is intentionally not supported, because it breaks comparability across projects and tooling.
+Users on Standard, Compact, or Lean can also append **extra columns** (Client, Sprint, Component, etc.) without modifying core columns. Removing or renaming core columns is intentionally not supported, because it breaks comparability across projects and tooling.
+
+### Compact preset detail
+
+Compact preserves Standard's release-cycle semantics; only the rendering changes. Conversion is mechanical:
+
+- Standard cell: `🔴 THIS` in column 2, `Apple Wallet pass broken promise` in column 3.
+- Compact cell: column 2 is dropped; column 3 (Finding) becomes `**🔴 THIS · Apple Wallet pass broken promise**`.
+
+The leading `**🔴 THIS · ...**` form is the contract: a literal Target badge (one of `🔴 THIS` / `🔵 NEXT` / `🟡 LATER` / `⚪ SOMEDAY`), the literal middle dot ` · ` separator, and the original Finding text. Bold the whole prefix-plus-Finding so the badge stays visually anchored.
+
+**Why Compact exists.** A 10-column rating table can wrap or render as vertical blocks in narrow terminals. Compact saves one column without losing the Target signal: `grep '🔴 THIS'` still finds ship-blockers, the Finding cell gets more room before hitting its character limit, and tooling that reads the file can still parse Target via a simple regex on the leading badge.
+
+**When to pick Compact at init.** Compact is offered alongside Standard / Lean / Continuous in Phase 1's preset prompt for projects that report narrow terminals or that already use the inlined-badge convention informally. Conversion between Standard and Compact is lossless and can be done at any time by `/unforget edit` or a future `/unforget migrate` flow.
+
+**Tooling expectations.** Read operations (`list`, `scan`, `promote --dry-run`) detect the preset from the column count and section headers and adapt parsing accordingly. Write operations (`add`, `edit`, `import`, `promote`) preserve the preset that's already in use; the skill never auto-converts a Compact file to Standard or vice versa.
 
 ---
 

@@ -35,7 +35,8 @@ Three short questions before any scanning happens:
 
 2. **Cadence preset.**
    > "How does this project ship?"
-   > - Discrete releases (mobile app, library, versioned product) routes to **Standard** preset (10 columns, Target column)
+   > - Discrete releases (mobile app, library, versioned product) routes to **Standard** preset (10 columns, dedicated Target column)
+   > - Same release-cycle semantics as Standard but you want a narrower table for terminal use routes to **Compact** preset (9 columns; Target inlined as a leading badge in the Finding cell)
    > - Continuous deployment (web app, service, internal tool) routes to **Continuous** preset (9 columns, Window column)
    > - Solo / side project / want minimal columns routes to **Lean** preset (6 columns)
    > - Custom: pick from a fixed pool of 12 columns
