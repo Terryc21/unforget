@@ -105,6 +105,15 @@ Suggested next steps (the post-fix sweep — see reference/promotion.md):
 
 If the skill is detected as installed, omit the `(install: ...)` line. The user sees a clean two-step prompt; they don't need to be told where to get something they already have. If detection is uncertain (filesystem access failed, plugin manifest unavailable), include the install URL as a fallback — it's better to over-inform than under-inform.
 
+**Version pinning (fail-soft).** The recommendation hardcodes the command surfaces `/radar-suite focus on <symbol>` and `/bug-echo "<pattern>"`. Both are owned by external skills whose CLI may evolve. Pin minimum-supported versions and emit a fail-soft warning when the installed version is older:
+
+| Skill | Minimum supported | If installed and < min |
+|---|---|---|
+| `radar-suite` | 3.0 | Append after the suggested command: `(installed v<X>; recommended command may have changed in v3.0+. See https://github.com/Terryc21/radar-suite for the current surface.)` |
+| `bug-echo` | 1.0 | Same pattern. |
+
+Detection: read the skill's `SKILL.md` frontmatter `version:` field at recommendation time. If the field is missing or unparseable, treat as unknown and fall through to the install URL (don't suppress, don't warn — uncertain detection should over-inform per the rule above). When the version is pinned in a v0.3+ release, bump the minimums in the table without changing the recommendation copy itself.
+
 **When to suppress the prose entirely:**
 - Status change was Open → Skipped or Open → Deferred (the row isn't actually fixed)
 - Status change was Fixed → Fixed (no-op)
@@ -183,6 +192,25 @@ The skill renders the matching rows in the same 10-column format as UNFORGET.md,
 > "12 rows total: 2 🔴 THIS (release blockers), 5 🔵 NEXT, 5 ⚪ SOMEDAY. Stale: 1."
 
 For the simplest case (`/unforget list` alone), this is the answer the user was actually looking for when they asked "what's deferred?"
+
+### Terminal-aware rendering
+
+The full 10-column table is wide (typically 200+ characters with emoji-width quirks). On narrow terminals it wraps or renders as vertical blocks instead of horizontal rows. To stay readable:
+
+- **Detect terminal width** at render time (`stty size` / `tput cols` / `os.get_terminal_size()`).
+- **At ≥120 columns:** render the full 10-column Standard table (or whichever preset the file uses).
+- **At <120 columns:** auto-fall-back to a 6-column compact projection: `# / Target / Finding / Urgency / Status` plus one user-chosen extra column (default `Effort`). This is the same shape as the **Lean** preset, reused for display only.
+- **The on-disk file format never changes.** Compact rendering is presentation-only; UNFORGET.md still holds all 10 columns. Scrolling output back to a wider terminal restores the full view.
+
+The user can override the auto-detection:
+
+```
+/unforget list --wide             ·  force the full table even at <120 cols (will wrap)
+/unforget list --compact          ·  force the 6-column projection even at >=120 cols
+/unforget list --extra=ROI        ·  pick a different sixth column for the compact projection
+```
+
+The auto-fallback is silent (no banner, no warning); the override flags are for power users who know what shape they want. Compact rendering eliminates the "Terminal width" warning callouts that adopters write into their own UNFORGET.md headers today.
 
 ---
 

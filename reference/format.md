@@ -97,6 +97,24 @@ The leading `**🔴 THIS · ...**` form is the contract: a literal Target badge 
 
 **Tooling expectations.** Read operations (`list`, `scan`, `promote --dry-run`) detect the preset from the column count and section headers and adapt parsing accordingly. Write operations (`add`, `edit`, `import`, `promote`) preserve the preset that's already in use; the skill never auto-converts a Compact file to Standard or vice versa.
 
+### Continuous preset detail
+
+Continuous deployment has no discrete release cycles, so the file-header fields that Standard / Compact / Lean rely on (`Last promoted:` / `Currently shipping toward:`) have no defined meaning. Continuous files use these equivalents instead:
+
+- **`Last sweep:`** — date of the most recent `/unforget scan` or `/unforget promote` pass. Stamped automatically by either command.
+- **`Active focus:`** — free-form text naming the current major work theme (e.g., "Q3 latency reduction" or "v2 API migration"). The user updates this manually whenever the focus shifts; there is no automated promotion ritual driving it.
+
+The four Window values (🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / ⚪ SOMEDAY) replace the four Target values. The promotion concept doesn't apply to Continuous: items don't auto-promote between Windows because there's no release cut driving the move; the user re-rates Windows during weekly or sweep-time reviews.
+
+The Continuous-preset header on a fresh init looks like:
+
+```
+**Last sweep:** 2026-05-04
+**Active focus:** Q3 latency reduction
+```
+
+Standard / Compact files keep `Last promoted:` and `Currently shipping toward:` exactly as documented elsewhere in the spec; only Continuous swaps them.
+
 ---
 
 ## Anti-patterns
