@@ -1,0 +1,18 @@
+{
+  "advisory": "marker recognized (v1); proceed normally",
+  "format_version": "v1",
+  "marker_present": true,
+  "path": "<REPO_ROOT>/tests/fixtures/sample-project/Documentation/Development/UNFORGET.md",
+  "recognized": true,
+  "section_headers_found": [
+    "1. Paused plans",
+    "2. Session spillover",
+    "3. Audit findings",
+    "4. User-reported"
+  ],
+  "section_headers_missing": [],
+  "supported_versions": [
+    "v1"
+  ],
+  "writable": true
+}
