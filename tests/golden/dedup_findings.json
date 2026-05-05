@@ -1,0 +1,55 @@
+{
+  "candidates": [
+    {
+      "headline": "CONC-H1 sample data race in SampleManager",
+      "sources": [
+        {
+          "candidate": {
+            "finding": "CONC-H1 sample data race in SampleManager",
+            "path": "scratch/audit-concurrency-2026-05-02.md"
+          },
+          "similarity_to_lead": 1.0,
+          "surface": "audit_reports"
+        }
+      ]
+    },
+    {
+      "headline": "Migrate sample feature to new API",
+      "sources": [
+        {
+          "candidate": {
+            "finding": "Migrate sample feature to new API",
+            "path": "Documentation/Development/UNFORGET.md"
+          },
+          "similarity_to_lead": 1.0,
+          "surface": "deferred_named_files"
+        },
+        {
+          "candidate": {
+            "path": ".claude/plans/paused-migration-plan.md",
+            "status_hint": "PAUSED:",
+            "title": "PAUSED Migrate sample feature to new API"
+          },
+          "similarity_to_lead": 0.833,
+          "surface": "plan_files"
+        }
+      ]
+    },
+    {
+      "headline": "RS-019 missing default value on optional relationship",
+      "sources": [
+        {
+          "candidate": {
+            "finding": "RS-019 missing default value on optional relationship",
+            "path": "scratch/audit-data-model-2026-05-02.md"
+          },
+          "similarity_to_lead": 1.0,
+          "surface": "audit_reports"
+        }
+      ]
+    }
+  ],
+  "input_candidate_count": 4,
+  "output_candidate_count": 3,
+  "threshold": 0.65
+}

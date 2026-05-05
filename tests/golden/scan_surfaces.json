@@ -1,0 +1,116 @@
+{
+  "root": "<REPO_ROOT>/tests/fixtures/sample-project",
+  "summary": {
+    "total_candidates": 11,
+    "total_skipped": 1
+  },
+  "surfaces": {
+    "audit_reports": {
+      "candidates": [
+        {
+          "format": "radar-suite-v3",
+          "path": "scratch/audit-concurrency-2026-05-02.md"
+        },
+        {
+          "format": "radar-suite-v3",
+          "path": "scratch/audit-data-model-2026-05-02.md"
+        }
+      ],
+      "notes": []
+    },
+    "code_comments": {
+      "candidates": [
+        {
+          "line": 9,
+          "path": "Sources/SampleManager.swift",
+          "snippet": "// TODO: handle the missing-cache case before shipping",
+          "tag": "TODO"
+        },
+        {
+          "line": 15,
+          "path": "Sources/SampleManager.swift",
+          "snippet": "// FIXME: add retry on transient failures",
+          "tag": "FIXME"
+        },
+        {
+          "line": 19,
+          "path": "Sources/SampleManager.swift",
+          "snippet": "// HACK: temporary workaround until the proper API exists",
+          "tag": "HACK"
+        },
+        {
+          "line": 23,
+          "path": "Sources/SampleManager.swift",
+          "snippet": "// MIGRATION-NOTE: bump schema version to v3 once tests pass",
+          "tag": "MIGRATION-NOTE"
+        }
+      ],
+      "notes": []
+    },
+    "deferred_named_files": {
+      "candidates": [
+        {
+          "kind": "deferred_named",
+          "path": ".claude/plans/paused-migration-plan.md"
+        }
+      ],
+      "notes": [],
+      "skipped": [
+        {
+          "path": "Deferred.md",
+          "reason": "redirect pointer (matched: 'MOVED')"
+        }
+      ]
+    },
+    "general_documentation": {
+      "candidates": [
+        {
+          "heuristics": [
+            1
+          ],
+          "path": "Documentation/Development/UNFORGET.md"
+        },
+        {
+          "heuristics": [
+            7
+          ],
+          "path": "scratch/audit-concurrency-2026-05-02.md"
+        },
+        {
+          "heuristics": [
+            7
+          ],
+          "path": "scratch/audit-data-model-2026-05-02.md"
+        }
+      ],
+      "notes": []
+    },
+    "github_issues": {
+      "notes": [
+        "No .git directory; skip gh"
+      ],
+      "state": "not-a-git-repo"
+    },
+    "memory_files": {
+      "candidates": [],
+      "notes": [
+        "<machine-specific note suppressed>"
+      ],
+      "pin_action": {
+        "action": "none",
+        "reason": ""
+      }
+    },
+    "plan_files": {
+      "candidates": [
+        {
+          "path": ".claude/plans/paused-migration-plan.md",
+          "status_hint": "PAUSED:"
+        }
+      ],
+      "notes": [
+        "Global ~/.claude/plans/ NOT scanned by default"
+      ]
+    }
+  }
+}

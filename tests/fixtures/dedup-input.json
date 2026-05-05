@@ -1,0 +1,33 @@
+{
+  "surfaces": {
+    "deferred_named_files": {
+      "candidates": [
+        {
+          "path": "Documentation/Development/UNFORGET.md",
+          "finding": "Migrate sample feature to new API"
+        }
+      ]
+    },
+    "plan_files": {
+      "candidates": [
+        {
+          "path": ".claude/plans/paused-migration-plan.md",
+          "title": "PAUSED Migrate sample feature to new API",
+          "status_hint": "PAUSED:"
+        }
+      ]
+    },
+    "audit_reports": {
+      "candidates": [
+        {
+          "path": "scratch/audit-concurrency-2026-05-02.md",
+          "finding": "CONC-H1 sample data race in SampleManager"
+        },
+        {
+          "path": "scratch/audit-data-model-2026-05-02.md",
+          "finding": "RS-019 missing default value on optional relationship"
+        }
+      ]
+    }
+  }
+}
