@@ -49,11 +49,12 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 
 Each section table is followed by a `### Detail - <section name>` subsection. Detail blocks hold the prose context that doesn't fit in the 10-column table (the why, the file paths, the linked plan refs, the resolution history). One detail bullet per ID; the bullet starts with the ID in bold (`- **P1** - ...`).
 
-**Detail block format (three parts in order):**
+**Detail block format (four parts in order):**
 
 1. **Closure pointer (only if the row is closed).** Lead the body with `**CLOSED YYYY-MM-DD: [one-sentence summary of how it closed].**` This pointer is what makes a closed row's outcome scannable; future readers see "what happened" without reading the full body. For Open rows, skip this part entirely.
 2. **Body.** History, files, plan refs, context, gotchas. Free-form prose. Length is whatever the row needs; some rows are one sentence, some are five paragraphs. The Finding cell in the table is the headline; the body is the article.
-3. **Spawn links (only if the row is part of a chain).** `Spawned-from: <ID>` if this row was created by closing another row (e.g., a workaround that spawned a real-fix follow-up). `Spawns: <ID>` if closing this row created a follow-up row. Both directions are recorded so the chain can be walked from either end.
+3. **Verify-still-open recipe** (Open rows whose body cites specific file paths or line numbers; opportunistic on older rows). One line: `**Verify-still-open:** \`<shell command>\` — expect: <what the output should look like for the row to still apply>.` See the **Verify-still-open recipe** subsection below for the rationale and the three-layer cascade.
+4. **Spawn links (only if the row is part of a chain).** `Spawned-from: <ID>` if this row was created by closing another row (e.g., a workaround that spawned a real-fix follow-up). `Spawns: <ID>` if closing this row created a follow-up row. Both directions are recorded so the chain can be walked from either end.
 
 **Example (closed row with a spawned follow-up):**
 
@@ -67,7 +68,31 @@ Each section table is followed by a `### Detail - <section name>` subsection. De
 - **P4** - Search relevance overhaul. Phases 1-4 (term weighting, stop words, fuzzy match, synonym expansion) shipped in build 11. Phases 5-7 (personalization, click-through learning, query rewriting) require a Cloudflare D1 schema we don't have yet. Plan: `~/.claude/plans/search-overhaul.md`.
 ```
 
-The format is intentionally simple: closure pointer, body, spawn links. The skill's `add` / `edit` / `promote` flows preserve this structure when they touch a detail block. Hand-editing a detail block is fine as long as the three parts stay in order and the closure pointer (if present) stays at the top.
+The format is intentionally simple: closure pointer, body, verify-still-open recipe, spawn links. The skill's `add` / `edit` / `promote` flows preserve this structure when they touch a detail block. Hand-editing a detail block is fine as long as the four parts stay in order and the closure pointer (if present) stays at the top.
+
+### Verify-still-open recipe (before working a row)
+
+Rows decay independently of fixes. A row logged a week ago can be silently stale: someone reorganized the file, an unrelated PR moved the line, a parallel session shipped the fix without closing the ledger. Before writing any code for a row, **run a 10-second grep** to confirm the row's premise still matches the current source.
+
+The convention: every Open row whose detail block references specific file paths and line numbers SHOULD include a one-line `**Verify-still-open:** <command>` recipe. Old rows pick this up opportunistically when next touched; new rows get one at write time.
+
+**Format:**
+
+```
+**Verify-still-open:** `grep -nE "try\?|context\.save" Sources/Views/Navigation/MyProductsWrapper.swift` — expect: a `try?` on `context.save()`. If the grep shows `do { try ... } catch { ... }` instead, the row is stale-Fixed.
+```
+
+**Three layers, cheapest to most expensive:**
+
+1. **File-existence.** Does the file referenced in the row's detail still exist at the cited path? `ls <path>` — if it returns "No such file or directory," the row is stale; the file got moved or deleted in a refactor.
+2. **Line-content.** Does the line referenced still contain the anti-pattern the row describes? Grep the exact path for the exact pattern. If the pattern is gone, the row is stale-Fixed; flip Status to `Fixed` and write a closure pointer of the form `**CLOSED YYYY-MM-DD (verify-only — no code change needed).**`.
+3. **Symbol/parameter shape.** If the row says "would require a `foo` parameter on `BarView`" and grep finds that parameter already exists, the fix shipped silently. Same outcome — Fixed (verify-only).
+
+**Where to put it:** at the end of the detail block's body, before any Spawn links. One line. The intent is "this is a checklist item, not a discussion."
+
+**When to add a recipe to old rows:** opportunistically — when you next read or work the row, write one. Don't do a batch backfill; the older rows are the ones most likely to be stale anyway, and writing recipes for them at backfill time costs more than just verifying them at pickup time.
+
+**Why this matters:** the convention originated after a 2026-05-12 cleanup pass in an adopting project where two of four "fixes" in a single sitting turned out to be pre-shipped (only the ledger was stale). Ten-second greps at the start of each row would have saved ~50 minutes of redundant code work. The recipe makes that grep a structural part of the row, not a habit the next reader has to remember.
 
 ### Presets
 
