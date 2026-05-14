@@ -12,6 +12,7 @@ A Claude Code skill that consolidates deferred work (paused plans, mid-task spil
 - **Solution:** one `UNFORGET.md` file with four sections (Paused plans / Session spillover / Audit findings / User-reported), each a 10-column rating table with a Target column tied to your release cycle.
 - **Install:** two `/plugin` commands in Claude Code (below); skill is then available as `/unforget` in any project.
 - **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
+- **Rescan anytime:** `/unforget import` re-runs the 6-surface scan to catch new deferred items that appeared after init (new audit reports, plan files, memory entries, TODO comments). Has duplicate detection so it won't double-import.
 - **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
 - **Maturity:** v0.2.0; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
 
