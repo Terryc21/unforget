@@ -1,10 +1,73 @@
 # unforget
 
-![Status](https://img.shields.io/badge/status-v0.2.0-blue) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet)
+![Status](https://img.shields.io/badge/status-v0.2.0-blue) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget)
 
-> A way of not losing sight or track of what is deferred.
+> **One file. Four sections. Nothing slips.**
 
 A Claude Code skill that consolidates deferred work (paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs) into one structured file. Built so deferred items don't slip through the cracks between releases.
+
+## TL;DR
+
+- **Problem:** deferred work scatters across `Deferred.md`, `// TODO` comments, plan files, audit ledgers, AI memory files, and your head. Months later, "what's deferred?" requires walking five surfaces.
+- **Solution:** one `UNFORGET.md` file with four sections (Paused plans / Session spillover / Audit findings / User-reported), each a 10-column rating table with a Target column tied to your release cycle.
+- **Install:** two `/plugin` commands in Claude Code (below); skill is then available as `/unforget` in any project.
+- **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
+- **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
+- **Maturity:** v0.2.0; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+
+## Install
+
+Run these two commands **one at a time** in Claude Code. Wait for Step 1 to confirm "Successfully added marketplace" before running Step 2.
+
+Step 1 — add the marketplace:
+
+```
+/plugin marketplace add Terryc21/unforget
+```
+
+Step 2 — install the plugin:
+
+```
+/plugin install unforget@unforget
+```
+
+The skill is now available. To verify, type `/unforget` in any project session; you should see the skill respond. No `/skill` prefix needed.
+
+<details>
+<summary><strong>Why two separate commands?</strong></summary>
+
+If you copy both `/plugin` lines at once and paste them into Claude Code, the slash-command dispatcher treats the first `/plugin` as the command and the rest of the paste as its arguments. Run them one at a time to avoid that trap.
+</details>
+
+<details>
+<summary><strong>v0.1 manual install (legacy fallback)</strong></summary>
+
+If the v0.2 plugin path isn't available in your environment, the v0.1 manual install still works:
+
+```bash
+mkdir -p ~/.claude/skills
+git clone https://github.com/Terryc21/unforget.git ~/.claude/skills/unforget
+```
+
+Then invoke as `/skill unforget` (with the prefix). To update later: `cd ~/.claude/skills/unforget && git pull`.
+
+If you don't want to clone, download `SKILL.md` and copy it manually:
+
+```bash
+mkdir -p ~/.claude/skills/unforget
+cp ~/Downloads/SKILL.md ~/.claude/skills/unforget/
+```
+
+</details>
+
+## Maturity — where this is solid (and where feedback would help)
+
+Honest assessment from the project author:
+
+- **The 10-column table format is solid.** Used through an actual App Store submission cycle in the source project ([Stuffolio](https://stuffolio.app)). Rows, sections, the Target column, and the release-promotion ritual all do what they say.
+- **The setup flow is specified in detail and tested.** Two rounds of non-destructive testing — one against a complex multiplatform app, one against a minimal third-party skill — caught 13 small gaps in the spec, all fixed. It works today.
+- **What would sharpen it most:** feedback from projects whose shape differs from the source. Non-Apple stacks, continuous-deployment workflows, libraries, single-page apps, anything other than "mobile app shipping discrete releases." [Open an issue](https://github.com/Terryc21/unforget/issues) if you try it on something different and the format breaks down.
+- **The install path got smoother in v0.2.** v0.1 required cloning a git repo. v0.2 ships as a Claude Code plugin: two one-line commands and you invoke as `/unforget` (no prefix). The clone-and-copy fallback still works.
 
 ## See it first
 
@@ -93,50 +156,6 @@ Most backlog tools have one Priority field that tries to answer two different qu
 - An item rated ⚪ LOW might sit in the backlog for three release cycles, then suddenly become 🔴 THIS because real user feedback made it more urgent.
 
 Keeping Urgency and Target as separate columns lets either one change without rewriting the other. Sort by Target when you're asking "what blocks shipping?" Sort by Urgency × ROI when you're asking "what should I work on first?" Same rows, different lens.
-
-## Install
-
-> [!NOTE]
-> **v0.2.0 (shipped 2026-05-02).** The skill installs as a Claude Code plugin: two one-line commands and `/unforget` is available in any project session. Claude reads the skill file and walks you through setup. If you'd rather not use Claude at all, UNFORGET.md is plain markdown; you can edit it by hand in any text editor.
-
-Run these two commands **one at a time** in Claude Code. Wait for Step 1 to confirm "Successfully added marketplace" before running Step 2.
-
-Step 1 — add the marketplace:
-
-```
-/plugin marketplace add Terryc21/unforget
-```
-
-Step 2 — install the plugin:
-
-```
-/plugin install unforget@unforget
-```
-
-The skill is now available. To verify, type `/unforget` in any project session; you should see the skill respond. No `/skill` prefix needed.
-
-> **Why two separate blocks?** If you copy both `/plugin` lines at once and paste them into Claude Code, the slash-command dispatcher treats the first `/plugin` as the command and the rest of the paste as its arguments. Run them one at a time to avoid that trap.
-
-<details>
-<summary><strong>v0.1 manual install (legacy fallback)</strong></summary>
-
-If the v0.2 plugin path isn't available in your environment, the v0.1 manual install still works:
-
-```bash
-mkdir -p ~/.claude/skills
-git clone https://github.com/Terryc21/unforget.git ~/.claude/skills/unforget
-```
-
-Then invoke as `/skill unforget` (with the prefix). To update later: `cd ~/.claude/skills/unforget && git pull`.
-
-If you don't want to clone, download `SKILL.md` and copy it manually:
-
-```bash
-mkdir -p ~/.claude/skills/unforget
-cp ~/Downloads/SKILL.md ~/.claude/skills/unforget/
-```
-
-</details>
 
 ## Quick start
 
@@ -343,11 +362,7 @@ This marker tells future skill versions which format the file was created agains
 
 `unforget` came out of a real shipping app: [Stuffolio](https://stuffolio.app), a Universal app for iOS, iPadOS, and macOS built from a single Swift codebase, currently shipping at build 33. Deferred work in that project had spread across five different tracking surfaces (a Deferred.md, plan files, audit ledgers, memory entries, and code comments). Consolidating to a single file removed a chunk of pre-release-prep time, mostly because nobody had to walk five surfaces anymore to answer "what's left before we ship?"
 
-Here's an honest look at what's solid and where outside feedback would help most:
-
-- **The 10-column table format is solid.** It's been used through an actual App Store submission cycle in the source project. Rows, sections, the Target column, and the promotion ritual all do what they say.
-- **The setup flow (the seven phases) is specified in detail and tested.** Two rounds of nondestructive testing (one complex multiplatform app, one minimal third-party skill) caught 13 small gaps in the spec, all fixed. It works today; what would sharpen it most is feedback from projects whose shape differs from the source — non-Apple stacks, continuous-deployment workflows, libraries, anything other than "mobile app shipping discrete releases."
-- **The install path got smoother in v0.2.** v0.1 required cloning a git repo and invoking with `/skill unforget`. v0.2 ships as a Claude Code plugin: two one-line commands to install, and you invoke as `/unforget` (no prefix). The features don't change; only the install experience does. The clone-and-copy fallback still works for environments where plugin install isn't available yet.
+> See [Maturity](#maturity--where-this-is-solid-and-where-feedback-would-help) above for an honest assessment of what's solid and where outside feedback would help most.
 
 ## Companion Skills
 
