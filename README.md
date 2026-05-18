@@ -1,10 +1,16 @@
 # unforget
 
-![Status](https://img.shields.io/badge/status-v0.2.0-blue) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget) ![Stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat) ![Issues](https://img.shields.io/github/issues/Terryc21/unforget)
+![Version](https://img.shields.io/github/v/tag/Terryc21/unforget?label=version) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget) ![Stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat) ![Issues](https://img.shields.io/github/issues/Terryc21/unforget) ![License](https://img.shields.io/github/license/Terryc21/unforget) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet)
 
 > **One file. Four sections. Nothing slips.**
 
 A Claude Code skill that consolidates deferred work (paused plans, mid-task spillover, audit findings, and observed-but-not-yet-fixed bugs) into one structured file. Built so deferred items don't slip through the cracks between releases.
+
+*~8 min read · scan the TL;DR if you only have 30 seconds*
+
+## Newer to Claude Code?
+
+A **skill** is a markdown file Claude Code knows how to run. When you type `/unforget add "API rate limiter sometimes returns 429"`, Claude follows the instructions in this skill, drops a row into your project's UNFORGET.md, and confirms what it did. You don't have to memorize anything — the skill tells Claude what to do, and the file is plain markdown you can also edit by hand.
 
 ## TL;DR
 
@@ -201,6 +207,28 @@ UNFORGET.md is a markdown file with wide tables (10 columns). For best readabili
 
 If tables ever look broken in a narrow terminal (rendered as vertical blocks), widen the window or use one of the apps above. The data is fine; only the rendering needs more space.
 
+## Scoping a run
+
+unforget scopes by **the command + the filter you pass**, not by a directory path. Every command operates on the single `UNFORGET.md` file in the project root.
+
+| Goal | Command |
+|---|---|
+| Add a new deferred item to the default section | `/unforget add "API rate limiter sometimes returns 429"` |
+| Add to a specific section | `/unforget add --section=audit "RS-009 unfixed sibling"` |
+| Filter the list by Target column | `/unforget list --target=THIS` |
+| Filter by section | `/unforget list --section=paused-plans` |
+| Filter by staleness | `/unforget scan --stale` |
+| Edit one row's columns | `/unforget edit P3` |
+| Re-scan the project for new deferred items since init | `/unforget import` |
+| Release-time check + promote NEXT → THIS | `/unforget promote` |
+
+**Fresh vs prior history.** Most unforget commands read the existing UNFORGET.md and add or refine rows — they're history-aware by definition; that's the whole point of one durable file. The two exceptions:
+
+- **`/unforget init`** is the only fresh-mode command. It assumes no prior UNFORGET.md exists, surveys six surfaces (Deferred.md, audit reports, plan files, `// TODO` comments, GitHub issues, AI memory), and proposes rows. Run once per project.
+- **`/unforget import`** is the resume-mode counterpart to init. Re-runs the same six-surface survey but **diffs against existing rows** so it doesn't double-import. Run after every release cycle or whenever audit tools produce new reports.
+
+If your UNFORGET.md gets corrupted, see [`docs/RECOVERY.md`](docs/RECOVERY.md) for repair recipes.
+
 ## Four preset modes
 
 Not every project ships the same way. During `init` you'll pick one of four table shapes:
@@ -241,15 +269,7 @@ The two coexist cleanly. UNFORGET.md is for *code-adjacent technical debt with r
 
 ## Companion skills
 
-`unforget` ships alongside three skills from the same source project ([Stuffolio](https://stuffolio.app)):
-
-| Skill | What it does | How it feeds into unforget |
-|---|---|---|
-| [**radar-suite**](https://github.com/Terryc21/radar-suite) | 8 audit skills that find bugs in Swift/SwiftUI apps. Every finding cites a real file:line, not generic advice. | Unfixed findings become rows in Section 3 (Audit findings). |
-| [**bug-prospector**](https://github.com/Terryc21/bug-prospector) | Mines for hidden bugs that pattern-based auditors miss. Behavioral and contextual issues regex can't catch. | Outputs feed naturally into Section 4 (User-reported / observed). |
-| [**bug-echo**](https://github.com/Terryc21/bug-echo) | After you fix a bug, finds other instances of the same pattern across your codebase. | Instances not fixed immediately become unforget rows. |
-
-For the high-leverage **surface → verify → generalize** workflow that pairs all three, see [`docs/POST_FIX_SWEEP.md`](docs/POST_FIX_SWEEP.md).
+For the high-leverage **surface → verify → generalize** workflow that pairs unforget with radar-suite, bug-prospector, and bug-echo, see [`docs/POST_FIX_SWEEP.md`](docs/POST_FIX_SWEEP.md). Full list of sibling skills at the bottom.
 
 ## How it works with other tools
 
@@ -261,29 +281,16 @@ For the high-leverage **surface → verify → generalize** workflow that pairs 
 - **No AI at all**: works fine. The format is what matters; the skill just makes adoption faster.
 - **Teams**: commits to git like any other markdown file. After resolving a merge conflict, render in a markdown viewer to confirm the tables still look right — botched `|` placement can silently corrupt column shape.
 
-## Recovering a broken UNFORGET.md
+## Honest limits
 
-UNFORGET.md is plain markdown, but the skill's commands depend on the format being intact. Every file created by `init` includes this notice at the top:
+unforget is a single-file markdown ledger. It has real limits worth naming:
 
-> **Allowed:** add new rows, edit row content, move rows between sections, mark rows Fixed / Deferred / Skipped, edit detail blocks.
->
-> **Not allowed:** rename columns, reorder columns, add or remove core columns, rename the four section headers, split this file, delete the example row, renumber existing IDs, reuse retired IDs.
+- **One-developer mental model.** The format assumes one person curates the file. Multi-developer teams using it through git work, but there's no built-in assignment, no commenter thread, no notification system. If your team needs cross-functional ticket flow, use Jira/Linear and let UNFORGET.md hold the code-adjacent technical-debt subset.
+- **Discrete-release shape by default.** Standard preset assumes you ship in release cycles (App Store, Play Store, GitHub Releases). Continuous-deployment teams should pick the Continuous preset, which swaps Target for time-windowed Window values.
+- **No automatic integration with external trackers.** UNFORGET.md doesn't sync to Jira/Linear/GitHub Issues. You cross-link by URL in the Finding column; nothing auto-updates.
+- **Promotion ritual is manual.** `/unforget promote` is the release-time check, but you decide *when* to run it. Forget to run it and rows don't auto-roll forward.
 
-If something broke:
-
-| What broke | How to fix |
-|---|---|
-| **Renamed a column header** (e.g., `Urg` → `Urgency Level`) | Rename it back. Column headers must match exactly. |
-| **Reordered columns** | Restore the 10-column sequence: `# / Target / Finding / Urg / RFix / RNo / ROI / Blast / Effort / Status`. |
-| **Added or removed core columns** | Restore the 10 core columns. Extra columns (Owner, Sprint, Component) are fine **after** the core columns. |
-| **Renamed a section header** | Restore one of `## 1. Paused plans`, `## 2. Session spillover`, `## 3. Audit findings`, `## 4. User-reported / observed`. |
-| **Split the file into multiple files** | Concatenate back into one. Multi-file splits defeat the "one ledger" promise. |
-| **Renumbered or reused IDs** | If you have git history, restore the prior IDs and stop renumbering forever. If not, pick a fresh starting integer (e.g., P100) so old references at least don't conflict. |
-| **Deleted the example row** | Restore from `examples/UNFORGET.md` in this repo. |
-
-The format-version marker at the top of every file (`<!-- unforget-format: v1 -->`) tells future skill versions which format the file was created against. Don't remove it.
-
-When in doubt: compare against [`examples/UNFORGET.md`](examples/UNFORGET.md); use `git checkout HEAD -- path/to/UNFORGET.md` to revert; or [open an issue](https://github.com/Terryc21/unforget/issues) if recovery is unclear.
+For UNFORGET.md corruption recovery, see [`docs/RECOVERY.md`](docs/RECOVERY.md).
 
 ## Origin
 
@@ -307,6 +314,22 @@ Things this skill **won't** accept:
 - **Hiding columns per row** — breaks scanning.
 - **Reordering or renaming core columns** — breaks cross-project compatibility.
 - **Splitting UNFORGET.md** — defeats the "one file, four sections" promise.
+
+## Sibling skills
+
+- [**bug-echo**](https://github.com/Terryc21/bug-echo) — sibling-bug scan after a fix; feeds Section 3 (Audit findings)
+- [**bug-prospector**](https://github.com/Terryc21/bug-prospector) — forward-looking bug hunt; feeds Section 4 (User-reported / observed)
+- [**workflow-audit**](https://github.com/Terryc21/workflow-audit) — 5-layer SwiftUI flow audit
+- [**radar-suite**](https://github.com/Terryc21/radar-suite) — 6-skill iOS audit family
+- [**prompter**](https://github.com/Terryc21/prompter) — prompt rewriting before execution
+- [**skill-reviewer**](https://github.com/Terryc21/skill-reviewer) — candid reviews of other Claude Code skills
+- [**tutorial-creator**](https://github.com/Terryc21/tutorial-creator) — annotated tutorials from your codebase
+
+## Author
+
+Terry Nyberg, [Coffee & Code LLC](https://stuffolio.app/). If unforget has kept something from slipping between releases for you, [a coffee](https://buymeacoffee.com/stuffolio) is appreciated. Issue reports about what worked or didn't on a project shape unlike Stuffolio are more useful.
+
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/stuffolio)
 
 ## License
 
