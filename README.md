@@ -202,7 +202,7 @@ Shows only the rows that block submission. Fix them, mark them Fixed, run `/unfo
 UNFORGET.md is a markdown file with wide tables (10 columns). For best readability:
 
 - **GitHub or GitLab**: just open the file in the web UI; tables render natively.
-- **Markdown viewer apps**: [MacDown](https://macdown.uranusjr.com/) (Mac, free), [Marked 2](https://marked2app.com/) (Mac, paid), [Obsidian](https://obsidian.md/) or [Typora](https://typora.io/) (cross-platform).
+- **Markdown viewer apps**: [Bear](https://bear.app/) (Mac/iOS, free tier; import .md as a note), [MacDown](https://macdown.uranusjr.com/) (Mac, free), [Marked 2](https://marked2app.com/) (Mac, paid), [Obsidian](https://obsidian.md/) or [Typora](https://typora.io/) (cross-platform).
 - **VS Code**: built-in Markdown Preview (cmd-shift-V on Mac).
 
 If tables ever look broken in a narrow terminal (rendered as vertical blocks), widen the window or use one of the apps above. The data is fine; only the rendering needs more space.
