@@ -294,7 +294,7 @@ For UNFORGET.md corruption recovery, see [`docs/RECOVERY.md`](docs/RECOVERY.md).
 
 ## Origin
 
-`unforget` came out of [Stuffolio](https://stuffolio.app), a Universal app for iOS, iPadOS, and macOS shipping at build 33. Deferred work in that project had spread across five tracking surfaces (a Deferred.md, plan files, audit ledgers, memory entries, and code comments). Consolidating to a single file removed a chunk of pre-release-prep time — nobody had to walk five surfaces anymore to answer "what's left before we ship?"
+`unforget` came out of [Stuffolio](https://stuffolio.app), a Universal app for iOS, iPadOS, and macOS. Deferred work in that project had spread across five tracking surfaces (a Deferred.md, plan files, audit ledgers, memory entries, and code comments). Consolidating to a single file removed a chunk of pre-release-prep time — nobody had to walk five surfaces anymore to answer "what's left before we ship?"
 
 See [Maturity](#maturity--where-this-is-solid-and-where-feedback-would-help) above for an honest assessment of what's solid and where outside feedback would help most.
 
