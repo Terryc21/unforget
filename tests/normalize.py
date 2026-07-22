@@ -88,11 +88,20 @@ def normalize_encode_project_path(data: dict, repo_root: str) -> dict:
     return data
 
 
+def normalize_verify_install(data: dict, repo_root: str) -> dict:
+    # skill_root is an absolute path; companion path lists are already
+    # repo-relative and deterministic. Strip only the absolute root.
+    if "skill_root" in data:
+        data["skill_root"] = replace_repo_root(data["skill_root"], repo_root)
+    return data
+
+
 NORMALIZERS = {
     "scan_surfaces": normalize_scan_surfaces,
     "check_format_version": normalize_check_format_version,
     "encode_project_path": normalize_encode_project_path,
     "dedup_findings": normalize_dedup_findings,
+    "verify_install": normalize_verify_install,
 }
 
 

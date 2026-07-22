@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 0.2.1
+version: 1.0.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -97,7 +97,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/init.md` | Phases 1–7 of the init walkthrough, success criteria | Running `/unforget init` |
 | `reference/surfaces.md` | Six core surfaces, Surface 1b general doc scanning, redirect-pointer pre-check, memory-dir resolution, path encoding, meta-file pre-check, audit-tool format-aware parsing, cross-surface dedup, GitHub-issues four states, algorithm fallback | Running `init` or `import`, or auditing surface behavior |
 | `reference/promotion.md` | Promote ritual, dry-run mechanics, post-fix-sweep workflow, backups and recovery | Running `/unforget promote` or marking a row Fixed |
-| `reference/commands.md` | Per-subcommand specs for `add`, `edit`, `import`, `list`, `scan`, `--version` | Running any of those subcommands |
+| `reference/commands.md` | Per-subcommand specs for `add`, `edit`, `import`, `list`, `scan`, `archive`, `--version` (incl. `--version`'s install-integrity + recall-trigger checks) | Running any of those subcommands |
 | `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
@@ -139,11 +139,11 @@ This block is what makes the skill's recall trigger work. Without it, future AI 
 
 ### Format-version contract
 
-Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. v0.2 of the skill supports format `v1`. Three cases:
+Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. v1.0 of the skill supports format `v1`. Three cases:
 
 - **Marker absent.** The skill prompts: "this file may not be in unforget format; proceed anyway?" Default response is no. If the user proceeds, the skill operates as best it can without format guarantees, and recommends adding `<!-- unforget-format: v1 -->` near the top of the file to silence the prompt on future reads.
 - **Marker recognized (`v1`).** The skill proceeds normally.
-- **Marker is a future version (`v2` or higher when the skill is v0.2).** The skill prints: "this file declares unforget format vN, but this skill version supports up to v1. Operating in read-only mode; writes are refused." Read-only operations (`list`, `scan`, and `promote --dry-run`) still work. Write operations (`add`, `edit`, `import`, and `promote` without `--dry-run`) refuse with a one-line error pointing to the version mismatch and recommending a skill upgrade.
+- **Marker is a future version (`v2` or higher when the skill is v1.0).** The skill prints: "this file declares unforget format vN, but this skill version supports up to v1. Operating in read-only mode; writes are refused." Read-only operations (`list`, `scan`, and `promote --dry-run`) still work. Write operations (`add`, `edit`, `import`, and `promote` without `--dry-run`) refuse with a one-line error pointing to the version mismatch and recommending a skill upgrade.
 
 **Preferred implementation:** delegate the marker read to `python3 scripts/check_format_version.py <path-to-UNFORGET.md>` (returns JSON). Algorithm fallback if Python is unavailable: read the first 30 lines of the file, grep for `<!-- unforget-format: v` (case sensitive), parse the version digit, compare against supported.
 

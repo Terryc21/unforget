@@ -49,7 +49,13 @@ Three short questions before any scanning happens:
    - Aider: `.aider.conf.yml`
    - Continue: `.continue/`
 
-   Scan the repo for any of these. If exactly one is found, ask: "Add a 'Deferred Work Index' section to `<filename>` so future AI sessions auto-recall UNFORGET.md when you ask 'what's deferred'?" If multiple are found, list them and let the user pick which to wire (or all, or none). If none is found, ask whether to create a `CLAUDE.md` or `AGENTS.md`. Recommended yes; without it, the recall trigger is opt-in per session.
+   Scan the repo for any of these. Wiring this block is the **strong default**, not a neutral option — an unwired ledger is the single most common way unforget silently fails: the user runs `init`, writes rows, then asks "what's deferred?" three weeks later and gets nothing, because no session-recall trigger was installed. Frame the question so the default is clearly yes:
+
+   - **Exactly one found:** "I'll add a 'Deferred Work Index' section to `<filename>` so future AI sessions auto-recall UNFORGET.md when you ask 'what's deferred?' — this is what makes the skill work across sessions. Add it? **(recommended; default yes)**". Proceed on a bare Enter / "yes" / no objection; only skip on an explicit decline.
+   - **Multiple found:** list them, wire all by default, and let the user narrow or decline.
+   - **None found:** "No AI instructions file found. Without one, unforget won't auto-recall — you'd have to invoke `/unforget list` manually every time. Create a `CLAUDE.md` with the Deferred Work Index block? **(recommended; default yes)**".
+
+   When the user does decline, say so plainly and once: "Recall trigger not installed — deferred-work questions won't auto-route to unforget until you add the block (re-run `init`, or `/unforget --version` in this project will report it as missing)." Never impose the block over an explicit no; do make the consequence of declining visible rather than silent.
 
    The wiring step shouldn't hardcode filenames. It should detect what the project actually uses and adapt.
 

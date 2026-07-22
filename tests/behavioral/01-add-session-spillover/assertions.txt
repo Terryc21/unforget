@@ -1,0 +1,6 @@
+# add with no section flag defaults to Section 2 (Session spillover)
+row_in_section 2 S2
+cell S2 Status Open
+contains Retry logic swallows
+# must NOT have landed in another section
+absent | A2 |

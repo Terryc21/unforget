@@ -20,7 +20,32 @@ A **skill** is a markdown file Claude Code knows how to run. When you type `/unf
 - **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
 - **Rescan anytime:** `/unforget import` re-runs the 6-surface scan to catch new deferred items that appeared after init (new audit reports, plan files, memory entries, TODO comments). Has duplicate detection so it won't double-import.
 - **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
-- **Maturity:** v0.2.1; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+- **Maturity:** v1.0.0; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+
+## What it looks like
+
+Before you install, here's a populated `UNFORGET.md` — the whole point of the skill in one screen. Four sections, one rating table each, a Target column that says when each item ships:
+
+```markdown
+<!-- unforget-format: v1 -->
+# UNFORGET — Deferred Work
+
+## 3. Audit findings
+
+| #  | Target      | Finding                                   | Urgency     | Risk: Fix | Risk: No Fix | ROI          | Blast Radius | Fix Effort | Status |
+|----|-------------|-------------------------------------------|-------------|-----------|--------------|--------------|--------------|------------|--------|
+| A1 | 🔴 THIS     | Paywall lists a feature that ships free   | 🟡 HIGH     | ⚪ Low    | 🟡 High      | 🟠 Excellent | ⚪ 1 file    | Trivial    | Open   |
+| A2 | 🔵 NEXT     | N+1 query on the inventory list screen    | 🟢 MEDIUM   | 🟢 Medium | 🟢 Medium    | 🟢 Good      | 🟢 2-5 files | Small      | Open   |
+
+### Detail — Audit findings
+
+- **A1** — Store copy promises "unlimited exports" behind the paywall, but exports are already free for everyone. Ship-blocker: it's a false paywall claim App Review flags. **Verify-still-open:** `grep -rn "unlimited exports" Sources/Paywall/` — expect: still present in `PaywallCopy.swift`.
+- **A2** — `InventoryList` fetches each item's thumbnail in the row body instead of batching. Surfaced by the perf audit 2026-07-14; not a blocker but visible jank past ~50 rows.
+```
+
+**Reading it:** `🔴 THIS` is the only Target that blocks shipping — at release time every 🔴 THIS row must be Fixed or demoted with a reason. `🔵 NEXT` / `🟡 LATER` / `⚪ SOMEDAY` are progressively looser commitments. The table is the index; the **Detail** block under it holds the *why*, the file paths, and a one-line `Verify-still-open` grep so a row that's silently gone stale gets caught before you work it.
+
+That's the format. The slash commands (`add`, `list`, `promote`, …) just keep this file correct so you don't hand-maintain it.
 
 ## Install
 
@@ -300,7 +325,7 @@ See [Maturity](#maturity--where-this-is-solid-and-where-feedback-would-help) abo
 
 ## Contributing
 
-The format is stable through v0.2 but the project shape it knows best is the one it came from (a single-developer mobile app shipping discrete releases). The most valuable thing you can do is try it on a project shape it hasn't seen and tell me where the format broke down. [Open an issue](https://github.com/Terryc21/unforget/issues). Especially helpful: small repos, non-Apple stacks (web, Android, backend, libraries), Cursor / Aider / Copilot workflows, continuous-deployment workflows.
+The format is stable as of v1.0 but the project shape it knows best is the one it came from (a single-developer mobile app shipping discrete releases). The most valuable thing you can do is try it on a project shape it hasn't seen and tell me where the format broke down. [Open an issue](https://github.com/Terryc21/unforget/issues). Especially helpful: small repos, non-Apple stacks (web, Android, backend, libraries), Cursor / Aider / Copilot workflows, continuous-deployment workflows.
 
 Pull requests welcome for:
 

@@ -90,7 +90,7 @@ Backups land in the same directory as UNFORGET.md, named `UNFORGET.md.bak-YYYY-M
 
 ### Retention
 
-The skill keeps the 5 most recent backups. During each `promote`, backups older than the 5 most recent are pruned silently. The retention count is fixed in v0.2 and is not user-configurable.
+The skill keeps the 5 most recent backups. During each `promote`, backups older than the 5 most recent are pruned silently. The retention count is fixed in v1.0 and is not user-configurable.
 
 **Preferred implementation:** delegate retention to the helper script:
 

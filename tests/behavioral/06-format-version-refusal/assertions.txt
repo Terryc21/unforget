@@ -1,0 +1,4 @@
+# Skill v0.2 supports up to format v1. A v2 file must refuse writes.
+# Point --result at the (untouched) input to prove nothing was written.
+unchanged_from input.md
+absent This add must be refused

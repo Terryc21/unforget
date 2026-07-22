@@ -4,6 +4,14 @@ Regression bench for the deterministic helpers under `scripts/`. Each helper
 produces JSON; the harness runs the helper against a frozen fixture project,
 normalizes the output, and diffs it against a golden file in `tests/golden/`.
 
+**Two layers.** This directory tests the deterministic `scripts/` (golden JSON
+diff, below). The **behavioral corpus** in [`behavioral/`](behavioral/) tests
+the layer scripts can't reach — the prose the LLM follows for `add` / `edit` /
+`promote` / format-version handling — via structural assertions instead of
+exact diff. `bash tests/run.sh` runs the LLM-free portion of the behavioral
+corpus (checker selftest + any produced results) after the script goldens; the
+LLM half is driven per `behavioral/README.md`.
+
 Motivated by the v0.2 Phase 4 retest, which caught three real bugs (T-8 path
 encoding, T-12 audit-filename pattern, T-13 per-finding-ID extraction) only
 because the author hand-walked Stuffolio. This corpus is the bench that would
@@ -29,6 +37,7 @@ dependencies.
 | `scripts/check_format_version.py` | `golden/check_format_version.json` | Run against the fixture's `UNFORGET.md`. Confirms the v1 marker + four section headers. |
 | `scripts/encode_project_path.py` | `golden/encode_project_path.json` | Run against a fixed string (`/Volumes/2 TB Drive/Coding/GitHub/unforget-test`) so the golden does not depend on the runner's filesystem layout. Catches the T-8 rule directly. |
 | `scripts/dedup_findings.py` | `golden/dedup_findings.json` | Run against `fixtures/dedup-input.json`. Confirms the Jaccard fuzzy-merge clusters two near-duplicate headlines and keeps two distinct findings separate. |
+| `scripts/verify_install.py` | `golden/verify_install.json` | Run with `--skill-root <repo-root>` (integrity-only; no `--project-root`, so the recall check is deliberately skipped for a stable golden). Confirms all 10 companion files resolve from the repo root and `integrity_ok` is true. `skill_root` is normalized to `<REPO_ROOT>`. |
 
 ### Not covered (deferred)
 

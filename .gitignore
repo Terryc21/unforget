@@ -11,3 +11,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# Behavioral test run outputs (per-run LLM output; regenerated each run, never committed)
+tests/behavioral/*/result.md

@@ -69,11 +69,27 @@ run_diff scan_surfaces        --root "$FIXTURE" --include-comments
 run_diff check_format_version "$FIXTURE/Documentation/Development/UNFORGET.md"
 run_diff encode_project_path  "/Volumes/2 TB Drive/Coding/GitHub/unforget-test"
 run_diff dedup_findings       --candidates "$TESTS_DIR/fixtures/dedup-input.json"
+run_diff verify_install       --skill-root "$REPO_ROOT"
 
 if [[ "$BLESS" == 1 ]]; then
   echo
   echo "All goldens written. Review with: git diff tests/golden/"
   exit 0
+fi
+
+# Behavioral corpus: run the LLM-free halves inline (checker selftest + check
+# over any already-produced results). The LLM half is driven separately; see
+# tests/behavioral/README.md. Selftest failing means the behavioral CHECKER is
+# broken and must fail the suite; a behavioral case failing does too.
+echo
+echo "--- behavioral corpus (LLM-free portion) ---"
+if ! bash "$TESTS_DIR/behavioral/run-behavioral.sh" --selftest; then
+  echo "FAIL: behavioral checker selftest"
+  FAILED=1
+fi
+if ! bash "$TESTS_DIR/behavioral/run-behavioral.sh" --check; then
+  echo "FAIL: one or more behavioral cases with a result.md diverged"
+  FAILED=1
 fi
 
 if [[ "$FAILED" == 1 ]]; then

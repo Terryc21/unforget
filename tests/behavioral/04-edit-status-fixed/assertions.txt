@@ -1,0 +1,5 @@
+# marking Fixed sets Status and prepends a CLOSED pointer to the detail block
+cell S1 Status Fixed
+regex \*\*CLOSED\s+\d{4}-\d{2}-\d{2}
+# the detail block keeps four-part order (closure first)
+detail_order S1

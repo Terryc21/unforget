@@ -1,0 +1,5 @@
+# P1 is 🔴 THIS + Open — promote must flag it as a ship-blocker, not proceed silently.
+# This is an assertion on the ASSISTANT'S REPORTED OUTPUT (save it as result.md),
+# not on the file: promote is interactive. Expect the blocker to be named.
+contains P1
+regex (?i)(block|unresolved|still open|cannot promote|must be fixed)

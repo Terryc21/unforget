@@ -1,0 +1,1 @@
+/unforget add "This add must be refused because the file declares format v2"

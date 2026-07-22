@@ -1,0 +1,4 @@
+# explicit section=3 lands under Audit findings with an A-prefixed ID
+row_in_section 3 A2
+cell A2 Status Open
+contains Deprecated API used in networking

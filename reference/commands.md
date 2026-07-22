@@ -333,24 +333,48 @@ One line, non-blocking, informational — never a prompt or an action. Threshold
 
 ## /unforget --version
 
-Print the installed skill's version, install path, and the format-version it supports. Useful for verifying a fresh install loaded correctly without running `init` against a real project.
+Print the installed skill's version, install path, format-version support, **install integrity**, and (when run in a project) the **recall-trigger status**. Useful for verifying a fresh install loaded correctly without running `init` against a real project.
 
 ### Output format
 
 ```
-unforget v0.2.1
+unforget v1.0.0
 Install path: ~/.claude/plugins/unforget/  (Claude Code plugin)
 Supported format-version: v1
 Subcommands: init, add, edit, import, list, scan, archive, promote, --version
+Install integrity: ✓ all 10 companion files reachable
+Recall trigger: ✓ installed in CLAUDE.md
+```
+
+When the install is broken or the recall trigger is missing, the last two lines carry the diagnosis instead:
+
+```
+Install integrity: ✗ 2 companion files unreachable (reference/commands.md, scripts/scan_surfaces.py)
+                     → the router will fail when it delegates to a missing file; reinstall or repair the skill directory
+Recall trigger: ✗ no Deferred Work Index block in this project's CLAUDE.md/AGENTS.md
+                  → deferred-work questions will NOT auto-route here; run /unforget init to add it
 ```
 
 The version string is read from the SKILL.md frontmatter `version` field. The install path is detected at runtime: plugin installs report the plugin directory, manual v0.1 installs report `~/.claude/skills/unforget/`. Supported format-version comes from the spec (currently `v1`; future versions will list multiple if backward compatibility is preserved).
 
+### Install integrity
+
+The refactored skill (v0.2+) is a thin SKILL.md router that delegates to `reference/*.md` on demand and to `scripts/*.py` for deterministic work. If those companion files did not travel with the install — a copy of only SKILL.md, a partial clone, a broken symlink — the router fails silently the first time it reads a reference file, and the failure surfaces as confusing mid-command behavior rather than a clear error.
+
+`--version` closes that gap. **Preferred implementation:** delegate to `python3 scripts/verify_install.py --skill-root <dir> [--project-root <cwd>]` (returns JSON). It confirms every companion file the router depends on is reachable from the skill root, and — when `--project-root` is supplied — reports whether the recall trigger is installed. Report `integrity_ok` and `advisory` to the user on the two output lines above.
+
+Algorithm fallback if Python is unavailable: for each path in the router's companion table (`reference/format.md`, `reference/init.md`, `reference/surfaces.md`, `reference/promotion.md`, `reference/commands.md`, and the five `scripts/*.py`), test existence relative to the skill root; report any that are missing.
+
+### Recall trigger
+
+unforget only auto-activates on "what's deferred?"-style questions when the project's `CLAUDE.md` / `AGENTS.md` carries a **Deferred Work Index** block pointing at UNFORGET.md (see `## How to use unforget alongside CLAUDE.md / AGENTS.md` in SKILL.md, and `reference/init.md` for the block itself). Without it, a populated ledger sits invisible and the skill looks broken when it is working as designed.
+
+When `--version` runs inside a project directory, it scans `CLAUDE.md`, `.claude/CLAUDE.md`, and `AGENTS.md` for the block and reports `✓ installed in <file>` or `✗ missing` with the fix (`run /unforget init`). When run from a non-project directory (no `--project-root`), this line is omitted rather than reported as a failure.
+
 ### Behavior
 
 - Read-only. Touches no files.
-- Always succeeds (or fails to respond entirely; there is no error case).
-- Does not require a project context; works from any directory.
-- Does not check for an existing UNFORGET.md or scan any surface.
+- Always succeeds as a *command* even when it reports a broken install: the integrity/recall lines are diagnostic content, not a command error. The only true non-response is the skill failing to load at all (in which case nothing prints, which is itself the signal the install did not take).
+- Version, format-version, and integrity checks work from any directory. The recall-trigger line requires a project context; it is silently skipped otherwise.
 
-After install, the user has no way to verify the skill loaded short of trying to use it. `/unforget --version` provides a no-side-effect health check. If the command does not respond, the install did not take. If it responds with the wrong version, the user knows to update before running `init` against a real project.
+After install, the user has no way to verify the skill loaded short of trying to use it. `/unforget --version` provides a no-side-effect health check. If the command does not respond, the install did not take. If it responds with the wrong version, the user knows to update before running `init` against a real project. If it responds with an integrity ✗, the user knows the companion files did not travel with the install before a single row is written.

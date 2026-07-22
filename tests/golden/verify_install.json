@@ -1,0 +1,22 @@
+{
+  "advisory": "install intact; recall trigger not checked (no --project-root given)",
+  "companion_files_missing": [],
+  "companion_files_present": [
+    "reference/format.md",
+    "reference/init.md",
+    "reference/surfaces.md",
+    "reference/promotion.md",
+    "reference/commands.md",
+    "scripts/check_format_version.py",
+    "scripts/scan_surfaces.py",
+    "scripts/dedup_findings.py",
+    "scripts/encode_project_path.py",
+    "scripts/prune_backups.py"
+  ],
+  "integrity_ok": true,
+  "recall_checked": false,
+  "recall_trigger_present": null,
+  "recall_trigger_source": null,
+  "skill_root": "<REPO_ROOT>",
+  "version": "1.0.0"
+}

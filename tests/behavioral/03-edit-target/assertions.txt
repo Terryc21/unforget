@@ -1,0 +1,6 @@
+# A1 Target changes LATER -> THIS; nothing else about A1 changes
+cell A1 Target THIS
+cell A1 Urgency HIGH
+cell A1 Status Open
+# other rows untouched
+cell S1 Target NEXT
