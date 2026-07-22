@@ -107,6 +107,29 @@ The convention: every Open row whose detail block references specific file paths
 
 Users on Standard, Compact, or Lean can also append **extra columns** (Client, Sprint, Component, etc.) without modifying core columns. Removing or renaming core columns is intentionally not supported, because it breaks comparability across projects and tooling.
 
+### Optional column: `1-Star Risk`
+
+Projects shipping a user-facing app (App Store / Play Store) can append a **`1-Star Risk`** column that rates each row's exposure to a one-star review. It is an **appended extra column, not a core column** — the file stays format `v1`, tooling that doesn't know about it ignores it, and projects that don't ship a public app simply omit it. Append it as the last column, after `Status`.
+
+**What it holds.** A three-zone risk strip — `At risk · Watch · Clear` (left→right = riskier→safer) — with a single `★` marking the row's band. The rating semantics are borrowed wholesale from the `one-star-risk` skill (`github.com/Terryc21/one-star-risk`); when that skill is installed, `/unforget` can delegate the scoring to it. The strip is not a decoration: it is the compressed output of a one-star-risk judgment.
+
+**In-cell rendering (markdown table).** Make the strip **one unbroken inline-code span with no internal spaces** — spaces and `|` let the renderer wrap or break the column. The `★` sits in the third of the bar matching the band; its position *within* that third is a lean, not a percentage. Put the band glyph + zone word on the next line via `<br>` so color is never the only cue:
+
+```
+| … | Status | 1-Star Risk |
+| … | Open   | `risk‹★────────›clear`<br>🔴 At risk (deep) |
+| … | Open   | `risk‹─────★───›clear`<br>🟡 Watch (mid) |
+| … | Fixed  | `risk‹────────★›clear`<br>🟢 Clear (border) |
+| … | Open   | `risk‹─────────›clear`<br>⚪ n/a |
+```
+
+**Hard rules (inherited from `one-star-risk`):**
+
+- **The zone is the band and is firm; the star's position within the zone is only a lean** — one of three named lean-words (`deep` / `mid` / `border`), how near the skeptic pass came to the adjacent band. **Never a percentage or computed coordinate** (`pos: 62%` is forbidden), and never let two same-zone rows be compared by strip position.
+- **Accessibility:** always pair the strip with the band glyph (🔴/🟡/🟢/⚪) *and* the zone word in text ("At risk / Watch / Clear"). The strip never encodes the band by position alone.
+- **Most unforget rows are `⚪ n/a`.** Paused plans, spillover TODOs, and internal audit findings usually aren't user-visible App Store risks. That is expected — the value is the non-⚪ few. Do not inflate bands to fill the column.
+- **`1-Star Risk` never drives the Target/ship-gate.** It is advisory context alongside the existing `Risk: No Fix` column, not a replacement for it. A 🔴 At-risk row still ships or defers on its `Target`, same as any other row.
+
 ### Compact preset detail
 
 Compact preserves Standard's release-cycle semantics; only the rendering changes. Conversion is mechanical:

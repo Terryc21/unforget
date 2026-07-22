@@ -20,7 +20,7 @@ A **skill** is a markdown file Claude Code knows how to run. When you type `/unf
 - **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
 - **Rescan anytime:** `/unforget import` re-runs the 6-surface scan to catch new deferred items that appeared after init (new audit reports, plan files, memory entries, TODO comments). Has duplicate detection so it won't double-import.
 - **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
-- **Maturity:** v1.0.0; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+- **Maturity:** v1.0.1; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
 
 ## What it looks like
 
@@ -46,6 +46,17 @@ Before you install, here's a populated `UNFORGET.md` — the whole point of the 
 **Reading it:** `🔴 THIS` is the only Target that blocks shipping — at release time every 🔴 THIS row must be Fixed or demoted with a reason. `🔵 NEXT` / `🟡 LATER` / `⚪ SOMEDAY` are progressively looser commitments. The table is the index; the **Detail** block under it holds the *why*, the file paths, and a one-line `Verify-still-open` grep so a row that's silently gone stale gets caught before you work it.
 
 That's the format. The slash commands (`add`, `list`, `promote`, …) just keep this file correct so you don't hand-maintain it.
+
+**Optional: `1-Star Risk` column.** Projects shipping a public app can append one extra column that rates each row's exposure to an App Store one-star review, borrowing the risk-strip from the [`one-star-risk`](https://github.com/Terryc21/one-star-risk) skill. It's opt-in and doesn't change the format version — most rows sit at `⚪ n/a`; the value is the risky few:
+
+```markdown
+| #  | … | Status | 1-Star Risk                          |
+|----|---|--------|--------------------------------------|
+| A1 | … | Open   | `risk‹★────────›clear`<br>🔴 At risk (deep)  |
+| A2 | … | Open   | `risk‹─────────›clear`<br>⚪ n/a             |
+```
+
+The `★`'s zone is the firm band (At risk / Watch / Clear); its position within the zone is a three-word lean (`deep` / `mid` / `border`), never a percentage. Full spec in [`reference/format.md § Optional column: 1-Star Risk`](reference/format.md).
 
 ## Install
 
