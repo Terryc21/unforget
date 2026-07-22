@@ -3,15 +3,18 @@
 #
 # Validates:
 #   1. plugin.json parses as JSON
-#   2. plugin.json "name" field matches SKILL.md frontmatter "name"
-#   3. plugin.json "skills" array contains exactly one entry named "unforget"
-#      (flat single-skill layout; if v0.3+ moves to nested skills/, this script
-#      should be replaced with the radar-suite-style drift check)
+#   2. plugin.json "name" field is "unforget"
+#   3. plugin.json "name" matches SKILL.md frontmatter "name"
+#
+# Note: this plugin uses the flat single-skill layout (one SKILL.md at repo
+# root, no skills/ subdir). plugin.json intentionally has NO "skills" array —
+# it was removed in a118d34 as an invalid field. If v0.3+ moves to a nested
+# skills/ layout, restore a skills-array drift check (radar-suite style).
 #
 # Run manually or add as a pre-commit / CI check.
 #
 # Adapted from radar-suite's verify-manifest.sh, simplified for unforget's
-# flat single-skill layout (one SKILL.md at repo root, no skills/ subdir).
+# flat single-skill layout.
 
 set -e
 
@@ -50,21 +53,5 @@ if [ "$SKILL_NAME" != "unforget" ]; then
     exit 1
 fi
 
-# 4. plugin.json "skills" array contains "unforget"
-SKILLS_LIST=$(awk '/"skills":/,/^  \]/' "$MANIFEST" | grep '"name":' | sed 's/.*"name": *"\([^"]*\)".*/\1/')
-SKILL_COUNT=$(echo "$SKILLS_LIST" | grep -c .)
-
-if [ "$SKILL_COUNT" -ne 1 ]; then
-    echo "ERROR: plugin.json skills array has $SKILL_COUNT entries, expected exactly 1"
-    echo "Skills found:"
-    echo "$SKILLS_LIST" | sed 's/^/  - /'
-    exit 1
-fi
-
-if [ "$SKILLS_LIST" != "unforget" ]; then
-    echo "ERROR: plugin.json skills array contains '$SKILLS_LIST', expected 'unforget'"
-    exit 1
-fi
-
-echo "OK: plugin.json valid, name=unforget, skills=[unforget], matches SKILL.md frontmatter"
+echo "OK: plugin.json valid, name=unforget, matches SKILL.md frontmatter"
 exit 0
