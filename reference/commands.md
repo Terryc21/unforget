@@ -339,7 +339,7 @@ Print the installed skill's version, install path, format-version support, **ins
 
 ```
 unforget v1.0.0
-Install path: ~/.claude/plugins/unforget/  (Claude Code plugin)
+Install path: <detected at runtime>  (Claude Code plugin)
 Supported format-version: v1
 Subcommands: init, add, edit, import, list, scan, archive, promote, --version
 Install integrity: ✓ all 10 companion files reachable

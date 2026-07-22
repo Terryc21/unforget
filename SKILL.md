@@ -12,7 +12,7 @@ license: Apache-2.0
 
 # unforget
 
-> Installed as a Claude Code plugin in v0.2+. Manual install via `~/.claude/skills/unforget/` (invoked as `/skill unforget`) still works as a v0.1 fallback.
+> Installed as a Claude Code plugin (current version: v1.0; plugin install available since v0.2). Manual install via `~/.claude/skills/unforget/` (invoked as `/skill unforget`) still works as a v0.1 fallback.
 
 > A way of not losing sight or track of what is deferred.
 
@@ -151,14 +151,9 @@ Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`) checks
 
 ## Anti-patterns (summary)
 
-Things this skill deliberately does NOT do, and why. Full discussion in `reference/format.md`.
+Things this skill deliberately does NOT do: custom column reordering · custom rating scales · per-row column visibility · renaming core columns · multiple files · auto-deferring on the user's behalf.
 
-- **Custom column reordering.** Breaks comparability across projects.
-- **Custom rating scales.** Letting one user use 🔴/🟡/🟢/⚪ and another use P0/P1/P2/P3 makes the format un-shareable.
-- **Per-row column visibility.** Devolves into chaos.
-- **Renaming core columns.** Skill becomes incompatible with itself.
-- **Multiple files.** UNFORGET.md is the index. Detail files (per-plan markdown) are linked FROM rows, not duplicates of them.
-- **Auto-deferring things the AI thinks should be deferred.** Deferral is a user decision. The skill captures, organizes, and surfaces; it doesn't decide on the user's behalf.
+See `reference/format.md § Anti-patterns` for why each is banned — that file is the single source; this line is only the index.
 
 ---
 
