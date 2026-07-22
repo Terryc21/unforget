@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.0.2
+version: 1.0.3
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -28,7 +28,7 @@ Every developer defers things. The problem isn't the deferral. The problem is th
 - memory files for AI assistants
 - paused plan files in `~/.claude/plans/`
 
-When the user asks "what's deferred?" months later, the answer requires walking five surfaces. Items go stale. Some get fixed by accident. Some sit forever because nobody remembered them.
+When the user asks "what's deferred?" months later, the answer requires walking every one of those surfaces. Items go stale. Some get fixed by accident. Some sit forever because nobody remembered them.
 
 `unforget` collapses all deferral into ONE file (`UNFORGET.md`) with a structured format that:
 

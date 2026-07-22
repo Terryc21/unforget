@@ -1,6 +1,6 @@
 {
   "name": "unforget",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A single source of truth for deferred work, kept in one UNFORGET.md per project so nothing slips between releases. Activate when the user asks what's deferred, what's the backlog, or wants to log something for later without losing it.",
   "author": {
     "name": "Terry Nyberg"

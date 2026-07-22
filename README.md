@@ -14,13 +14,13 @@ A **skill** is a markdown file Claude Code knows how to run. When you type `/unf
 
 ## TL;DR
 
-- **Problem:** deferred work scatters across `Deferred.md`, `// TODO` comments, plan files, audit ledgers, AI memory files, and your head. Months later, "what's deferred?" requires walking five surfaces.
+- **Problem:** deferred work scatters across `Deferred.md`, `// TODO` comments, plan files, audit ledgers, GitHub issues, AI memory files, and your head. Months later, "what's deferred?" requires walking every one of them.
 - **Solution:** one `UNFORGET.md` file with four sections (Paused plans / Session spillover / Audit findings / User-reported), each a 10-column rating table with a Target column tied to your release cycle.
 - **Install:** two `/plugin` commands in Claude Code (below); skill is then available as `/unforget` in any project.
 - **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
 - **Rescan anytime:** `/unforget import` re-runs the 6-surface scan to catch new deferred items that appeared after init (new audit reports, plan files, memory entries, TODO comments). Has duplicate detection so it won't double-import.
 - **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
-- **Maturity:** v1.0.2; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+- **Maturity:** v1.0.3; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
 
 ## What it looks like
 
@@ -140,7 +140,7 @@ Deferred work scatters across three places, then more:
 - `// TODO:` comments in code, audit-tool reports, paused plan files
 - memory files for AI assistants, Slack DMs to yourself, your head
 
-Months later, when you ask "what's deferred?", the answer requires walking five surfaces. Items go stale. Some get fixed by accident. Some sit forever because nobody remembered them.
+Months later, when you ask "what's deferred?", the answer requires walking every one of those surfaces. Items go stale. Some get fixed by accident. Some sit forever because nobody remembered them.
 
 `unforget` collapses all deferral into ONE file, structured so you can scan, prioritize, and ship at a glance.
 
@@ -230,8 +230,9 @@ Shows only the rows that block submission. Fix them, mark them Fixed, run `/unfo
 | `/unforget import` | Re-scan your project for new deferred items that appeared after init. |
 | `/unforget list` | Show what's in the file. Filter by section, Target, Urgency, or staleness. |
 | `/unforget scan` | Find rows that have been sitting too long for their priority. Read-only. |
+| `/unforget archive` | Move completed (Fixed/Done) rows out of the active tables into an archive file. Lightweight — run anytime between releases to keep the active view uncluttered. |
 | `/unforget promote` | Release-time check. Verifies all 🔴 THIS rows are Fixed, then promotes 🔵 NEXT rows up to 🔴 THIS for the next cycle. |
-| `/unforget --version` | Print version, install path, and supported format-version. Useful for verifying a fresh install loaded correctly. |
+| `/unforget --version` | Print version, install path, and supported format-version — plus an install-integrity check (are all companion files reachable?) and, in a project, whether the recall trigger is wired. Useful for verifying a fresh install loaded correctly. |
 
 ### Reading UNFORGET.md outside Claude
 
