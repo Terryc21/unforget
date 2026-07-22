@@ -8,6 +8,7 @@ Subcommands here:
 - `/unforget import` — re-run the surface survey after init
 - `/unforget list` — show current state, filterable
 - `/unforget scan` — identify rows past their staleness threshold
+- `/unforget archive` — move completed rows out of the active tables (lightweight; distinct from the release-time `promote` in `reference/promotion.md`)
 - `/unforget --version` — install-verification health check
 
 ---
@@ -37,6 +38,7 @@ Capture a new deferral. The friction point that makes or breaks the skill. Must 
 4. **Ask the user to override any defaults** (single AskUserQuestion with all relevant fields, or accept the defaults to skip ahead).
 5. **Append the row** to the chosen section.
 6. **Echo back** the new row ID and a one-line confirmation.
+7. **Archive nudge (non-blocking):** count Fixed/Done rows in the active tables; if 5 or more, append the one-line archive nudge (see `/unforget archive` § The archive nudge). Never let it add latency or a prompt — the 30s speed target wins.
 
 ### Subsection flags (optional)
 
@@ -194,6 +196,8 @@ The skill renders the matching rows in the same 10-column format as UNFORGET.md,
 
 For the simplest case (`/unforget list` alone), this is the answer the user was actually looking for when they asked "what's deferred?"
 
+**Archive nudge:** after the list output, if 5 or more Fixed/Done rows are sitting in the active tables, append the one-line archive nudge (see `/unforget archive` § The archive nudge). This is the moment the user is already looking at the ledger, so it is where accumulated-completed-row clutter is most usefully surfaced.
+
 ### Terminal-aware rendering
 
 The full 10-column table is wide (typically 200+ characters with emoji-width quirks). On narrow terminals it wraps or renders as vertical blocks instead of horizontal rows. To stay readable:
@@ -273,6 +277,57 @@ Default to **investigate** if uncertain. The scan never modifies UNFORGET.md. It
 ### Scheduling
 
 `/unforget scan` is safe to run on demand. For automated recurring scans, the user can schedule it via Claude Code's `/schedule` skill (or any cron-like external scheduler). The skill output is plain markdown, suitable for posting to Slack, email, or GitHub Actions summary.
+
+---
+
+## /unforget archive
+
+Move completed rows out of the active tables into a dated archive file. **Lightweight and safe to run anytime** — this is the everyday cleanup command, distinct from the heavyweight release-time `/unforget promote` ritual (see `reference/promotion.md`). `promote` re-triages the whole release cycle (verify THIS, roll NEXT→THIS, re-rank SOMEDAY, stamp the release line); `archive` does only the one job of clearing finished work out of view.
+
+### Why this exists
+
+`promote` was historically the only command that removed completed rows, but it is a release-submission ritual the user has to remember to invoke. In practice ledgers accumulate dozens of ✅ Done rows that were never cleared because nobody runs `promote` between releases — the single most common way an UNFORGET.md rots. `archive` is the low-friction alternative: one job, no release semantics, run it whenever the active tables feel cluttered. The `list` and `add` archive nudge (below) points here.
+
+### Usage
+
+```
+/unforget archive                     ·  archive clean-Done rows (keeps "Done-but-owed" rows — see safety rule)
+/unforget archive --dry-run           ·  show what WOULD be archived, write nothing
+/unforget archive --all-done          ·  archive every Fixed/Done row, including "owed" ones (skip the safety hold)
+```
+
+### Safety rule (the important part): keep "Done-but-owed" rows
+
+A row can read `✅ Done` / `Fixed` yet still carry residual work its own text signals. Archiving those hides real remaining work — the exact failure this skill exists to prevent. So by default a Done row is **held in the active tables** (not archived) when its Status or Finding text contains an owed-signal:
+
+- `pending` / `owed` / `still owed`
+- `eyeball` / `visual check` / `verify on device` / `device-verify` / `device round-trip`
+- `delivery test` / `deploy owed` / `not yet deployed` / `awaiting deploy`
+- `⏳` / `pending real-device`
+
+Only a row that is Done/Fixed **and** carries no owed-signal is archived. `--all-done` overrides this hold (use when the user confirms the owed threads are moot). Rows that are `In Progress`, `Open`, `Deferred`, `Superseded`, or a self-declared "keep as marker" (e.g. a Withdrawn row whose text says to keep it) are never archived.
+
+### Steps
+
+1. **Read UNFORGET.md.** Identify every row whose Status is `Fixed` / `Done` (or a ✅-marked variant).
+2. **Apply the owed-signal hold** (above) unless `--all-done`. Split into `archive` vs `keep (owed)`.
+3. **Preview** — show the two lists (IDs + one-line title) and counts: "Archive N clean-Done rows; keep M Done-but-owed rows active." On `--dry-run`, stop here and write nothing.
+4. **Confirm** with the user (single AskUserQuestion: proceed / show-full-rows / cancel).
+5. **Back up first** — copy UNFORGET.md to a temp path before editing, so a mis-classification is recoverable.
+6. **Write:** move the archived rows to `UNFORGET-archive.md` in the same directory as UNFORGET.md (create with a header if absent; append a dated `## Archived <date>` block if it exists). Remove those rows from the active tables. Preserve table structure — section headers and separator rows stay intact.
+7. **Report** the before/after active row count and the archive-file path.
+
+`archive` modifies UNFORGET.md, so (like `promote`) it always previews before writing. Unlike `promote`, it does not touch Target values, re-rank anything, or stamp release metadata — it only relocates finished rows. The archive file is never scanned by `init`/`import` (it lives under the archive-path exclusion rule in `reference/surfaces.md`), so archived rows do not re-enter the active backlog.
+
+### The archive nudge (surfaced by `list` and `add`)
+
+To make cleanup discoverable without forcing it, `/unforget list` and `/unforget add` append a one-line nudge when completed rows pile up. After their normal output, count rows whose Status is `Fixed` / `Done` in the active tables; if **5 or more**, append exactly one line:
+
+```
+💡 N completed rows are sitting in the active tables — run /unforget archive to move them out.
+```
+
+One line, non-blocking, informational — never a prompt or an action. Threshold is 5 by default; if UNFORGET.md has a `config` block at the top with `archive_nudge_threshold: N`, honor that instead (0 silences it). On `/unforget add`, skip the nudge if the add itself was slow — `add`'s 30-second speed promise wins; the nudge must never add latency or a question.
 
 ---
 

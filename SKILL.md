@@ -68,6 +68,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
 | `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
+| `/unforget archive` | Move completed (Done/Fixed) rows out of the active tables into an archive file; lightweight, run anytime; holds back "Done-but-owed" rows | `reference/commands.md` |
 | `/unforget promote` | Release-time ritual: verify 🔴 THIS rows fixed, promote 🔵 NEXT to 🔴 THIS | `reference/promotion.md` (with backups in same file) |
 | `/unforget --version` | Print version, install path, supported format-version; install-verification | `reference/commands.md` |
 
@@ -79,6 +80,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **A new audit / plan / memory file appeared since init** → `/unforget import`
 - **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only)
 - **You want to find rows that have aged past their thresholds** → `/unforget scan`
+- **Completed rows have piled up and you want them out of the active view** → `/unforget archive` (lightweight; use this between releases instead of `promote`)
 - **You're about to ship a release** → `/unforget promote`
 - **You want to verify the install loaded correctly** → `/unforget --version`
 - **A row is being closed (`/unforget edit <ID> --status=Fixed`) and you want the post-fix sweep** → see `reference/promotion.md` § post-fix-sweep

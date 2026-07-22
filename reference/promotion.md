@@ -2,6 +2,8 @@
 
 This file holds the release-time promote ritual, the post-fix-sweep workflow that closure recommendations point at, and the backup/recovery contract. Read it on `/unforget promote`, when discussing closure recommendations, or when recovering a broken UNFORGET.md.
 
+**`promote` vs `archive`:** `/unforget promote` is the heavyweight release ritual documented below (verify 🔴 THIS, roll 🔵 NEXT → 🔴 THIS, re-rank ⚪ SOMEDAY, stamp the release line). If all you want is to clear completed rows out of the active view *between* releases, use the lightweight `/unforget archive` instead (spec in `reference/commands.md`) — it relocates finished rows without any release-cycle re-triage. Route day-to-day cleanup through `archive`; reserve `promote` for the release boundary. (`promote` still archives completed 🔴 THIS/🔵 NEXT rows as part of its ritual — the two share the same archive file and the same "don't archive Done-but-owed rows" safety rule.)
+
 ---
 
 ## /unforget post-fix-sweep (workflow, not a command)
