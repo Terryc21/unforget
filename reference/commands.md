@@ -341,7 +341,7 @@ Print the installed skill's version, install path, and the format-version it sup
 unforget v0.2.1
 Install path: ~/.claude/plugins/unforget/  (Claude Code plugin)
 Supported format-version: v1
-Subcommands: init, add, edit, import, list, scan, promote, --version
+Subcommands: init, add, edit, import, list, scan, archive, promote, --version
 ```
 
 The version string is read from the SKILL.md frontmatter `version` field. The install path is detected at runtime: plugin installs report the plugin directory, manual v0.1 installs report `~/.claude/skills/unforget/`. Supported format-version comes from the spec (currently `v1`; future versions will list multiple if backward compatibility is preserved).
