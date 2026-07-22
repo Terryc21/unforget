@@ -338,7 +338,7 @@ Print the installed skill's version, install path, format-version support, **ins
 ### Output format
 
 ```
-unforget v1.0.1
+unforget v1.0.2
 Install path: <detected at runtime>  (Claude Code plugin)
 Supported format-version: v1
 Subcommands: init, add, edit, import, list, scan, archive, promote, --version

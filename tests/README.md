@@ -39,6 +39,17 @@ dependencies.
 | `scripts/dedup_findings.py` | `golden/dedup_findings.json` | Run against `fixtures/dedup-input.json`. Confirms the Jaccard fuzzy-merge clusters two near-duplicate headlines and keeps two distinct findings separate. |
 | `scripts/verify_install.py` | `golden/verify_install.json` | Run with `--skill-root <repo-root>` (integrity-only; no `--project-root`, so the recall check is deliberately skipped for a stable golden). Confirms all 10 companion files resolve from the repo root and `integrity_ok` is true. `skill_root` is normalized to `<REPO_ROOT>`. |
 
+### Repo-invariant checks (pass/fail, not golden-diffed)
+
+Some checks assert an invariant over the whole repo rather than diffing a frozen
+snapshot. They run in `tests/run.sh` as direct pass/fail gates — no golden,
+because the thing they count (e.g. number of tables) grows legitimately over
+time and a snapshot would be brittle.
+
+| Check | What it asserts |
+|---|---|
+| `scripts/check_header_order.py --root <repo>` | Every UNFORGET-ledger table header across the repo lists its core columns in canonical order (`# → Target → Finding → Urgency → …`). Guards against finding #1 (a fixture that reversed Target/Finding) returning silently. Validates *relative* order, so abbreviated headers (`Urg`/`RFix`), appended extra columns (`1-Star Risk`), and preset omissions (Lean) all pass; non-ledger tables (roadmap/feedback docs, which have Finding but no Target) are skipped. |
+
 ### Not covered (deferred)
 
 - **`scripts/prune_backups.py`** — destructive (deletes files). Belongs in its

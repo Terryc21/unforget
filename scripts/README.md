@@ -18,6 +18,8 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 | `dedup_findings.py` | Fuzzy-merge duplicate candidate findings across surfaces (Jaccard on tokenized headlines). | `reference/surfaces.md` § Cross-surface deduplication |
 | `check_format_version.py` | Read `<!-- unforget-format: vN -->` marker; report whether the skill can write or must operate read-only. | `SKILL.md` § Format-version contract |
 | `prune_backups.py` | Backup rotation. Lists `UNFORGET.md.bak-YYYY-MM-DD-HHMMSS`, sorts by timestamp, deletes any beyond the most recent N (default 5). | `reference/promotion.md` § Retention |
+| `verify_install.py` | Verify companion-file integrity (all `reference/*.md` + `scripts/*.py` reachable) and report recall-trigger status. | `reference/commands.md` § `/unforget --version` |
+| `check_header_order.py` | Lint every UNFORGET-ledger table header in a tree for canonical core-column order (Target before Finding before …). Read-only. Tolerates abbreviations, appended extra columns, and preset omissions; skips non-ledger tables (roadmap/feedback docs). | `tests/run.sh` (repo invariant) |
 
 ## Invoking from the skill
 

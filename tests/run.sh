@@ -77,6 +77,18 @@ if [[ "$BLESS" == 1 ]]; then
   exit 0
 fi
 
+# Header-order lint: a repo-wide invariant, not a golden snapshot (the checked
+# count grows as tables are added, which would make a golden brittle). Scans
+# every UNFORGET-ledger table header for canonical core-column order. This is
+# the guard that keeps finding #1 (a fixture that reversed Target/Finding) from
+# silently returning. Runs over the whole repo, LLM-free.
+echo
+echo "--- header-order lint (canonical column order) ---"
+if ! python3 "$SCRIPTS/check_header_order.py" --root "$REPO_ROOT"; then
+  echo "FAIL: one or more UNFORGET-ledger headers are out of canonical order"
+  FAILED=1
+fi
+
 # Behavioral corpus: run the LLM-free halves inline (checker selftest + check
 # over any already-produced results). The LLM half is driven separately; see
 # tests/behavioral/README.md. Selftest failing means the behavioral CHECKER is
