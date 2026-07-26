@@ -20,32 +20,34 @@ A **skill** is a markdown file Claude Code knows how to run. When you type `/unf
 - **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
 - **Rescan anytime:** `/unforget import` re-runs the 6-surface scan to catch new deferred items that appeared after init (new audit reports, plan files, memory entries, TODO comments). Has duplicate detection so it won't double-import.
 - **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
-- **Maturity:** v2.0.0 (backward compatible with v1 ledgers); used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+- **Maturity:** v2.0.1 (backward compatible with v1 ledgers); used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
 
 ## What it looks like
 
-Before you install, here's a populated `UNFORGET.md` — the whole point of the skill in one screen. Four sections, one rating table each, a Target column that says when each item ships:
+Before you install, here's a populated `UNFORGET.md` — the whole point of the skill in one screen. Four sections, one rating table each, a Target column that says when each item ships, and a machine-readable status so a "done" can't quietly count as done until it's been checked:
 
 ```markdown
-<!-- unforget-format: v1 -->
+<!-- unforget-format: v2 -->
 # UNFORGET — Deferred Work
 
 ## 3. Audit findings
 
 | #  | Target      | Finding                                   | Urgency     | Risk: Fix | Risk: No Fix | ROI          | Blast Radius | Fix Effort | Status |
 |----|-------------|-------------------------------------------|-------------|-----------|--------------|--------------|--------------|------------|--------|
-| A1 | 🔴 THIS     | Paywall lists a feature that ships free   | 🟡 HIGH     | ⚪ Low    | 🟡 High      | 🟠 Excellent | ⚪ 1 file    | Trivial    | Open   |
-| A2 | 🔵 NEXT     | N+1 query on the inventory list screen    | 🟢 MEDIUM   | 🟢 Medium | 🟢 Medium    | 🟢 Good      | 🟢 2-5 files | Small      | Open   |
+| A1 | 🔴 THIS     | Paywall lists a feature that ships free   | 🟡 HIGH     | ⚪ Low    | 🔴 Crit      | 🟠 Excellent | ⚪ 1 file    | Trivial    | `@status:done-verified` `@verified:device` |
+| A2 | 🔵 NEXT     | N+1 query on the inventory list screen    | 🟢 MEDIUM   | 🟢 Medium | 🟢 Medium    | 🟢 Good      | 🟢 2-5 files | Small      | `@status:open` |
 
 ### Detail — Audit findings
 
-- **A1** — Store copy promises "unlimited exports" behind the paywall, but exports are already free for everyone. Ship-blocker: it's a false paywall claim App Review flags. **Verify-still-open:** `grep -rn "unlimited exports" Sources/Paywall/` — expect: still present in `PaywallCopy.swift`.
-- **A2** — `InventoryList` fetches each item's thumbnail in the row body instead of batching. Surfaced by the perf audit 2026-07-14; not a blocker but visible jank past ~50 rows.
+- **A1** — **CLOSED (`done-verified` on device).** Store copy promised "unlimited exports" behind the paywall, but exports are already free — a false paywall claim App Review flags. Fixed and confirmed on a device, so `archive` can move it out.
+- **A2** — `InventoryList` fetches each item's thumbnail in the row body instead of batching. Surfaced by the perf audit 2026-07-14; not a blocker but visible jank past ~50 rows. **Verify-still-open:** `grep -rn "loadThumbnail" Sources/Views/InventoryList.swift`.
 ```
 
-**Reading it:** `🔴 THIS` is the only Target that blocks shipping — at release time every 🔴 THIS row must be Fixed or demoted with a reason. `🔵 NEXT` / `🟡 LATER` / `⚪ SOMEDAY` are progressively looser commitments. The table is the index; the **Detail** block under it holds the *why*, the file paths, and a one-line `Verify-still-open` grep so a row that's silently gone stale gets caught before you work it.
+**Reading it:** `🔴 THIS` is the only Target that blocks shipping. The Status cell leads with a token tools read — `@status:done-verified` means fixed **and** checked against ground truth; a `@status:done-unverified` row is done-but-owed and gets *held back* from archive until it's proven. The table is the index; the **Detail** block holds the *why*, the file paths, and a one-line `Verify-still-open` grep so a row that's silently gone stale gets caught before you work it.
 
 That's the format. The slash commands (`add`, `list`, `promote`, …) just keep this file correct so you don't hand-maintain it.
+
+> **See it live** → a fuller example page (status tokens, the optional 1-Star Risk column, a branch pointer) with expandable explainers and wide-table scrolling: **[what unforget produces](https://claude.ai/code/artifact/ced9c51b-cb85-413a-92fb-5e24ae2f6a8e)**
 
 **Optional: `1-Star Risk` column.** Projects shipping a public app can append one extra column that rates each row's exposure to an App Store one-star review, borrowing the risk-strip from the [`one-star-risk`](https://github.com/Terryc21/one-star-risk) skill. It's opt-in and doesn't change the format version — most rows sit at `⚪ n/a`; the value is the risky few:
 
@@ -152,9 +154,9 @@ Excerpt from [`examples/UNFORGET.md`](examples/UNFORGET.md) (a sanitized version
 
 | #  | Target     | Finding                                              | Urg     | RFix    | RNo     | ROI          | Blast      | Effort | Status   |
 |----|------------|------------------------------------------------------|---------|---------|---------|--------------|------------|--------|----------|
-| P1 | 🟡 LATER   | Schema v3 migration paused (rollback path unclear)   | 🟢 MED  | 🟡 High | 🟢 Med  | 🟢 Good      | 🟢 ~7 fls  | Med    | Deferred |
-| P2 | 🔵 NEXT    | Test suite: 23 flaky tests, 4 root causes            | 🟡 HIGH | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟡 ~10 fls | Med    | Deferred |
-| P3 | 🔴 THIS    | Wallet pass server signing not yet implemented       | 🟡 HIGH | 🟢 Med  | 🟡 High | 🟠 Excellent | 🟢 ~4 fls  | Med    | Fixed    |
+| P1 | 🟡 LATER   | Schema v3 migration paused (rollback path unclear)   | 🟢 MED  | 🟡 High | 🟢 Med  | 🟢 Good      | 🟢 ~7 fls  | Med    | `@status:blocked` |
+| P2 | 🔵 NEXT    | Test suite: 23 flaky tests, 4 root causes            | 🟡 HIGH | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟡 ~10 fls | Med    | `@status:open` |
+| P3 | 🔴 THIS    | Wallet pass server signing not yet implemented       | 🟡 HIGH | 🟢 Med  | 🟡 High | 🟠 Excellent | 🟢 ~4 fls  | Med    | `@status:done-verified` `@verified:device` |
 
 ### Detail - Paused plans
 
@@ -176,6 +178,11 @@ Months later, when you ask "what's deferred?", the answer requires walking every
 `unforget` collapses all deferral into ONE file, structured so you can scan, prioritize, and ship at a glance.
 
 ## How it works
+
+<details>
+<summary><strong>The format, the columns, and what the skill does</strong> — click to expand (or skip straight to <a href="#quick-start">Quick start</a>)</summary>
+
+<br>
 
 ### The format
 
@@ -216,6 +223,10 @@ For example: an item rated 🟡 HIGH urgency might still be 🟡 LATER, because 
 - **Flags stale rows** with `/unforget scan` (read-only).
 - **Runs release prep** with `/unforget promote`: verifies all 🔴 THIS rows are Fixed, then bumps NEXT into THIS.
 - **Wires your project's AI instruction file** (CLAUDE.md, AGENTS.md) so future AI sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
+
+</details>
+
+<a id="quick-start"></a>
 
 ## Quick start
 
