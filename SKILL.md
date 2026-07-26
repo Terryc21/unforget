@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.6.0
+version: 2.0.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -148,7 +148,7 @@ This block is what makes the skill's recall trigger work. Without it, future AI 
 
 ### Format-version contract
 
-Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v1.6) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, the `verify` lint, the deferral gate, branching, the onboarding/recall-block wiring, the row-length discipline (bounded index rows + lossless splits), and the companion-skill handoffs (function→manifest, invocable-name detection); a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
+Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v2.0) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, the `verify` lint, the deferral gate, branching, the onboarding/recall-block wiring, the row-length discipline (bounded index rows + lossless splits), and the companion-skill handoffs (function→manifest, invocable-name detection); a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
 
 - **Marker absent.** The skill prompts: "this file may not be in unforget format; proceed anyway?" Default response is no. If the user proceeds, the skill operates as best it can without format guarantees, and recommends adding `<!-- unforget-format: v2 -->` near the top of the file to silence the prompt on future reads.
 - **Marker recognized (`v1` or `v2`).** The skill proceeds normally. A `v1` file is treated as a legacy ledger: the v2-only features (status tokens, registry, `verify` errors) simply don't apply; nothing is required or auto-added until the file is upgraded to `v2`.
@@ -168,10 +168,23 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 
 ## Changelog
 
-### v1.6.0 — companion skill handoffs (2026-07-26) · format v2 · **v1.1 design build COMPLETE**
-Phase 8, the final phase: unforget recommends OTHER skills at earned ledger transitions —
-function-based, not skill+URL hardcoded through trigger points, so a companion link rots in ONE
-place (the manifest), never twelve.
+### v2.0.0 — the format-v2 milestone (2026-07-26) · **the eight-phase design build, complete**
+**A milestone, NOT a breaking change.** The major bump marks scope, not incompatibility: every v1
+ledger keeps working untouched, no migration is forced, and the skill reads and writes both v1 and
+v2. What earns the `2.0.0` is that this is a categorically more capable tool than v1.0 — eight
+phases (shipped incrementally as v1.1.0 through v1.6.0, now tagged together as v2.0.0) added the
+whole format-v2 layer: **structured `@status`/`@verified`
+tokens** (a row can't contradict itself; a "done" isn't done until it's verified), a **registry**
+(where every ledger lives + git posture + policies), the **`verify` integrity lint** (gates
+archive/promote), the **deferral gate** (trivial tripwire + why-not-now + session accounting), the
+**`branch` command** (atomic child ledgers), **onboarding wiring** (a maintained CLAUDE.md recall
+block + drift reconciliation), **row-length discipline** (bounded index rows + lossless splits), and
+**companion skill handoffs** (below). Backward compatible throughout; a v1 (tokenless) ledger is
+never blocked by any v2 check.
+
+The final phase, companion skill handoffs: unforget recommends OTHER skills at earned ledger
+transitions — function-based, not skill+URL hardcoded through trigger points, so a companion link
+rots in ONE place (the manifest), never twelve.
 
 - **Five fixed functions** (`reference/skill-handoffs.md`): `post-fix-sibling-scan`,
   `ship-risk-scoring`, `audit-reverify`, `forward-bug-hunt`, `verify-against-reality`. Each fires

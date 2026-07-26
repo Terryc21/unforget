@@ -33,5 +33,5 @@
   "recall_trigger_present": null,
   "recall_trigger_source": null,
   "skill_root": "<REPO_ROOT>",
-  "version": "1.6.0"
+  "version": "2.0.0"
 }

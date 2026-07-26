@@ -20,7 +20,7 @@ A **skill** is a markdown file Claude Code knows how to run. When you type `/unf
 - **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
 - **Rescan anytime:** `/unforget import` re-runs the 6-surface scan to catch new deferred items that appeared after init (new audit reports, plan files, memory entries, TODO comments). Has duplicate detection so it won't double-import.
 - **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
-- **Maturity:** v1.0.3; used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+- **Maturity:** v2.0.0 (backward compatible with v1 ledgers); used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
 
 ## What it looks like
 
@@ -112,12 +112,13 @@ Honest assessment from the project author:
 - **What would sharpen it most:** feedback from projects whose shape differs from the source. Non-Apple stacks, continuous-deployment workflows, libraries, single-page apps, anything other than "mobile app shipping discrete releases." [Open an issue](https://github.com/Terryc21/unforget/issues) if you try it on something different and the format breaks down.
 - **The install path got smoother in v0.2.** v0.1 required cloning a git repo. v0.2 ships as a Claude Code plugin: two one-line commands and you invoke as `/unforget` (no prefix). The clone-and-copy fallback still works.
 
-## What's next (v1.1 — designed, not yet shipped)
+## What shipped in v2.0 (the format-v2 layer)
 
-v1.0 is the solid, shipping baseline above. In 2026 a full design pass landed for the next
-major evolution — and every piece of it traces to a real failure caught while running unforget on
-a big, long-lived ledger (a ~155 KB `UNFORGET.md` whose rows had grown into multi-KB walls of
-text). Not a wishlist — a list of things that actually bit, and the fix for each:
+v1.0 was the solid baseline above. In 2026 a full design pass landed for the next major
+evolution, and it's now all shipped as **v2.0** — a milestone, not a breaking change: every v1
+ledger keeps working untouched. Every piece of it traces to a real failure caught while running
+unforget on a big, long-lived ledger (a ~155 KB `UNFORGET.md` whose rows had grown into multi-KB
+walls of text). Not a wishlist — a list of things that actually bit, and the fix for each:
 
 - **Branching** — when a sprint or a user-only punch-list earns its *own* ledger, and how to keep
   siblings from drifting into a "which file is the real one?" mess. (That drift is a bug the
@@ -136,9 +137,11 @@ text). Not a wishlist — a list of things that actually bit, and the fix for ea
   after you close a code-fix, for instance) through a manifest *you* control, recommending a
   *capability* rather than hardcoding a link that'll rot.
 
-These live as `DESIGN-*.md` documents kept alongside the ledgers they describe; the changelog in
-`SKILL.md` indexes them, and the implementation plan orders the build. None of it is implemented
-yet — it's the map, written down so the design can't slip the way the work it tracks used to.
+Plus **row-length discipline** — the fix for that ~155 KB ledger itself: a row stays a bounded
+one-line index and its history moves to a detail block, losslessly, so a `list` never truncates
+and misleads. All eight pieces are built and backward compatible; the changelog in `SKILL.md`
+tracks them phase by phase, and the `DESIGN-*.md` documents that specified the build are indexed
+there too.
 
 ## See it first
 
@@ -365,7 +368,7 @@ See [Maturity](#maturity--where-this-is-solid-and-where-feedback-would-help) abo
 
 ## Contributing
 
-The format is stable as of v1.0 but the project shape it knows best is the one it came from (a single-developer mobile app shipping discrete releases). The most valuable thing you can do is try it on a project shape it hasn't seen and tell me where the format broke down. [Open an issue](https://github.com/Terryc21/unforget/issues). Especially helpful: small repos, non-Apple stacks (web, Android, backend, libraries), Cursor / Aider / Copilot workflows, continuous-deployment workflows.
+The format is stable as of v2.0 (v1 ledgers still supported) but the project shape it knows best is the one it came from (a single-developer mobile app shipping discrete releases). The most valuable thing you can do is try it on a project shape it hasn't seen and tell me where the format broke down. [Open an issue](https://github.com/Terryc21/unforget/issues). Especially helpful: small repos, non-Apple stacks (web, Android, backend, libraries), Cursor / Aider / Copilot workflows, continuous-deployment workflows.
 
 Pull requests welcome for:
 

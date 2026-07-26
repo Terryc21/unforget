@@ -496,7 +496,7 @@ Print the installed skill's version, install path, format-version support, **ins
 ### Output format
 
 ```
-unforget v1.3.0
+unforget v2.0.0
 Install path: <detected at runtime>  (Claude Code plugin)
 Supported format-version: v1, v2
 Subcommands: init, add, edit, import, list, scan, branch, verify, archive, promote, --version
@@ -515,7 +515,7 @@ Recall trigger: ✗ no Deferred Work Index block in this project's CLAUDE.md/AGE
                   → deferred-work questions will NOT auto-route here; run /unforget init to add it
 ```
 
-The version string is read from the SKILL.md frontmatter `version` field. The install path is detected at runtime: plugin installs report the plugin directory, manual v0.1 installs report `~/.claude/skills/unforget/`. Supported format-version comes from the spec (currently `v1`; future versions will list multiple if backward compatibility is preserved).
+The version string is read from the SKILL.md frontmatter `version` field. The install path is detected at runtime: plugin installs report the plugin directory, manual v0.1 installs report `~/.claude/skills/unforget/`. Supported format-version comes from the spec (currently `v1` and `v2`, backward compatible; a future `v3` would list here too once it lands).
 
 ### Install integrity
 
