@@ -84,8 +84,10 @@ def finding_cell(row: str) -> str:
 
 
 def status_cell(row: str) -> str:
-    c = cells_of(row)
-    return c[-1] if c else ""
+    # Find the cell carrying the @status token by CONTENT, via the one
+    # authoritative implementation, so an appended 1-Star Risk column after
+    # Status isn't mistaken for the status cell.
+    return parse_status.status_cell(row)
 
 
 def read_budget(args) -> int:

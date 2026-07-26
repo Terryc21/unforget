@@ -97,6 +97,57 @@ fi
 # over any already-produced results). The LLM half is driven separately; see
 # tests/behavioral/README.md. Selftest failing means the behavioral CHECKER is
 # broken and must fail the suite; a behavioral case failing does too.
+# Example-as-fixture: the committed examples/UNFORGET.md is a real v2 ledger that
+# exercises all six @status values, a done-unverified "owed" row, a bounded-index
+# split, AND the optional 1-Star Risk column appended after Status. That last part
+# is the regression guard for the "status_cell read the trailing column, not the
+# token" bug: if status parsing regresses, the token count drops and this fails.
+echo
+echo "--- example-as-fixture (examples/UNFORGET.md, a real v2 ledger) ---"
+if ! python3 - "$REPO_ROOT" <<'PY'
+import json, subprocess, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+ex = root / "examples" / "UNFORGET.md"
+scripts = root / "scripts"
+ok = True
+
+# 1. format v2 recognized
+r = subprocess.run([sys.executable, str(scripts / "check_format_version.py"), str(ex)],
+                   capture_output=True, text=True)
+fv = json.loads(r.stdout or "{}")
+if not fv.get("recognized") or fv.get("format_version") != "v2":
+    print(f"FAIL: example not recognized as v2 ({fv.get('format_version')})"); ok = False
+
+# 2. EVERY row carries a parseable @status token and there are ZERO integrity issues.
+#    (This is the 1-Star-Risk-after-Status regression guard: the bug made this 0.)
+r = subprocess.run([sys.executable, str(scripts / "parse_status.py"), "--file", str(ex)],
+                   capture_output=True, text=True)
+rows = json.loads(r.stdout or "[]")
+tokened = sum(1 for x in rows if x["token_present"])
+issues = [(x["id"], x["issues"]) for x in rows if x["issues"]]
+if tokened != len(rows):
+    print(f"FAIL: only {tokened}/{len(rows)} example rows parsed a @status token "
+          f"(regression: an appended column may be shadowing the Status cell)"); ok = False
+if issues:
+    print(f"FAIL: example has status integrity issues: {issues}"); ok = False
+
+# 3. the verify gate passes on the example (no error-severity findings)
+r = subprocess.run([sys.executable, str(scripts / "verify_ledger.py"), "--file", str(ex)],
+                   capture_output=True, text=True)
+v = json.loads(r.stdout or "{}")
+if not v.get("gate_pass", False):
+    print(f"FAIL: verify gate does not pass on the example ({v.get('error_count')} errors)"); ok = False
+
+if ok:
+    print(f"OK: example is v2, all {len(rows)} rows tokened, verify gate passes.")
+sys.exit(0 if ok else 1)
+PY
+then
+  echo "FAIL: examples/UNFORGET.md regressed"
+  FAILED=1
+fi
+
 echo
 echo "--- behavioral corpus (LLM-free portion) ---"
 if ! bash "$TESTS_DIR/behavioral/run-behavioral.sh" --selftest; then

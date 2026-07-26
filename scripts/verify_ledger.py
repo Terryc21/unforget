@@ -69,8 +69,10 @@ SEVERITY_ORDER = {"error": 0, "warn": 1}
 
 
 def status_cell(row: str) -> str:
-    cells = [c for c in row.rstrip().rstrip("|").split("|")]
-    return cells[-1].strip() if cells else ""
+    # Delegate to the one authoritative implementation, which finds the cell
+    # carrying the @status token by CONTENT (so an appended 1-Star Risk column
+    # after Status doesn't get read as the status). One source, not three.
+    return parse_status.status_cell(row)
 
 
 def finding_cell(row: str) -> str:

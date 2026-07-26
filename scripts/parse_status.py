@@ -95,10 +95,23 @@ ROW_ID_RE = re.compile(r"^\|\s*([A-Za-z]?\d+)\s*\|")
 
 
 def status_cell(row: str) -> str:
-    """Return the last pipe-delimited cell of a table row (the Status cell)."""
-    # Strip trailing pipe/whitespace, split on '|', take the last non-empty cell.
-    cells = [c for c in row.rstrip().rstrip("|").split("|")]
-    return cells[-1].strip() if cells else ""
+    """Return the Status cell of a table row.
+
+    The Status cell is the one that CARRIES the `@status:` token — found by
+    content, not by position. This matters because the format allows an optional
+    `1-Star Risk` column appended AFTER Status (reference/format.md § Optional
+    column): a naive "last cell" would then read the risk strip, not the token,
+    silently breaking list/archive/verify. When no cell carries a token (a legacy
+    tokenless row, or a v2 row whose Status genuinely IS last), fall back to the
+    last non-empty cell so those keep working unchanged.
+    """
+    cells = [c.strip() for c in row.rstrip().rstrip("|").split("|")]
+    if not cells:
+        return ""
+    for cell in cells:
+        if STATUS_RE.search(cell):
+            return cell
+    return cells[-1]
 
 
 def target_is_this(row: str) -> bool:
