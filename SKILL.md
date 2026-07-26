@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.0.0
+version: 2.0.1
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -167,6 +167,32 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.0.1 — column-layout robustness (2026-07-26) · patch
+Bug fixes only, no new features, backward compatible. A refreshed example that finally
+exercised the format's own optional/variable columns surfaced a family of positional
+table-cell reads that broke when the column layout wasn't the Standard 10:
+
+- **Status was read by position, not content.** `parse_status.status_cell` (and its copies
+  in `verify_ledger`/`row_budget`) took the *last* table cell as Status — so an appended
+  `1-Star Risk` column made the risk strip get read as the status, silently breaking
+  `list`/`archive`/`verify` (zero tokens found). Now the Status cell is located by the cell
+  carrying the `@status` token; the three copies are consolidated into one.
+- **Finding was read as a fixed index.** `finding_cell` used `cells[2]`, which is *Urgency*
+  under the **Compact** preset (that preset drops the Target column). Now a single
+  preset-aware locator (detects the Compact `**🔴 THIS · …**` badge) that both call sites
+  delegate to. `target_is_this` hardened the same way.
+- **The `verify --fix` / `row_budget split` path** (`build_index_row`) read Finding/Status
+  by fixed index; now by content, so a split of a 1-Star-column row preserves the risk
+  strip and bounds the real Status.
+- **`branch` wrote a fixed 10-column pointer row.** Now `build_pointer_row` derives the
+  column set from the parent's actual header and places content by column name, so a
+  Lean/Compact/Continuous/1-Star parent gets a correctly-shaped pointer row.
+
+All found via `/bug-echo` on the first fix; each fix reproduced before and after, with
+regression guards added to the test suite (proven to fail if the fix regresses). The
+refreshed `examples/UNFORGET.md` now shows format v2 (real `@status` tokens, a
+`done-unverified` owed row, a lossless split) plus the optional `1-Star Risk` column.
 
 ### v2.0.0 — the format-v2 milestone (2026-07-26) · **the eight-phase design build, complete**
 **A milestone, NOT a breaking change.** The major bump marks scope, not incompatibility: every v1
