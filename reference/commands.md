@@ -23,6 +23,53 @@ Capture a new deferral. The friction point that makes or breaks the skill. Must 
 /unforget add "Brief description of the thing being deferred"
 ```
 
+### The deferral gate (format v2+) — runs FIRST, before anything else
+
+Before `add` writes a row, it runs the **deferral gate** (full spec:
+`reference/deferral-gate.md`). The gate exists because a deferred row looks
+identical whether it was deferred for a good reason or because deferring was
+frictionless — the *deferral-laundering* failure. The gate makes deferral cost
+something and leave an auditable record. It runs above the ID/section routing:
+
+0. **Trivial tripwire (§2).** If the would-be row is **Fix Effort = Trivial** AND
+   **Blast Radius = ⚪ 1 file**, do NOT defer — **do it now.** Scope doesn't gate
+   this: in-scope trivial → just do it; out-of-scope trivial → do it and log a
+   one-line report line in the run summary (never silently defer, never silently
+   fix). **Destructive exception:** if the trivial fix is on the always-stop list
+   (data loss, file deletion, force-push, prod deploy), it does NOT auto-do —
+   route to **needs-approval**, log `Status: needs approval`, and raise it at the
+   end. Trivial ≠ safe.
+0b. **"Why not now?" (§3).** Anything that clears the tripwire must name an
+   allow-list deferral reason: `user-decision`, `scaffolding`, `scope`, or
+   `external-block`. If none applies, the honest answer is **do it now** — do-now
+   is the default, not the row. When a reason applies, **record it** in the row's
+   detail block as `Deferred because: <tag>` so a later reader (or `scan`/`verify`)
+   can check whether it held up.
+0c. **Account (§4).** After the gate resolves, record the outcome into the
+   per-session tally so the defer/fix ratio stays visible (the load-bearing
+   backstop — a single justification can be gamed, a 7:2 ratio can't).
+
+Run the gate + tally via the helper:
+
+```
+python3 scripts/defer_tally.py gate --effort <Effort> --blast "<Blast Radius>" \
+    [--destructive] [--reason <tag>] [--policy <policy_deferral from registry>]
+# after it resolves (do-now or a written row):
+python3 scripts/defer_tally.py record --dir <ledger-dir> --outcome fixed-now
+python3 scripts/defer_tally.py record --dir <ledger-dir> --outcome deferred --reason <tag>
+```
+
+`gate` exiting 1 with `reason_required:true` means the caller must resolve the
+deferral — do the work now, or name a real allow-list reason — before a row is
+written. Policy 1 strictness (`policy_deferral`) is read from the registry;
+default `aggressive` (trivial → do-now regardless of scope). Only when the gate
+routes to `defer` do the row-writing steps below run.
+
+**Backward compatibility:** on a v1 (tokenless) ledger the gate still helps
+(the tripwire and reason check are format-independent), but nothing about it
+blocks the write path — it redirects and counts, never refuses (see
+`reference/deferral-gate.md` § Anti-patterns).
+
 ### Steps
 
 1. **Read UNFORGET.md** to find the next available ID in the chosen section.
@@ -36,9 +83,10 @@ Capture a new deferral. The friction point that makes or breaks the skill. Must 
    - Fix Effort: `Small`
    - Status: `Open`
 4. **Ask the user to override any defaults** (single AskUserQuestion with all relevant fields, or accept the defaults to skip ahead).
-5. **Append the row** to the chosen section.
-6. **Echo back** the new row ID and a one-line confirmation.
-7. **Archive nudge (non-blocking):** count Fixed/Done rows in the active tables; if 5 or more, append the one-line archive nudge (see `/unforget archive` § The archive nudge). Never let it add latency or a prompt — the 30s speed target wins.
+5. **Append the row** to the chosen section (only reached when the gate routed to `defer`).
+6. **Record the tally (format v2+):** `python3 scripts/defer_tally.py record --dir <ledger-dir> --outcome deferred --reason <tag>`. (A gate that routed to do-now instead records `--outcome fixed-now` — that path never reaches step 5.)
+7. **Echo back** the new row ID and a one-line confirmation.
+8. **Archive nudge (non-blocking):** count Fixed/Done rows in the active tables; if 5 or more, append the one-line archive nudge (see `/unforget archive` § The archive nudge). Never let it add latency or a prompt — the 30s speed target wins.
 
 ### Subsection flags (optional)
 
@@ -220,6 +268,8 @@ For the simplest case (`/unforget list` alone), this is the answer the user was 
 
 **Archive nudge:** after the list output, if 5 or more Fixed/Done rows are sitting in the active tables, append the one-line archive nudge (see `/unforget archive` § The archive nudge). This is the moment the user is already looking at the ledger, so it is where accumulated-completed-row clutter is most usefully surfaced.
 
+**Session defer/fix readout (format v2+):** after the list, append the deferral-gate session readout — `python3 scripts/defer_tally.py readout --dir <ledger-dir>` — as one line, e.g. `This session: 2 fixed inline · 7 deferred (reasons: 3 user-decision, 2 external-block, 2 scope).` When the helper raises the defer-heavy flag (exit 1), also append its advisory (`"7 deferred vs 2 fixed this session — worth a pass to see if any are actually do-now?"`). This is **advisory, never a prompt** — some sessions are legitimately defer-heavy (planning, blocked-on-devices). The reason breakdown is the point: 7 all-`user-decision` is legitimate, 7 all-`scope` is a tell. See `reference/deferral-gate.md` §4. Skip silently on a v1 ledger with no tally state.
+
 ### Terminal-aware rendering
 
 The full 10-column table is wide (typically 200+ characters with emoji-width quirks). On narrow terminals it wraps or renders as vertical blocks instead of horizontal rows. To stay readable:
@@ -257,6 +307,19 @@ Identify rows past their staleness threshold. Read-only. Never modifies the file
 | Status = Fixed | never stale (but flag as ready-for-archive) |
 
 These thresholds can be customized in a config block at the top of UNFORGET.md.
+
+### Trivial-staleness cross-check (format v2+, deferral-gate §4d)
+
+`scan` sharpens one flag that ties back to the deferral gate: a row that is **Fix
+Effort = Trivial AND has survived ≥N sessions un-done** is a near-certain
+"should've just done it" — triviality + staleness together is the hindsight
+signal that a past deferral was deferral-laundering. Surface these under a
+**"Trivial-but-stale (should've been do-now)"** heading in the scan output with
+recommendation **investigate** (usually resolvable to a quick do-now). `N` is
+registry-configurable via `stale_trivial_sessions` (read from the registry global
+block); this is how the user *learns* the pattern over time, not just catches it
+in the moment. Read-only like the rest of `scan`. On a v1 ledger with no effort
+column populated, this cross-check is skipped.
 
 ### Output structure
 

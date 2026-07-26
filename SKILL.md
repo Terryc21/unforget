@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.1.0
+version: 1.2.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -102,7 +102,8 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance | Reading/writing a row's status; running `archive`/`list`/`edit` |
 | `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
-| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
+| `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
+| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
 
@@ -163,6 +164,33 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 
 ## Changelog
 
+### v1.2.0 — deferral gate (2026-07-26) · format v2
+Phase 4 of the v1.1 design build: the **deferral gate**, which fires at `/unforget add` — the
+moment work is about to become a deferred row. It targets *deferral-laundering*: a row looks
+identical whether it was deferred for a good reason or because deferring was frictionless and
+self-flattering. The gate makes deferral cost something and leave an auditable record.
+
+- **Trivial tripwire** (`reference/deferral-gate.md` §2). A would-be row that is Fix Effort =
+  Trivial AND Blast Radius = ⚪ 1 file is redirected to **do it now** — scope doesn't gate it
+  (out-of-scope trivial → do it and log a one-line report). A trivial-but-**destructive** change
+  (deletion, force-push, prod deploy) is the exception: it routes to needs-approval, never
+  auto-done. Trivial ≠ safe.
+- **"Why not now?" allow-list** (§3). Everything that clears the tripwire must name one of four
+  deferral reasons — `user-decision`, `scaffolding`, `scope`, `external-block` — recorded in the
+  row as `Deferred because: <tag>` so a later reader (or `scan`/`verify`) can check whether it
+  held up. No valid reason → do-now is the default, not a row.
+- **Session defer/fix accounting** (§4, the load-bearing backstop). A per-session tally surfaces on
+  `list` and at session end — `2 fixed inline · 7 deferred (reasons: …)`. A defer-heavy ratio
+  (default ≥ 3× fixed) raises a gentle, **advisory-never-blocking** flag. The linguistic gate can
+  be gamed per row; a ratio can't — this half is why the gate is honest, not decorative.
+- **`scan` trivial-staleness cross-check** (§4d). A Trivial row that has survived ≥N sessions
+  un-done is flagged as a near-certain "should've just done it" — how the pattern is learned over
+  time, not just caught in the moment.
+- New `scripts/defer_tally.py` (tripwire routing + tally math; writes the ephemeral, git-ignored
+  `.unforget-session.json`) and `reference/deferral-gate.md`. Thresholds (`ratio_flag_threshold`,
+  `stale_trivial_sessions`) and strictness (`policy_deferral`, default `aggressive`) are read from
+  the registry. Backward compatible: the gate helps on a v1 ledger and never blocks the write path.
+
 ### v1.1.0 — status tokens, registry, verify lint (2026-07-26) · format v2
 The first implemented slice of the v1.1 design (Phases 1–3 of the build plan). Introduces
 **format `v2`** (the skill reads/writes both v1 and v2; v1 ledgers keep working untouched).
@@ -193,12 +221,11 @@ blocker unless it is cleanly `done-verified` or `withdrawn`.
 simply don't apply until the file is upgraded to v2. No big-bang reformat; rows gain tokens as
 they're touched.
 
-### Still designed, not yet implemented (Phases 4–8)
+### Still designed, not yet implemented (Phases 5–8)
 The remaining `DESIGN-*.md` documents (in the ledger directory alongside the ledgers) describe the
-rest of the roadmap, not yet built: the **deferral gate** (Phase 4), **branching + the `branch`
-command** (Phase 5), **onboarding `init`/`import` wiring** (Phase 6), the **row-length sweep**
-(Phase 7), and **companion skill handoffs** (Phase 8). `DESIGN-implementation-plan.md` links them
-and orders the build.
+rest of the roadmap, not yet built: **branching + the `branch` command** (Phase 5), **onboarding
+`init`/`import` wiring** (Phase 6), the **row-length sweep** (Phase 7), and **companion skill
+handoffs** (Phase 8). `DESIGN-implementation-plan.md` links them and orders the build.
 
 ### v1.0.4 — docs (2026-07-26)
 Documentation only, no behavior change: recorded the v1.1 design pass as a changelog entry and a

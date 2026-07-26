@@ -12,7 +12,8 @@
   ],
   "section_headers_missing": [],
   "supported_versions": [
-    "v1"
+    "v1",
+    "v2"
   ],
   "writable": true
 }

@@ -15,8 +15,12 @@ set -uo pipefail   # NOTE: deliberately not -e — we tolerate non-zero exits
                    # it reports drift) and rely on the diff for pass/fail.
 
 cd "$(dirname "$0")"
-TESTS_DIR="$(pwd)"
-REPO_ROOT="$(cd .. && pwd)"
+TESTS_DIR="$(pwd -P)"
+# Resolve the PHYSICAL path (-P): the skill is often installed as a symlink
+# (~/.claude/skills/unforget → the real checkout), and the helpers emit
+# realpath-resolved paths. Using the logical path here would make normalize.py's
+# repo-root string-replace miss, spuriously failing scan_surfaces on the golden.
+REPO_ROOT="$(cd .. && pwd -P)"
 
 FIXTURE="$TESTS_DIR/fixtures/sample-project"
 GOLDEN="$TESTS_DIR/golden"

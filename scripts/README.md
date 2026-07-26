@@ -4,7 +4,7 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 
 **Design constraints (all scripts):**
 
-1. **Python 3.9+ standard library only.** No `pip install` required. Imports are limited to `json`, `sys`, `os`, `re`, `pathlib`, `argparse`, `typing` (and equivalents). The skill must run on any machine with Python 3.9+.
+1. **Python standard library only.** No `pip install` required. Imports are limited to `json`, `sys`, `os`, `re`, `pathlib`, `argparse`, `typing` (and equivalents). The format-v2 scripts (`parse_status.py`, `registry.py`, `verify_ledger.py`, `defer_tally.py`) use `X | None` type-union syntax and require **Python 3.10+**; the older v1 helpers run on 3.9+.
 2. **JSON in / JSON out.** Each script reads a path or stdin and writes structured JSON to stdout. The LLM parses the JSON; it does not re-derive the algorithm.
 3. **Pure where possible.** No global state, no side effects beyond what each CLI advertises. `prune_backups.py` deletes files; the rest are read-only.
 4. **Algorithm fallback in prose.** When Python is unavailable, each `reference/*.md` file that delegates to a script keeps an "Algorithm fallback" paragraph. The fallback is functional but slower and non-deterministic.
@@ -20,6 +20,10 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 | `prune_backups.py` | Backup rotation. Lists `UNFORGET.md.bak-YYYY-MM-DD-HHMMSS`, sorts by timestamp, deletes any beyond the most recent N (default 5). | `reference/promotion.md` § Retention |
 | `verify_install.py` | Verify companion-file integrity (all `reference/*.md` + `scripts/*.py` reachable) and report recall-trigger status. | `reference/commands.md` § `/unforget --version` |
 | `check_header_order.py` | Lint every UNFORGET-ledger table header in a tree for canonical core-column order (Target before Finding before …). Read-only. Tolerates abbreviations, appended extra columns, and preset omissions; skips non-ledger tables (roadmap/feedback docs). | `tests/run.sh` (repo invariant) |
+| `parse_status.py` | (format v2+) Parse a row's `@status`/`@verified` tokens; validate the tier rule and detect a token↔narration contradiction; report `archivable`/`blocks_release`. Read-only. | `reference/status.md`; `list`/`archive`/`edit` |
+| `registry.py` | (format v2+) Read/write the registry (README-canonical block + `.unforget.json` cache); report cache-vs-README drift. README wins on disagreement. | `reference/registry.md` |
+| `verify_ledger.py` | (format v2+) Run the integrity lint (contradiction, tier, unknown-value, THIS-blocker, char-budget, stale-recipe, registry drift); return a severity-ranked finding list and a gate pass/fail. Read-only. | `reference/verify.md`; before `archive`/`promote` |
+| `defer_tally.py` | (format v2+) The deferral gate's deterministic half: route a would-be deferral (trivial tripwire + why-not-now allow-list) and keep the per-session defer/fix tally with the defer-heavy flag. Writes the ephemeral `.unforget-session.json` state file. | `reference/deferral-gate.md`; `/unforget add`, `list` |
 
 ## Invoking from the skill
 

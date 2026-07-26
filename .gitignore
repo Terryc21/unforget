@@ -15,3 +15,6 @@ Thumbs.db
 # Behavioral test run outputs (per-run LLM output; regenerated each run, never committed)
 tests/behavioral/*/result.md
 __pycache__/
+
+# Deferral-gate per-session tally (ephemeral churn, not a record; regenerated each session)
+.unforget-session.json
