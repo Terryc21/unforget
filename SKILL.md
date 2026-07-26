@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.0.3
+version: 1.0.4
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -163,6 +163,11 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 > documents describe the next major evolution; none of the behavior is implemented in this v1.0.x
 > skill yet. They're recorded here so the design isn't lost and a future build has a map. See
 > "Design specs (v1.1, not yet implemented)" below for where they live.
+
+### v1.0.4 — docs (2026-07-26)
+Documentation only, no behavior change: recorded the v1.1 design pass (below) as a changelog
+entry and a forward-looking README section. Patch bump so existing installs pick up the updated
+docs; the shipping skill is unchanged from v1.0.3.
 
 ### v1.1.0 — design complete (2026-07-25) · NOT YET IMPLEMENTED
 A full design pass, driven by real failures observed while operating the skill on a large,
