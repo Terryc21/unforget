@@ -76,10 +76,29 @@ WARN a Status/Finding cell over ~400 chars, a file-citing row with no
 verify-still-open recipe, and (if a registry exists) a cache that disagrees with
 the README. Gate fails if any ERROR is present.
 
+## Companion handoffs at verify (format v2+)
+
+Two companion-skill handoffs (full mechanic: `reference/skill-handoffs.md`) attach to
+`verify`:
+
+- **`verify-against-reality`** — when `verify` finds a `done-verified` row lacking
+  device/user evidence (the tier check), it may offer the `verify-against-reality`
+  function (a device/sim-test skill, unset by default) so the claim gets checked
+  against reality rather than left as an over-claim. Resolve via
+  `python3 scripts/companions.py resolve --function verify-against-reality --invocable "<names>"`
+  and say the resolver's expression. Governance applies: once/session, advisory only.
+- **Manifest rot check (§4c).** `verify` runs
+  `python3 scripts/companions.py rotcheck --invocable "<the session's invocable skills>"`
+  and reports any manifest entry whose skill is neither invocable NOR carries a URL —
+  "companion `X` for `<function>` is neither installed nor reachable; update the
+  manifest." An **unset** function is NOT rot (it's an honest gap). This is a WARN; it
+  never blocks the gate. Rot is detected, never silently served.
+
 ## Backward compatibility
 
 On a v1 (tokenless) ledger, `verify` produces only WARNINGS (bloat, stale-recipe,
 open THIS rows) and **no errors** — the gate passes. A legacy ledger is never
 blocked from archive/promote by the token checks, since it has no tokens to
 violate. Warnings still surface real hygiene (e.g. a 7,000-char cell), inviting
-an upgrade without forcing one.
+an upgrade without forcing one. The companion handoffs above are advisory and never
+affect the gate.

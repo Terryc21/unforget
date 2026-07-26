@@ -152,69 +152,30 @@ marking something done:
 
 `/unforget edit` is the everyday command for keeping rows accurate. Pair with `/unforget list --age=30+` to find rows that need review.
 
-### Closure recommendation prose (when marking a row Fixed)
+### Closure handoff (when marking a row done — format v2+)
 
-When `/unforget edit <ID> --status=Fixed` runs against a row whose closure narrative is non-trivial (the new detail block exceeds ~50 chars and is not a Skipped/Deferred entry), emit a structured "Suggested next steps" block immediately after confirming the status change:
+When `/unforget edit <ID> --status=done` closes a row, unforget MAY offer a **companion-skill handoff** — a function-based recommendation fired at this earned transition. The full mechanic (the five functions, the global manifest, install-state detection, governance) is `reference/skill-handoffs.md`; this is the operational summary. It **supersedes** the older inline `/radar-suite` + `/bug-echo` prose: those hardcoded two URLs at the trigger and detected installs by *directory name* — both are the anti-patterns the handoff design fixes (one manifest, invocable-name detection).
 
-```
-Row <ID> closed.
+**Which function fires:**
+- closing a **code fix** (non-trivial closure) → `post-fix-sibling-scan` (default: bug-echo — generalize the fix, find its siblings).
+- closing an **audit-finding** row → `audit-reverify` (default: radar-suite — confirm it held).
 
-Suggested next steps (the post-fix sweep — see reference/promotion.md):
-
-  1. Verify the closure is real. Stale Open ledger entries are common when
-     a fix was shipped without updating the ledger.
-       /radar-suite focus on <symbol-from-closure>
-       (install: https://github.com/Terryc21/radar-suite)
-
-  2. Generalize the fix to find unfired echoes elsewhere in the codebase.
-     Extract the anti-pattern in one sentence, then run:
-       /bug-echo "<your one-sentence pattern>"
-       (install: https://github.com/Terryc21/bug-echo)
-
-  Skip if: the fix was localized (typo, single-character bug, isolated state).
-  Worth doing when: the fix touched architecture, types, or a shared pattern.
-```
-
-**Detect-then-recommend logic:** before printing each `(install: ...)` URL, check whether the recommended skill is already installed. The skill is considered installed if any of these are true:
-
-- A directory matching `~/.claude/skills/<skill-name>/` exists (single-skill plugin layout)
-- A directory matching `~/.claude/skills/<skill-name>/skills/<skill-name>/` exists (suite layout — radar-suite uses this)
-- A `<skill-name>` entry appears in the project's plugin manifest (if Claude Code exposes one)
-
-If the skill is detected as installed, omit the `(install: ...)` line. The user sees a clean two-step prompt; they don't need to be told where to get something they already have. If detection is uncertain (filesystem access failed, plugin manifest unavailable), include the install URL as a fallback — it's better to over-inform than under-inform.
-
-**Version pinning (fail-soft).** The recommendation hardcodes the command surfaces `/radar-suite focus on <symbol>` and `/bug-echo "<pattern>"`. Both are owned by external skills whose CLI may evolve. Pin minimum-supported versions and emit a fail-soft warning when the installed version is older:
-
-| Skill | Minimum supported | If installed and < min |
-|---|---|---|
-| `radar-suite` | 3.0 | Append after the suggested command: `(installed v<X>; recommended command may have changed in v3.0+. See https://github.com/Terryc21/radar-suite for the current surface.)` |
-| `bug-echo` | 1.0 | Same pattern. |
-
-Detection: read the skill's `SKILL.md` frontmatter `version:` field at recommendation time. If the field is missing or unparseable, treat as unknown and fall through to the install URL (don't suppress, don't warn — uncertain detection should over-inform per the rule above). When the version is pinned in a v0.3+ release, bump the minimums in the table without changing the recommendation copy itself.
-
-**When to suppress the prose entirely:**
-- Status change was Open → Skipped or Open → Deferred (the row isn't actually fixed)
-- Status change was Fixed → Fixed (no-op)
-- The closure narrative is too short to suggest a meaningful pattern (under 50 chars or unchanged from the prior detail block)
-- The row is in Section 2 (Session spillover) and represents a non-code observation (skill/process improvement)
-
-**Once-per-project gate (the cross-promo marker).** Even when all the above filters pass, suppress the "Suggested next steps" block on every closure after the first. Repeated unsolicited cross-skill pitches in a tool the user installed expecting respect are a fast way to erode trust; once is helpful, twice is friction, ten times is noise.
-
-The mechanism: the first time the recommendation fires for a given UNFORGET.md, write an HTML-comment marker near the top of the file:
+**How to express it** — resolve the function against what the session reports invocable, and say the resolver's `expression` verbatim:
 
 ```
-<!-- unforget-cross-promo-shown: YYYY-MM-DD -->
+python3 scripts/companions.py resolve --function post-fix-sibling-scan \
+    --invocable "<the session's invocable skill names, comma-separated>"
 ```
 
-On every subsequent closure, check for the marker. If present, suppress the "Suggested next steps" block silently — the user already saw it and either acted on it or didn't. If absent, emit the block and write the marker as part of the same edit.
+The `--invocable` list is the AUTHORITATIVE install signal (the one-star-risk lesson: detect by invocable name, NEVER a dir find). The resolver returns one of three states: **installed** → "Run `/bug-echo` — …" (no URL); **not-installed** → one soft pointer with the manifest URL; **unset** → "no skill mapped … consider mapping one" (no URL invented). Surface exactly one line.
 
-**Re-show conditions.** The marker can be reset in two ways:
-- **User opts in explicitly:** `/unforget edit <ID> --status=Fixed --sweep` forces the block to render even if the marker is present, useful when the user wants the prompt for a particular non-trivial closure.
-- **Cooldown:** if the marker date is more than 90 days old, treat it as expired and re-show the block once. The expectation is that adopters who close one row every few months will benefit from a refresher; adopters who close many rows in a week will not.
+**Governance (the restraint — `reference/skill-handoffs.md` §5):**
+- **At most once per function per session.** Ten code-fix closures offer the scan once, batched ("3 code-fixes closed — run `post-fix-sibling-scan`?"). Track which functions already fired this session.
+- **A TRIVIAL close fires NOTHING.** A one-line typo / single-character / isolated-state fix gets no handoff. Only a closure that touched architecture, types, or a shared pattern earns one.
+- **Suppress entirely when:** the status change was Open→Skipped/Deferred (not actually fixed), a no-op (done→done), the closure narrative is too short (< ~50 chars) to suggest a pattern, or the row is a non-code observation (a process/skill note).
+- **Advisory, never blocking, never a defer.** The handoff means "do the scan NOW, while context is hot." "I'll run bug-echo later" logged as a row is deferral-laundering — the handoff's whole point is do-it-now.
 
-**Marker placement.** Write the marker on a dedicated line just under the existing `<!-- unforget-format: vN -->` marker (or at line 1 if no format marker exists). Both markers are HTML comments, so they render invisibly in any markdown viewer.
-
-For any row that does receive the prose, the recommendation is informational, not blocking. The user can ignore it and move on.
+The recommendation is informational; the user can ignore it and move on.
 
 ---
 

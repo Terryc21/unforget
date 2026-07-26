@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.5.0
+version: 1.6.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -106,7 +106,8 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
 | `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
 | `reference/branching.md` | (format v2+) the branching model: the three axes (actor / lifespan / domain), the decision cascade, parent/child conventions, and the atomic `branch` command | Deciding whether work earns a child ledger; running `/unforget branch` |
-| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector, row-length check + lossless split). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
+| `reference/skill-handoffs.md` | (format v2+) companion skill handoffs: the 5 functions, the global manifest, install-state detection by invocable name, frequency governance, the shipped-default disclosure | Firing a companion recommendation at a done/promote/verify transition |
+| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector, row-length check + lossless split, companion manifest + resolver). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
 
@@ -147,7 +148,7 @@ This block is what makes the skill's recall trigger work. Without it, future AI 
 
 ### Format-version contract
 
-Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v1.5) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, the `verify` lint, the deferral gate, branching, the onboarding/recall-block wiring, and the row-length discipline (bounded index rows + lossless splits); a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
+Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v1.6) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, the `verify` lint, the deferral gate, branching, the onboarding/recall-block wiring, the row-length discipline (bounded index rows + lossless splits), and the companion-skill handoffs (function→manifest, invocable-name detection); a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
 
 - **Marker absent.** The skill prompts: "this file may not be in unforget format; proceed anyway?" Default response is no. If the user proceeds, the skill operates as best it can without format guarantees, and recommends adding `<!-- unforget-format: v2 -->` near the top of the file to silence the prompt on future reads.
 - **Marker recognized (`v1` or `v2`).** The skill proceeds normally. A `v1` file is treated as a legacy ledger: the v2-only features (status tokens, registry, `verify` errors) simply don't apply; nothing is required or auto-added until the file is upgraded to `v2`.
@@ -166,6 +167,33 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v1.6.0 — companion skill handoffs (2026-07-26) · format v2 · **v1.1 design build COMPLETE**
+Phase 8, the final phase: unforget recommends OTHER skills at earned ledger transitions —
+function-based, not skill+URL hardcoded through trigger points, so a companion link rots in ONE
+place (the manifest), never twelve.
+
+- **Five fixed functions** (`reference/skill-handoffs.md`): `post-fix-sibling-scan`,
+  `ship-risk-scoring`, `audit-reverify`, `forward-bug-hunt`, `verify-against-reality`. Each fires
+  at a specific ledger transition and names the earned reason — never a generic "you might like
+  these skills" footer.
+- **One global manifest** (`~/.claude/unforget-companions.md`, `scripts/companions.py`): function →
+  skill → invoke → url, the ONLY place a companion URL is written. Projects inherit it. Ships a
+  default mapping the author's skills, **disclosed at init** (overridable in one place; unforget
+  works with no manifest at all).
+- **Install-state detection by INVOCABLE NAME, never a dir find** (the one-star-risk lesson —
+  `one-star-risk` is invocable but has no dir of that name). Three states: installed → run the
+  command, no URL; not-installed → one soft pointer with the manifest URL; unset → say so, invent
+  no URL. `verify` gains a rot check for entries neither installed nor reachable.
+- **Governance:** at most once/function/session; a **trivial close fires nothing**; advisory,
+  never blocking, and never a way to *defer* the scan (a handoff means do-it-now-while-context-is-hot).
+- **Reconciled** the pre-existing inline `/radar-suite`+`/bug-echo` closure block (which hardcoded
+  two URLs and detected installs by directory name) into this function/manifest system across
+  `edit`, `promote`, `deferral-gate`, and `verify`.
+
+With Phase 8 the **v1.1 design build is complete** — all eight phases (status tokens, registry,
+verify lint, deferral gate, branching, onboarding, row-length, companion handoffs) shipped.
+Backward compatible throughout: every feature degrades cleanly on a v1 ledger.
 
 ### v1.5.0 — row-length discipline (2026-07-26) · format v2
 Phase 7 of the v1.1 design build: the **row-length rule** that keeps a ledger Readable. A row is a
@@ -303,10 +331,11 @@ blocker unless it is cleanly `done-verified` or `withdrawn`.
 simply don't apply until the file is upgraded to v2. No big-bang reformat; rows gain tokens as
 they're touched.
 
-### Still designed, not yet implemented (Phase 8)
-One phase remains, per `DESIGN-implementation-plan.md`: **companion skill handoffs** (Phase 8 —
-function-based recommendations fired at earned status transitions, via a global user-owned manifest,
-with install-state detection by invocable name). It is the last phase of the v1.1 design build.
+### The v1.1 design build is complete
+All eight phases have shipped: status tokens (P1), registry (P2), verify lint (P3), deferral gate
+(P4), branching (P5), onboarding/recall wiring (P6), row-length discipline (P7), and companion
+skill handoffs (P8). The five `DESIGN-*.md` documents that specified this build are now fully
+implemented. Future work is v1.2+ (see the deferred list in earlier design notes).
 
 ### v1.0.4 — docs (2026-07-26)
 Documentation only, no behavior change: recorded the v1.1 design pass as a changelog entry and a

@@ -12,6 +12,7 @@
     "reference/verify.md",
     "reference/deferral-gate.md",
     "reference/branching.md",
+    "reference/skill-handoffs.md",
     "scripts/check_format_version.py",
     "scripts/scan_surfaces.py",
     "scripts/dedup_findings.py",
@@ -24,12 +25,13 @@
     "scripts/branch_create.py",
     "scripts/recall_block.py",
     "scripts/import_drift.py",
-    "scripts/row_budget.py"
+    "scripts/row_budget.py",
+    "scripts/companions.py"
   ],
   "integrity_ok": true,
   "recall_checked": false,
   "recall_trigger_present": null,
   "recall_trigger_source": null,
   "skill_root": "<REPO_ROOT>",
-  "version": "1.5.0"
+  "version": "1.6.0"
 }

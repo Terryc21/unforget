@@ -43,14 +43,25 @@ Three skills, one loop. Total time: ~90 minutes. The unfired list-row bug — in
 - Fixes that are themselves cleanup of a prior failed migration (the pattern is already on its way out)
 - When the user has explicit time pressure and just wants to ship the close
 
-### Companion skill install URLs
+### Companion skills (format v2+): resolved via the manifest, not hardcoded here
 
-If your prior `/unforget edit --status=Fixed` recommendation showed install URLs, those are:
+The verify + generalize steps above map to unforget's companion **functions** —
+`audit-reverify` (verify the closure is real) and `post-fix-sibling-scan` (generalize
+the fix). Their skill mappings and URLs live in **one place**, the global companion
+manifest (`reference/skill-handoffs.md`), NOT hardcoded at this trigger. The
+shipped-default fillers are radar-suite and bug-echo respectively, but the user can
+map either function to an Axiom auditor or any other skill in the manifest. To surface
+the right expression (run the command if installed; one soft pointer with the URL if
+not; nothing invented if unset), resolve the function against what the session reports
+invocable:
 
-- **radar-suite:** `https://github.com/Terryc21/radar-suite` — verifies the closure is real; multiple audit dimensions per skill in the suite
-- **bug-echo:** `https://github.com/Terryc21/bug-echo` — generalizes the fix; produces a rated report
+```
+python3 scripts/companions.py resolve --function post-fix-sibling-scan --invocable "<names>"
+```
 
-Both are Apache-2.0 licensed and install via the standard Claude Code plugin pattern (clone the repo, copy the skill directory into `~/.claude/skills/`, restart Claude Code) or one-line marketplace commands when those land.
+Detection is by **invocable name**, never a directory find (the one-star-risk lesson).
+Companion skills are Apache-2.0 and optional; unforget's promote ritual works fully
+with none installed.
 
 ---
 
@@ -66,6 +77,7 @@ Release-time ritual. Run at every release submission.
 3. **Re-triage** all `🟡 LATER` rows that are still relevant to `🔵 NEXT`. Items no longer relevant get archived.
 4. **Re-rank `⚪ SOMEDAY`** items 180 days or older: prompt user for promote / demote / archive.
 5. **Stamp** the "Last promoted" line at the top of UNFORGET.md with new build/version + date.
+6. **Ship-risk handoff (format v2+, optional).** A 🔴 THIS row nearing release is the earned transition for the `ship-risk-scoring` companion function (default: one-star-risk — score what a shaky release risks). Resolve it against what's invocable — `python3 scripts/companions.py resolve --function ship-risk-scoring --invocable "<names>"` — and say the resolver's one-line expression. Governance per `reference/skill-handoffs.md` §5: advisory, once/session, never blocking, and never a way to defer the actual release check. Full mechanic in `reference/skill-handoffs.md`.
 
 This command DOES modify UNFORGET.md (unlike `/unforget scan`), so the user is shown a preview of every change before it's applied.
 

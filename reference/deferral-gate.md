@@ -186,6 +186,18 @@ The gate's strictness is one user-set policy, recorded in the registry
 Start-of-run *may* re-confirm ("still aggressive this session?") but does not force
 a re-answer.
 
+## Companion handoff: no pattern to infer → `forward-bug-hunt` (format v2+)
+
+When the gate can't infer a pattern from a recent fix (no closure to generalize from,
+just a fresh deferral), unforget MAY offer the **`forward-bug-hunt`** companion
+function (default: bug-prospector) — a forward hunt for bugs rather than a
+fix-generalizing echo. Full mechanic: `reference/skill-handoffs.md`. Resolve via
+`python3 scripts/companions.py resolve --function forward-bug-hunt --invocable "<names>"`
+and say the resolver's expression. Governance is the gate's own ethos: **advisory,
+once/session, and NEVER a way to defer the hunt** — "I'll run bug-prospector later"
+logged as a row is deferral-laundering; the handoff means run it now while context is
+hot.
+
 ## §6 — Worked examples (run through the gate)
 
 | Situation | Tripwire (§2) | Gate (§3) | Result |

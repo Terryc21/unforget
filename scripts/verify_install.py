@@ -66,6 +66,7 @@ REQUIRED_COMPANIONS = [
     "reference/verify.md",
     "reference/deferral-gate.md",
     "reference/branching.md",
+    "reference/skill-handoffs.md",
     # v1 helpers
     "scripts/check_format_version.py",
     "scripts/scan_surfaces.py",
@@ -81,6 +82,7 @@ REQUIRED_COMPANIONS = [
     "scripts/recall_block.py",
     "scripts/import_drift.py",
     "scripts/row_budget.py",
+    "scripts/companions.py",
 ]
 
 VERSION_RE = re.compile(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)", re.MULTILINE)
