@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.0.4
+version: 1.1.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -68,6 +68,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
 | `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
+| `/unforget verify` | (format v2+) Integrity lint: contradictions, unproven "done", bloat, stale recipes, registry drift; read-only; gates `archive`/`promote` | `reference/verify.md` |
 | `/unforget archive` | Move completed (Done/Fixed) rows out of the active tables into an archive file; lightweight, run anytime; holds back "Done-but-owed" rows | `reference/commands.md` |
 | `/unforget promote` | Release-time ritual: verify 🔴 THIS rows fixed, promote 🔵 NEXT to 🔴 THIS | `reference/promotion.md` (with backups in same file) |
 | `/unforget --version` | Print version, install path, supported format-version; install-verification | `reference/commands.md` |
@@ -98,7 +99,10 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/surfaces.md` | Six core surfaces, Surface 1b general doc scanning, redirect-pointer pre-check, memory-dir resolution, path encoding, meta-file pre-check, audit-tool format-aware parsing, cross-surface dedup, GitHub-issues four states, algorithm fallback | Running `init` or `import`, or auditing surface behavior |
 | `reference/promotion.md` | Promote ritual, dry-run mechanics, post-fix-sweep workflow, backups and recovery | Running `/unforget promote` or marking a row Fixed |
 | `reference/commands.md` | Per-subcommand specs for `add`, `edit`, `import`, `list`, `scan`, `archive`, `--version` (incl. `--version`'s install-integrity + recall-trigger checks) | Running any of those subcommands |
-| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
+| `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance | Reading/writing a row's status; running `archive`/`list`/`edit` |
+| `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
+| `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
+| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
 
@@ -139,11 +143,11 @@ This block is what makes the skill's recall trigger work. Without it, future AI 
 
 ### Format-version contract
 
-Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. v1.0 of the skill supports format `v1`. Three cases:
+Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v1.1) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, and the `verify` lint; a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
 
-- **Marker absent.** The skill prompts: "this file may not be in unforget format; proceed anyway?" Default response is no. If the user proceeds, the skill operates as best it can without format guarantees, and recommends adding `<!-- unforget-format: v1 -->` near the top of the file to silence the prompt on future reads.
-- **Marker recognized (`v1`).** The skill proceeds normally.
-- **Marker is a future version (`v2` or higher when the skill is v1.0).** The skill prints: "this file declares unforget format vN, but this skill version supports up to v1. Operating in read-only mode; writes are refused." Read-only operations (`list`, `scan`, and `promote --dry-run`) still work. Write operations (`add`, `edit`, `import`, and `promote` without `--dry-run`) refuse with a one-line error pointing to the version mismatch and recommending a skill upgrade.
+- **Marker absent.** The skill prompts: "this file may not be in unforget format; proceed anyway?" Default response is no. If the user proceeds, the skill operates as best it can without format guarantees, and recommends adding `<!-- unforget-format: v2 -->` near the top of the file to silence the prompt on future reads.
+- **Marker recognized (`v1` or `v2`).** The skill proceeds normally. A `v1` file is treated as a legacy ledger: the v2-only features (status tokens, registry, `verify` errors) simply don't apply; nothing is required or auto-added until the file is upgraded to `v2`.
+- **Marker is a future version (`v3` or higher).** The skill prints: "this file declares unforget format vN, but this skill version supports up to v2. Operating in read-only mode; writes are refused." Read-only operations (`list`, `scan`, `verify`, and `promote --dry-run`) still work. Write operations (`add`, `edit`, `import`, and `promote` without `--dry-run`) refuse with a one-line error pointing to the version mismatch and recommending a skill upgrade.
 
 **Preferred implementation:** delegate the marker read to `python3 scripts/check_format_version.py <path-to-UNFORGET.md>` (returns JSON). Algorithm fallback if Python is unavailable: read the first 30 lines of the file, grep for `<!-- unforget-format: v` (case sensitive), parse the version digit, compare against supported.
 
@@ -159,50 +163,46 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 
 ## Changelog
 
-> **Note on this entry:** the v1.1 items below are **design, not yet shipped.** Six spec
-> documents describe the next major evolution; none of the behavior is implemented in this v1.0.x
-> skill yet. They're recorded here so the design isn't lost and a future build has a map. See
-> "Design specs (v1.1, not yet implemented)" below for where they live.
+### v1.1.0 — status tokens, registry, verify lint (2026-07-26) · format v2
+The first implemented slice of the v1.1 design (Phases 1–3 of the build plan). Introduces
+**format `v2`** (the skill reads/writes both v1 and v2; v1 ledgers keep working untouched).
+Every feature traces to a real failure seen while running the skill on a large, long-lived
+ledger — not a hypothetical.
+
+- **Structured status tokens** (`reference/status.md`, `scripts/parse_status.py`). A row's status
+  is now a machine-readable `@status:` token (`open` / `in-progress` / `done-verified` /
+  `done-unverified` / `blocked` / `withdrawn`) that tools read instead of parsing prose — so a row
+  can no longer contradict itself. `done-unverified` is a first-class "done-but-owed" state.
+- **Verification tier** (`@verified:` = `code` / `device` / `user` / `session-claimed`).
+  `done-verified` requires `device` or `user` (or `code` with a note); **`session-claimed` can
+  never back `done-verified`** — a claim is not a verification.
+- **Registry** (`reference/registry.md`, `scripts/registry.py`). A re-read source of truth for
+  where ledgers live and the persisted git-posture / policy settings, in a marker-delimited block
+  in the ledger `README.md` (canonical) with an optional `.unforget.json` cache. If the two
+  disagree, the README wins.
+- **`verify` / doctor lint** (`reference/verify.md`, `scripts/verify_ledger.py`). A new read-only
+  subcommand that catches contradictions, unproven/`session-claimed` "done", unknown status
+  values, cell bloat, stale verify-still-open recipes, and registry drift. It **gates
+  `archive`/`promote`**: an error-severity finding blocks a ship or relocation decision.
+
+**Archive & release invariants:** `archive` now moves only a *clean* `done-verified` (valid tier,
+no contradiction) or `withdrawn`, and holds `done-unverified`. A 🔴 THIS row counts as a release
+blocker unless it is cleanly `done-verified` or `withdrawn`.
+
+**Backward compatibility:** a v1 (tokenless) ledger produces no errors — the v2-only features
+simply don't apply until the file is upgraded to v2. No big-bang reformat; rows gain tokens as
+they're touched.
+
+### Still designed, not yet implemented (Phases 4–8)
+The remaining `DESIGN-*.md` documents (in the ledger directory alongside the ledgers) describe the
+rest of the roadmap, not yet built: the **deferral gate** (Phase 4), **branching + the `branch`
+command** (Phase 5), **onboarding `init`/`import` wiring** (Phase 6), the **row-length sweep**
+(Phase 7), and **companion skill handoffs** (Phase 8). `DESIGN-implementation-plan.md` links them
+and orders the build.
 
 ### v1.0.4 — docs (2026-07-26)
-Documentation only, no behavior change: recorded the v1.1 design pass (below) as a changelog
-entry and a forward-looking README section. Patch bump so existing installs pick up the updated
-docs; the shipping skill is unchanged from v1.0.3.
-
-### v1.1.0 — design complete (2026-07-25) · NOT YET IMPLEMENTED
-A full design pass, driven by real failures observed while operating the skill on a large,
-long-lived ledger (a ~155 KB `UNFORGET.md` with multi-KB rows). Every enhancement traces to a
-concrete failure, not a hypothetical. Six documents:
-
-- **Branching model** — when deferred work becomes a row, a section, or a NEW ledger. Three axes
-  (actor / lifespan / domain), a first-answer-wins decision cascade, and parent↔child conventions
-  (pointer rows, per-child headers, a registry) that prevent the "ledgers scattered across two
-  trees" split-brain.
-- **Deferral gate** — makes deferral *cost something* so it stops being the frictionless,
-  self-flattering default. A trivial-fix tripwire (do it now, don't table it), a "why not now?"
-  allow-list, and a session defer/fix tally — because a single well-worded row hides a bad
-  deferral but a 7:2 ratio doesn't.
-- **Onboarding & registry** — `init` asks three things (git posture, location, a self-maintaining
-  recall block in CLAUDE.md) and persists them in a registry, so the skill never re-guesses where
-  ledgers live or loses one.
-- **Maintenance & integrity** — a machine-readable `@status` token (so a row can't contradict
-  itself), a `@verified` tier (code / device / session-claimed — a *claim* can never count as
-  *verified*), row-length discipline (bounded index rows + detail blocks), and a `verify`/`doctor`
-  lint that gates archive/promote.
-- **Companion skill handoffs** — recommends the *right* companion skill at the right moment
-  (e.g. bug-echo after a code-fix closes) via a global, user-owned function→skill manifest.
-  Recommends a *capability*, not a hardcoded URL; discloses its default; works with none installed.
-- **Implementation plan** — an 8-phase, dependency-ordered build roadmap whose acceptance test is
-  "catch every failure a human caught by hand this session."
-
-**Format impact (planned):** the structured `@status`/`@verified` fields and the registry make
-this a format change → a future `v1 → v2` bump, with read-legacy / upgrade-on-write migration and
-no big-bang reformat.
-
-### Design specs (v1.1, not yet implemented)
-The six documents above live together in the ledger's own directory as tracked `DESIGN-*.md`
-files (kept alongside the ledgers they describe, next to the ledger `README.md`). Start with
-`DESIGN-implementation-plan.md` — it links the other five and orders the build.
+Documentation only, no behavior change: recorded the v1.1 design pass as a changelog entry and a
+forward-looking README section. Patch bump so existing installs picked up the updated docs.
 
 ### v1.0.3 and earlier
 Shipping skill: init / add / edit / import / list / scan / archive / promote / `--version`, the

@@ -60,7 +60,8 @@ Release-time ritual. Run at every release submission.
 
 ### Steps
 
-1. **Verify** every `🔴 THIS` row has Status = Fixed. List any that don't and require an explicit demotion or fix.
+0. **Integrity gate (format v2+).** Run `/unforget verify` first (`python3 scripts/verify_ledger.py --file <UNFORGET.md> --dir <ledger-dir>`). If it reports any **error-severity** finding — a self-contradicting row, a `done-verified` with no device/user tier or backed only by `session-claimed`, an unknown status value, or a 🔴 THIS row that *claims* done but isn't cleanly `done-verified` — **STOP.** You cannot make a release decision over a ledger whose "done" claims aren't trustworthy. Report the findings and require they be resolved before promotion continues. Warnings (bloat, stale-recipe, registry drift) do not block. On a v1 (tokenless) ledger this gate produces no errors and promotion proceeds normally.
+1. **Verify** every `🔴 THIS` row is resolved. With tokens (v2+): the row's `@status` must be `done-verified` (clean) or the row must be explicitly demoted. A `done-unverified` THIS row is NOT resolved — it still owes a check and remains a blocker. Without tokens (v1): Status = Fixed. List any that don't qualify and require an explicit demotion or fix.
 2. **Promote** all `🔵 NEXT` rows to `🔴 THIS` (they are now the next release's blockers).
 3. **Re-triage** all `🟡 LATER` rows that are still relevant to `🔵 NEXT`. Items no longer relevant get archived.
 4. **Re-rank `⚪ SOMEDAY`** items 180 days or older: prompt user for promote / demote / archive.

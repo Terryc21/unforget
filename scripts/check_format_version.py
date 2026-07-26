@@ -34,7 +34,7 @@ import re
 import sys
 from pathlib import Path
 
-SUPPORTED_VERSIONS = ["v1"]
+SUPPORTED_VERSIONS = ["v1", "v2"]
 HEADER_LINES_TO_SCAN = 30
 EXPECTED_SECTION_HEADERS = [
     "1. Paused plans",

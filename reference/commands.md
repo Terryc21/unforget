@@ -63,7 +63,7 @@ Refine a row's columns after import. Most useful immediately after `/unforget in
 ```
 /unforget edit P3                       ·  open row P3 for editing
 /unforget edit P3 --target=THIS          ·  change just the Target cell
-/unforget edit P3 --status=Fixed         ·  mark Fixed (next promotion will archive)
+/unforget edit P3 --status=done          ·  mark done (see status-token rule below)
 /unforget edit S5 --urgency=HIGH --roi=Excellent
 ```
 
@@ -73,6 +73,23 @@ Refine a row's columns after import. Most useful immediately after `/unforget in
 2. Prompt for which cells to update (or accept flag overrides if passed inline).
 3. Show the diff (old value to new value for each changed cell).
 4. Apply the change to UNFORGET.md.
+
+### Status-token rule (format v2+)
+
+When changing status, write the `@status:` token (see `reference/format.md` §
+Status tokens and `reference/status.md`), not a bare word. Specifically for
+marking something done:
+
+- `--status=done` **requires a verification tier.** Ask (or infer from context)
+  how it was checked and write `@verified:<tier>`.
+- If the only backing is a session's own claim (no independent check), the
+  result is **`@status:done-unverified` `@verified:session-claimed`**, NOT
+  `done-verified`. A claim is not a verification. `done-verified` requires
+  `device` or `user` (or `code` with an explicit code-is-sufficient note).
+- Record provenance in the narration (who/what/when), e.g.
+  `` `@status:done-verified` `@verified:device` · TF77 · 2026-07-25 ``.
+- After writing, validate with `python3 scripts/parse_status.py --row "<row>"`;
+  if it reports `tier_valid:false` or `contradiction:true`, fix before saving.
 
 `/unforget edit` is the everyday command for keeping rows accurate. Pair with `/unforget list --age=30+` to find rows that need review.
 
@@ -183,10 +200,15 @@ Show current state. Default view is sorted by Target (🔴 THIS first), then Urg
 /unforget list                        ·  full table
 /unforget list --target=THIS          ·  only ship-blockers
 /unforget list --section=audit        ·  only Section 3
-/unforget list --status=Open          ·  exclude Fixed/Skipped
+/unforget list --status=open          ·  filter by @status value (open/in-progress/done-verified/done-unverified/blocked/withdrawn)
 /unforget list --stale                ·  only rows past their staleness threshold
 /unforget list --age=30+              ·  only rows older than 30 days
 ```
+
+**Status is read from the `@status` token** (format v2+), not the prose — via `python3 scripts/parse_status.py --file <path>`. Two consequences:
+
+- `--target=THIS` "ship-blockers" counts a 🔴 THIS row as blocking unless its token is `done-verified` or `withdrawn`. **A `done-unverified` THIS row is STILL a blocker** — it is not proven (the script returns `blocks_release:true` for it).
+- `--status=<value>` filters on the token value. Legacy tokenless rows match their old word-status loosely (`Open`→`open`, `Fixed`→a done-* state).
 
 ### Output format
 
@@ -280,6 +302,34 @@ Default to **investigate** if uncertain. The scan never modifies UNFORGET.md. It
 
 ---
 
+## /unforget verify
+
+Read-only integrity lint (format v2+). Audits the ledger for the decay failures a row can hide — a self-contradicting status, an unproven "done", bloat, a stale premise, registry drift — and reports a severity-ranked finding list. Full spec: `reference/verify.md`.
+
+### Usage
+
+```
+/unforget verify                      ·  lint the ledger; report findings most-severe first
+/unforget verify --char-budget=600    ·  override the per-cell char budget
+```
+
+### Steps
+
+1. Run `python3 scripts/verify_ledger.py --file <UNFORGET.md> --dir <ledger-dir>`.
+2. Render the findings: errors first, then warnings; each as `[severity] check ID — message`.
+3. Report the one-line summary (`N errors, M warnings; gate PASSES/FAILS`).
+4. **Never edit.** `verify` only reports. If the user wants fixes, walk them per finding with approval (a `--fix` mode is not part of this baseline).
+
+### Gate role
+
+`verify` also runs automatically **before `archive` and `promote`**. An error-severity finding (a contradiction, an unproven/`session-claimed` "done", an unknown status value, or a THIS row that claims done but isn't cleanly `done-verified`) **blocks** the ship/relocation decision until resolved — the same discipline as `promote`'s existing 🔴 THIS check. Warnings never block. See `reference/promotion.md` and `/unforget archive` steps.
+
+### Backward compatibility
+
+On a v1 (tokenless) ledger, `verify` emits only warnings (bloat, stale-recipe, open THIS rows) and no errors, so the gate passes. A legacy ledger is never blocked by the token checks.
+
+---
+
 ## /unforget archive
 
 Move completed rows out of the active tables into a dated archive file. **Lightweight and safe to run anytime** — this is the everyday cleanup command, distinct from the heavyweight release-time `/unforget promote` ritual (see `reference/promotion.md`). `promote` re-triages the whole release cycle (verify THIS, roll NEXT→THIS, re-rank SOMEDAY, stamp the release line); `archive` does only the one job of clearing finished work out of view.
@@ -298,19 +348,21 @@ Move completed rows out of the active tables into a dated archive file. **Lightw
 
 ### Safety rule (the important part): keep "Done-but-owed" rows
 
-A row can read `✅ Done` / `Fixed` yet still carry residual work its own text signals. Archiving those hides real remaining work — the exact failure this skill exists to prevent. So by default a Done row is **held in the active tables** (not archived) when its Status or Finding text contains an owed-signal:
+Archiving a row that still owes work hides real remaining work — the exact failure this skill exists to prevent. What is archivable is decided by the `@status` token (format v2+):
 
-- `pending` / `owed` / `still owed`
-- `eyeball` / `visual check` / `verify on device` / `device-verify` / `device round-trip`
-- `delivery test` / `deploy owed` / `not yet deployed` / `awaiting deploy`
-- `⏳` / `pending real-device`
+- **Archive ONLY** `@status:done-verified` and `@status:withdrawn`.
+- **HOLD** `@status:done-unverified` — this is the "done-but-owed" state by definition (fixed, not yet ground-truth-checked). It stays in the active tables.
+- Never archive `open`, `in-progress`, or `blocked`.
 
-Only a row that is Done/Fixed **and** carries no owed-signal is archived. `--all-done` overrides this hold (use when the user confirms the owed threads are moot). Rows that are `In Progress`, `Open`, `Deferred`, `Superseded`, or a self-declared "keep as marker" (e.g. a Withdrawn row whose text says to keep it) are never archived.
+`--all-done` overrides the hold on `done-unverified` (use only when the user confirms the owed check is moot).
+
+**Legacy fallback (tokenless rows):** a row with no `@status` token is classified the old way — a Done/Fixed row is held when its Status or Finding text contains an owed-signal (`pending` / `owed` / `still owed` / `eyeball` / `visual check` / `verify on device` / `device-verify` / `device round-trip` / `delivery test` / `deploy owed` / `not yet deployed` / `awaiting deploy` / `⏳`). This keeps pre-v2 ledgers safe until their rows are upgraded.
 
 ### Steps
 
-1. **Read UNFORGET.md.** Identify every row whose Status is `Fixed` / `Done` (or a ✅-marked variant).
-2. **Apply the owed-signal hold** (above) unless `--all-done`. Split into `archive` vs `keep (owed)`.
+0. **Integrity gate (format v2+).** Run `/unforget verify` first. If any **error-severity** finding stands (a contradiction, an unproven/`session-claimed` "done", an unknown status value, a THIS row claiming done but not cleanly `done-verified`), **STOP** and report — do not archive over a ledger whose "done" claims aren't trustworthy, because a bad `done-verified` is exactly what `archive` would relocate out of sight. Warnings do not block. A v1 (tokenless) ledger produces no errors and archiving proceeds.
+1. **Read UNFORGET.md.** Run `python3 scripts/parse_status.py --file <path>`; a row is archivable when its result has `archivable:true` (i.e. a CLEAN `done-verified` — valid tier, no contradiction — or `withdrawn`). For tokenless legacy rows, fall back to the Fixed/Done + owed-signal heuristic above.
+2. **Split** into `archive` (archivable) vs `keep` (`done-unverified`, owed-signal legacy rows, and everything not done). `--all-done` also archives `done-unverified`.
 3. **Preview** — show the two lists (IDs + one-line title) and counts: "Archive N clean-Done rows; keep M Done-but-owed rows active." On `--dry-run`, stop here and write nothing.
 4. **Confirm** with the user (single AskUserQuestion: proceed / show-full-rows / cancel).
 5. **Back up first** — copy UNFORGET.md to a temp path before editing, so a mis-classification is recoverable.

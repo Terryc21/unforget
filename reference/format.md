@@ -32,7 +32,30 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 | **ROI** | 🟠 Excellent / 🟢 Good / 🟡 Marginal / 🔴 Poor |
 | **Blast Radius** | ⚪ 1 file / 🟢 2-5 files / 🟡 6-15 files / 🔴 >15 files |
 | **Fix Effort** | Trivial / Small / Medium / Large |
-| **Status** | Open / In Progress / Fixed / Deferred / Skipped |
+| **Status** | A machine-readable `@status:` token (format v2+) followed by human narration. See "Status tokens" below. Legacy word-statuses (Open / In Progress / Fixed / Deferred / Skipped) still parse. |
+
+### Status tokens (format v2+)
+
+The Status cell begins with one authoritative, machine-readable token that tools
+read instead of parsing prose. Full spec: `reference/status.md`. In brief:
+
+```
+`@status:<value>` `@verified:<tier>` <human narration follows>
+```
+
+- **`@status`** enum: `open` · `in-progress` · `done-verified` · `done-unverified` · `blocked` · `withdrawn`.
+- **`@verified`** tier (required on `done-verified`): `code` · `device` · `user` · `session-claimed`.
+- `done-verified` **requires** `device` or `user` (or `code` with a note); **`session-claimed` can never back `done-verified`** — a claim is not a verification.
+- **`done-unverified`** is the "done-but-owed" state: fixed, not yet ground-truth-checked. `archive` moves only `done-verified`/`withdrawn`; `done-unverified` is held back.
+- A token that **contradicts its own narration** (says `done-verified` over prose that says "re-opened"/"still owed") is a lint error the verify pass flags.
+
+**Optional on legacy, expected on new.** Rows written before v2 have no token and
+still work (a tokenless row is never auto-archived). New and edited rows get a
+token. Old word-statuses map: `Open`→`open`, `In Progress`→`in-progress`,
+`Fixed`→`done-verified` (with a tier) or `done-unverified` (if unproven),
+`Deferred`→`open`/`blocked`, `Skipped`→`withdrawn`.
+
+Detection and validation delegate to `scripts/parse_status.py` (see `reference/status.md` for the algorithm fallback).
 
 ### Target values
 
