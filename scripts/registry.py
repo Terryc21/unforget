@@ -67,6 +67,7 @@ GLOBAL_KEYS = [
     "policy_multiaxis",
     "ratio_flag_threshold",
     "stale_trivial_sessions",
+    "row_char_budget",
 ]
 
 LEDGER_COLUMNS = ["name", "path", "role", "axis", "discipline", "parent", "death"]

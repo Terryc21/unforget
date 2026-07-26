@@ -27,6 +27,7 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 | `branch_create.py` | (format v2+) Atomically create a child ledger — scaffold the child header, write the parent's pointer row, register the child, and (when maintained) update the recall block, all-or-none (rolls back on any failure). Guards refuse a duplicate name / a lifespan child with no death condition / an unconfirmed non-human actor. Reuses `registry.py` + `recall_block.py`. | `reference/branching.md`; `/unforget branch` |
 | `recall_block.py` | (format v2+) Write/read/update the maintained Deferred Work Index block in CLAUDE.md/AGENTS.md, rendered from the registry. Rewrites only between its markers; `check` reports staleness vs the registry. | `reference/init.md`; `/unforget init`, `import`, `branch` |
 | `import_drift.py` | (format v2+) Reconcile the registry against reality — registered-but-missing, found-but-unregistered, posture-mismatch, stale-recall. Read-only; severity-ranked findings. Reuses `registry.py` + `recall_block.py`. | `reference/init.md`; `/unforget import` |
+| `row_budget.py` | (format v2+) Row-length discipline: `check` flags Finding/Status cells over the char budget (registry `row_char_budget`, default 400); `split` produces a bounded index row + a detail-block bullet holding the full content verbatim — lossless-verified, refuses any split it can't prove preserves every character. | `reference/format.md` § Row-length discipline; `/unforget scan`, `verify --fix` |
 
 ## Invoking from the skill
 

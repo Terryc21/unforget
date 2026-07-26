@@ -327,6 +327,10 @@ Identify rows past their staleness threshold. Read-only. Never modifies the file
 
 These thresholds can be customized in a config block at the top of UNFORGET.md.
 
+### Row-length (char-budget) lint (format v2+, maintenance §2c)
+
+`scan` also flags rows that have outgrown the **index budget** — the exact bloat that made a ledger un-Readable (multi-KB rows, Reads that truncate and mislead). Run `python3 scripts/row_budget.py check --file <UNFORGET.md> [--dir <ledger-dir>]`; it returns every Finding/Status cell over the budget (default 400 chars, or the registry's `row_char_budget`). Surface these under an **"Over the index budget (move history to a detail block)"** heading with the cell and its char count, recommendation **investigate** (usually resolvable by a split). This is read-only in `scan`; the split itself is offered by `verify --fix` (below) or run manually. See `reference/format.md` § Row-length discipline.
+
 ### Trivial-staleness cross-check (format v2+, deferral-gate §4d)
 
 `scan` sharpens one flag that ties back to the deferral gate: a row that is **Fix
@@ -447,7 +451,19 @@ Read-only integrity lint (format v2+). Audits the ledger for the decay failures 
 1. Run `python3 scripts/verify_ledger.py --file <UNFORGET.md> --dir <ledger-dir>`.
 2. Render the findings: errors first, then warnings; each as `[severity] check ID — message`.
 3. Report the one-line summary (`N errors, M warnings; gate PASSES/FAILS`).
-4. **Never edit.** `verify` only reports. If the user wants fixes, walk them per finding with approval (a `--fix` mode is not part of this baseline).
+4. **Report-only by default.** `verify` (no flags) only reports; walk any fix per finding with approval. The one scoped exception is `--fix` for row-length splits (below).
+
+### `/unforget verify --fix` (row-length splits only, format v2+, maintenance §2)
+
+`verify --fix` offers to resolve **char-budget** findings — and only those — by splitting an over-budget row into a bounded index row + a detail block, **per row, with approval**. It never auto-edits contradictions, tiers, or any other finding (those need human judgment). Steps:
+
+1. Run the normal `verify` lint; collect the `char-budget` findings.
+2. For each over-budget row, run `python3 scripts/row_budget.py split --file <UNFORGET.md> --id <ID>` (dry-run) and show the plan: the proposed bounded index row and the detail-block bullet.
+3. **Confirm per row** (the split moves history; the user should see it). Optionally pass a `--headline "<summary>"` for a better one-line index than the mechanical derivation.
+4. On approval, apply with `--apply`. The helper returns `lossless:true` only when every character of the original cells is provably preserved in the detail block, and **refuses** otherwise — so an approved split can never silently drop history.
+5. Back up UNFORGET.md before the first split (same discipline as `archive`/`promote`).
+
+`--fix` is strictly additive: without it, `verify` is read-only exactly as before. It exists only because a row-length split is mechanical and lossless-verifiable — the one integrity finding safe to auto-resolve with approval. See `reference/format.md` § Row-length discipline.
 
 ### Gate role
 

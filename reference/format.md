@@ -93,6 +93,29 @@ Each section table is followed by a `### Detail - <section name>` subsection. De
 
 The format is intentionally simple: closure pointer, body, verify-still-open recipe, spawn links. The skill's `add` / `edit` / `promote` flows preserve this structure when they touch a detail block. Hand-editing a detail block is fine as long as the four parts stay in order and the closure pointer (if present) stays at the top.
 
+### Row-length discipline (format v2+): the table row is a bounded INDEX
+
+A ledger row is a **one-line index**; the history, code-traces, and verification narration live in the detail block, NOT fused into the Finding or Status cell. This is the rule that keeps a `list` or a Read from truncating mid-row and misleading the reader — the 2026-07-25 failure was a ~155KB ledger with multi-KB rows whose Reads blew past the token cap and cut off the one fact that mattered.
+
+**The two-part row (§2a):**
+- **The table row** carries a **compact index**: ID · Target · a ONE-LINE finding summary · the rating columns · the `@status:`/`@verified:` token(s) + one-line current status. Soft budget: the Finding and Status cells each **≤ ~400 chars** (registry-configurable via `row_char_budget`; the `verify`/`scan` lint reads it). This is what `list` renders and what stays greppable.
+- **The detail block** (a `### Detail - <section>` bullet, `- **<ID>** - …`) holds the unbounded content: history, files, plan refs, the verify-still-open recipe. It doesn't bloat the scannable table.
+
+**History is APPENDED to the block, not grown in the cell (§2b):** a status CHANGE appends a dated line to the detail block; the table cell's one-line status is **REPLACED** (not grown) to the latest. The table always shows current state in one line; the block holds the audit trail. The failure mode this bans is history accreting *inside* the table cell (U5's Status cell was ~8KB of dated narration).
+
+**The hard rule (never violated): the budget MOVES history to the detail block; it NEVER deletes it.** A split is a bounded index + an unbounded block, not a bounded row that drops facts. The tooling refuses any split it cannot prove is lossless.
+
+**Preferred implementation:** `scan`/`verify` flag over-budget cells (the char-budget check), and the split is delegated to a helper:
+
+```
+python3 scripts/row_budget.py check --file <UNFORGET.md> [--dir <ledger-dir>]     # flag over-budget cells
+python3 scripts/row_budget.py split --file <UNFORGET.md> --id <ID> [--headline "<summary>"] [--apply]
+```
+
+`split` produces a bounded index row (Finding replaced by a one-line headline + `→ see detail block **<ID>**`; the `@status`/`@verified` tokens KEPT in the table so `list`/`archive` still read them) and a detail-block bullet holding the **full original cell content verbatim**. It returns `lossless:true` only when every character of the original cells is provably present in the block, and **refuses** otherwise. `--apply` writes it; the default is a dry-run plan. The one-line headline is the LLM's judgment call (pass `--headline`); absent one, the tool derives a mechanical, lossless-safe headline (first clause + pointer). See `reference/commands.md` § `/unforget scan` and § `/unforget verify`.
+
+**Algorithm fallback** (Python unavailable): for each table row, if the Finding or Status cell exceeds ~400 chars, move everything past a one-line headline into a `- **<ID>** -` bullet under the section's `### Detail - <section>` block (verbatim — lose nothing), leave a `→ see detail block **<ID>**` pointer in the Finding cell, and keep the `@status:`/`@verified:` token in the table with only a one-line current status. Never delete content; if you can't preserve it, don't split.
+
 ### Verify-still-open recipe (before working a row)
 
 Rows decay independently of fixes. A row logged a week ago can be silently stale: someone reorganized the file, an unrelated PR moved the line, a parallel session shipped the fix without closing the ledger. Before writing any code for a row, **run a 10-second grep** to confirm the row's premise still matches the current source.

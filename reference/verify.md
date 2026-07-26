@@ -12,8 +12,13 @@ reports a **severity-ranked finding list** — most-severe first, each with the
 row ID and a one-line defect. It is the checkpoint that turns "a row misled a
 session" into "the lint caught it before it misled anyone."
 
-**Read-only.** `verify` NEVER edits. Fixes are the user's call. (A future
-`verify --fix` may propose edits with approval; it is not part of this baseline.)
+**Read-only by default.** `verify` (no flags) NEVER edits — it reports; fixes are the
+user's call. The one scoped exception is **`verify --fix`**, which offers to resolve
+**char-budget findings only** by splitting an over-budget row into a bounded index +
+a detail block, **per row with approval** (`scripts/row_budget.py`, lossless-verified
+— it refuses any split it can't prove preserves every character). It never auto-edits
+contradictions, tiers, or any other finding. See `reference/commands.md` §
+`/unforget verify --fix` and `reference/format.md` § Row-length discipline.
 
 ## The checks (§4a)
 

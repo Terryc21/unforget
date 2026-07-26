@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.4.0
+version: 1.5.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -106,7 +106,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
 | `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
 | `reference/branching.md` | (format v2+) the branching model: the three axes (actor / lifespan / domain), the decision cascade, parent/child conventions, and the atomic `branch` command | Deciding whether work earns a child ledger; running `/unforget branch` |
-| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
+| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector, row-length check + lossless split). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
 
@@ -147,7 +147,7 @@ This block is what makes the skill's recall trigger work. Without it, future AI 
 
 ### Format-version contract
 
-Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v1.4) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, the `verify` lint, the deferral gate, branching, and the onboarding/recall-block wiring; a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
+Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v1.5) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, the `verify` lint, the deferral gate, branching, the onboarding/recall-block wiring, and the row-length discipline (bounded index rows + lossless splits); a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
 
 - **Marker absent.** The skill prompts: "this file may not be in unforget format; proceed anyway?" Default response is no. If the user proceeds, the skill operates as best it can without format guarantees, and recommends adding `<!-- unforget-format: v2 -->` near the top of the file to silence the prompt on future reads.
 - **Marker recognized (`v1` or `v2`).** The skill proceeds normally. A `v1` file is treated as a legacy ledger: the v2-only features (status tokens, registry, `verify` errors) simply don't apply; nothing is required or auto-added until the file is upgraded to `v2`.
@@ -166,6 +166,28 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v1.5.0 — row-length discipline (2026-07-26) · format v2
+Phase 7 of the v1.1 design build: the **row-length rule** that keeps a ledger Readable. A row is a
+one-line INDEX; history/context/verification narration belongs in a detail block, not fused into an
+ever-growing Finding or Status cell. The 2026-07-25 failure was a ~155KB ledger with multi-KB rows
+whose Reads truncated and *misled* the reader — a bounded index prevents exactly that.
+
+- **The two-part row** (`reference/format.md` § Row-length discipline). The table row carries a
+  compact index (a one-line finding summary + the `@status`/`@verified` tokens + a one-line
+  status); the unbounded content lives in a `### Detail - <section>` bullet. History is **appended**
+  to the block, never grown in the cell.
+- **`scripts/row_budget.py`.** `check` flags Finding/Status cells over the budget (default 400,
+  registry-configurable via `row_char_budget`). `split` turns an over-budget row into a bounded
+  index + a detail-block bullet holding the **full original content verbatim** — and returns
+  `lossless:true` only when every character is provably preserved, **refusing** otherwise. The hard
+  rule: the budget MOVES history to the block, it NEVER deletes it.
+- **Wired:** `scan` gains the char-budget lint; **`verify --fix`** offers the split for char-budget
+  findings *only*, per row, with approval (the one integrity finding safe to auto-resolve because
+  it's mechanical and lossless-verifiable). `verify` with no flags stays read-only exactly as before.
+
+Backward compatible: the rule flags legacy over-long rows but never blocks on them; a split is
+always offered, never forced, and only ever moves content — a legacy ledger keeps working untouched.
 
 ### v1.4.0 — onboarding, registry wiring, and the maintained recall block (2026-07-26) · format v2
 Phase 6 of the v1.1 design build: `init`/`import` now write and reconcile the two persisted
@@ -281,11 +303,10 @@ blocker unless it is cleanly `done-verified` or `withdrawn`.
 simply don't apply until the file is upgraded to v2. No big-bang reformat; rows gain tokens as
 they're touched.
 
-### Still designed, not yet implemented (Phases 7–8)
-The remaining `DESIGN-*.md` documents (in the ledger directory alongside the ledgers) describe the
-rest of the roadmap, not yet built: the **row-length discipline sweep** (Phase 7 — bounded index
-rows + detail blocks) and **companion skill handoffs** (Phase 8). `DESIGN-implementation-plan.md`
-links them and orders the build.
+### Still designed, not yet implemented (Phase 8)
+One phase remains, per `DESIGN-implementation-plan.md`: **companion skill handoffs** (Phase 8 —
+function-based recommendations fired at earned status transitions, via a global user-owned manifest,
+with install-state detection by invocable name). It is the last phase of the v1.1 design build.
 
 ### v1.0.4 — docs (2026-07-26)
 Documentation only, no behavior change: recorded the v1.1 design pass as a changelog entry and a

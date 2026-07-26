@@ -80,6 +80,7 @@ REQUIRED_COMPANIONS = [
     "scripts/branch_create.py",
     "scripts/recall_block.py",
     "scripts/import_drift.py",
+    "scripts/row_budget.py",
 ]
 
 VERSION_RE = re.compile(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)", re.MULTILINE)

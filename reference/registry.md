@@ -64,6 +64,7 @@ and never touches the surrounding human prose:
 | `policy_multiaxis` | `lifespan-wins` \| `actor-wins` \| `nearest-death` (branching Policy 2) |
 | `ratio_flag_threshold` | integer; deferral-gate defer/fix ratio flag (default 3) |
 | `stale_trivial_sessions` | integer; deferral-gate aging cross-check (default 2) |
+| `row_char_budget` | integer; row-length index budget per Finding/Status cell (default 400; `scan`/`verify`/`row_budget.py`) |
 
 **Per ledger** (one row each):
 
