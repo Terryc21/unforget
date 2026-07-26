@@ -76,9 +76,9 @@ def status_cell(row: str) -> str:
 
 
 def finding_cell(row: str) -> str:
-    cells = [c.strip() for c in row.strip().strip("|").split("|")]
-    # Finding is the 3rd column (# | Target | Finding | ...)
-    return cells[2] if len(cells) >= 3 else ""
+    # Delegate to the preset-aware locator (Compact drops the Target column, so a
+    # fixed index 2 would return Urgency there). One source, not three.
+    return parse_status.finding_cell(row)
 
 
 def check_rows(text: str, char_budget: int) -> list[dict]:

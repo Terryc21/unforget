@@ -114,10 +114,58 @@ def status_cell(row: str) -> str:
     return cells[-1]
 
 
+# The Compact preset drops the dedicated Target column and inlines the Target as a
+# badge INSIDE the Finding cell, joined by a middle-dot separator:
+#   "**🔴 THIS · <finding text>**"
+# The ` · ` separator (plus following text) is what distinguishes a Compact
+# Finding-with-badge from a Standard bare Target cell (which is JUST the badge, no
+# separator). Requiring the separator is what keeps finding_cell from mistaking a
+# Standard Target cell for a Finding.
+COMPACT_FINDING_RE = re.compile(r"^\**\s*(🔴 THIS|🔵 NEXT|🟡 LATER|⚪ SOMEDAY)\s*·\s*\S")
+# A bare Target cell (Standard/Lean) — the whole cell is the badge, nothing after.
+TARGET_BADGE_RE = re.compile(r"^\**\s*(🔴 THIS|🔵 NEXT|🟡 LATER|⚪ SOMEDAY)\**\s*$")
+
+
+def data_cells(row: str) -> list[str]:
+    """The table columns of a data row (leading/trailing empty splits removed)."""
+    return [c.strip() for c in row.strip().strip("|").split("|")]
+
+
+def finding_cell(row: str) -> str:
+    """The Finding cell, located preset-aware rather than by a fixed index.
+
+    Standard/Lean/Continuous keep a dedicated 2nd column (Target or Window), so
+    Finding is the 3rd cell (0-based index 2). The **Compact** preset DROPS the
+    Target column and inlines the Target as a badge inside Finding, so Finding
+    becomes the 2nd cell (index 1). Reading a fixed index 2 would return the
+    Urgency cell on a Compact ledger — the same positional-read bug as status_cell.
+    """
+    cells = data_cells(row)
+    if len(cells) < 2:
+        return ""
+    # Compact: cell[1] is a Finding that LEADS with a Target badge + " · " separator
+    # (there is no separate Target column). A Standard row's cell[1] is a BARE Target
+    # badge (no separator) — that must NOT be read as the Finding. So detect the
+    # Compact separator specifically; otherwise Finding is the usual index 2.
+    if COMPACT_FINDING_RE.search(cells[1]):
+        return cells[1]
+    return cells[2] if len(cells) >= 3 else cells[1]
+
+
 def target_is_this(row: str) -> bool:
-    """True if the row's Target cell marks it a current-release blocker (THIS)."""
-    # Target is the 2nd cell; accept the emoji forms and the plain word.
-    return bool(re.search(r"\bTHIS\b|🔴|🚢 THIS", row.split("|")[2] if row.count("|") >= 2 else ""))
+    """True if the row marks itself a current-release blocker (THIS).
+
+    The Target signal lives in the same place either way: `data_cells` index 1 is
+    the dedicated Target cell in Standard/Lean, and the Finding-with-badge cell in
+    Compact (which leads with the Target badge). So index 1 carries the badge in all
+    Target-bearing presets. Match only that cell, never the whole row, so a Finding
+    that merely contains the word "THIS" does not false-positive. (Continuous has no
+    Target — it uses Window — and no ship-gate, so THIS never applies there.)
+    """
+    cells = data_cells(row)
+    if len(cells) < 2:
+        return False
+    return bool(re.search(r"🔴 THIS|\bTHIS\b|🚢 THIS", cells[1]))
 
 
 def parse_row(row: str) -> dict:

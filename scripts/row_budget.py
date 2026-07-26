@@ -79,8 +79,9 @@ def cells_of(row: str) -> list[str]:
 
 
 def finding_cell(row: str) -> str:
-    c = cells_of(row)
-    return c[2] if len(c) >= 3 else ""
+    # Preset-aware Finding locator via the one authoritative implementation
+    # (Compact drops Target, shifting Finding off a fixed index 2).
+    return parse_status.finding_cell(row)
 
 
 def status_cell(row: str) -> str:
@@ -182,21 +183,36 @@ def build_index_row(orig_row: str, rid: str, headline: str) -> str:
     # Split the row into leading '', cells..., trailing ''.
     parts = orig_row.rstrip("\n").split("|")
     # parts[0] is '' (leading pipe), parts[-1] is '' (trailing pipe).
-    # Table columns are parts[1:-1]. Finding is index 3 in that 1-based pipe layout:
-    # parts = ['', ' # ', ' Target ', ' Finding ', ... , ' Status ', '']
     if len(parts) < 5:
         return orig_row  # not a well-formed row; leave untouched
-    # Finding is parts[3]; Status is parts[-2].
-    parts[3] = f" {headline.replace('{id}', rid)} "
+
+    # Locate the Finding and Status cells BY CONTENT, not by fixed position — an
+    # appended 1-Star Risk column (after Status) or a preset that drops Target would
+    # shift a positional index onto the wrong cell (the exact status_cell bug this
+    # mirrors). Finding is the current over-long finding; Status is the cell carrying
+    # the @status token.
+    orig_finding = finding_cell(orig_row)
+    orig_status = status_cell(orig_row)
+    status_re = re.compile(r"@status:")
+    finding_idx = status_idx = None
+    for i in range(1, len(parts) - 1):
+        cell = parts[i].strip()
+        if status_idx is None and status_re.search(cell):
+            status_idx = i
+        if finding_idx is None and orig_finding and cell == orig_finding:
+            finding_idx = i
+    if finding_idx is not None:
+        parts[finding_idx] = f" {headline.replace('{id}', rid)} "
     # Trim Status narration to just the token + a one-line current status.
-    status_val = parts[-2].strip()
-    tok = re.match(r"(`?@status:[a-z-]+`?(?:\s*`?@verified:[a-z-]+`?)?)", status_val)
-    if tok:
-        remainder = status_val[tok.end():].strip()
-        if len(status_val) > 200 and remainder:
-            # keep the token + first clause of the remainder; rest goes to the block.
-            first = re.split(r"[.;]", remainder, maxsplit=1)[0].strip()
-            parts[-2] = f" {tok.group(1)} {first} → history in detail block "
+    if status_idx is not None:
+        status_val = parts[status_idx].strip()
+        tok = re.match(r"(`?@status:[a-z-]+`?(?:\s*`?@verified:[a-z-]+`?)?)", status_val)
+        if tok:
+            remainder = status_val[tok.end():].strip()
+            if len(status_val) > 200 and remainder:
+                # keep the token + first clause of the remainder; rest goes to the block.
+                first = re.split(r"[.;]", remainder, maxsplit=1)[0].strip()
+                parts[status_idx] = f" {tok.group(1)} {first} → history in detail block "
     return "|".join(parts)
 
 

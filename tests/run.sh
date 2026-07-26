@@ -132,6 +132,26 @@ if tokened != len(rows):
 if issues:
     print(f"FAIL: example has status integrity issues: {issues}"); ok = False
 
+# 2b. Preset/column-layout robustness (the bug-echo family from 2026-07-26):
+#     positional cell reads must survive an appended 1-Star Risk column and the
+#     Compact preset (which drops the Target column).
+sys.path.insert(0, str(scripts))
+import parse_status as _ps, row_budget as _rb  # noqa: E402
+_std = "| A1 | 🔴 THIS | Some finding | 🔴 CRIT | 🟢 Med | 🔴 Crit | 🟠 Excellent | 🟢 3 fls | Sml | `@status:open` |"
+_compact = "| A1 | **🔴 THIS · Wallet broken** | 🔴 CRIT | 🟢 Med | 🔴 Crit | 🟠 Excellent | 🟢 3 fls | Sml | `@status:open` |"
+_onestar = ("| A1 | 🔴 THIS | " + "x" * 500 + " | 🔴 CRIT | 🟢 Med | 🔴 Crit | 🟠 Excellent | 🟢 3 fls | Sml "
+            "| `@status:done-verified` `@verified:device` " + "hist " * 40 + "| `risk‹★──›clear`<br>🔴 At risk |")
+if _ps.finding_cell(_std) != "Some finding":
+    print(f"FAIL: finding_cell(Standard) = {_ps.finding_cell(_std)!r}"); ok = False
+if _ps.finding_cell(_compact) != "**🔴 THIS · Wallet broken**":
+    print(f"FAIL: finding_cell(Compact) = {_ps.finding_cell(_compact)!r} (Target-drop regression)"); ok = False
+if not _ps.target_is_this(_compact) or not _ps.target_is_this(_std):
+    print("FAIL: target_is_this missed a THIS row"); ok = False
+_split = _rb.build_index_row(_onestar, "A1", "headline")
+_p = _split.rstrip().split("|")
+if "risk‹★" not in _p[-2] or "@status:done-verified" not in _p[-3]:
+    print("FAIL: build_index_row mis-targeted the 1-Star column (should trim Status, not the risk strip)"); ok = False
+
 # 3. the verify gate passes on the example (no error-severity findings)
 r = subprocess.run([sys.executable, str(scripts / "verify_ledger.py"), "--file", str(ex)],
                    capture_output=True, text=True)
