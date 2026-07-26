@@ -165,6 +165,16 @@ for _hdr, _n in (
     if _cols != _n:
         print(f"FAIL: pointer row has {_cols} cols for a {_n}-col parent (hardcoded-width regression)"); ok = False
 
+# 2d. verify must NOT flag a branch pointer row for a missing verify-still-open recipe
+#     (the pointer cites the child filename, tripping the file-cite regex — false
+#     positive; found in the 2026-07-26 smoke test).
+import verify_ledger as _vl  # noqa: E402
+_ptr = _bc.build_pointer_row("U9", "⚪ SOMEDAY", "MI-SPRINT.md", "lifespan",
+                             _bc.parent_header_cells("| # | Target | Finding | Urgency | Risk: Fix | Risk: No Fix | ROI | Blast Radius | Fix Effort | Status |"))
+_vf = _vl.check_rows(_ptr + "\n", 400)
+if any(f["check"] == "stale-recipe" for f in _vf):
+    print("FAIL: verify flagged stale-recipe on a pointer row (false positive)"); ok = False
+
 # 3. the verify gate passes on the example (no error-severity findings)
 r = subprocess.run([sys.executable, str(scripts / "verify_ledger.py"), "--file", str(ex)],
                    capture_output=True, text=True)

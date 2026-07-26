@@ -124,8 +124,13 @@ def check_rows(text: str, char_budget: int) -> list[dict]:
 
         # Check 8: stale-recipe risk — a Finding that cites a file but the row
         # carries no verify-still-open recipe anywhere in its cells.
+        # Skip POINTER rows: a branch pointer's Finding cites the CHILD ledger's
+        # filename ("→ see RELEASE-1.0.md"), which trips the file-cite regex, but a
+        # pointer is a signpost, not a work item — asking it for a verify recipe is
+        # a false positive (every branched ledger would carry one).
         fcell = finding_cell(line)
-        if FILE_CITE_RE.search(fcell):
+        is_pointer = "this row is a pointer" in line.lower() or "→ see " in status_cell(line).lower()
+        if not is_pointer and FILE_CITE_RE.search(fcell):
             whole = line.lower()
             if not any(m in whole for m in RECIPE_MARKERS):
                 findings.append({
