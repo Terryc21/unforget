@@ -5,6 +5,8 @@
 #   1. plugin.json parses as JSON
 #   2. plugin.json "name" field is "unforget"
 #   3. plugin.json "name" matches SKILL.md frontmatter "name"
+#   4. version agrees across SKILL.md, plugin.json, and marketplace.json
+#      (this drift is why the marketplace listing once fell 6 versions behind)
 #
 # Note: this plugin uses the flat single-skill layout (one SKILL.md at repo
 # root, no skills/ subdir). plugin.json intentionally has NO "skills" array —
@@ -21,6 +23,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MANIFEST="$SCRIPT_DIR/plugin.json"
+MARKETPLACE="$SCRIPT_DIR/marketplace.json"
 SKILL_FILE="$REPO_ROOT/SKILL.md"
 
 if [ ! -f "$MANIFEST" ]; then
@@ -53,5 +56,15 @@ if [ "$SKILL_NAME" != "unforget" ]; then
     exit 1
 fi
 
-echo "OK: plugin.json valid, name=unforget, matches SKILL.md frontmatter"
+# 4. version agreement across the three sources (catches the marketplace-listing drift)
+SKILL_VER=$(awk '/^---$/{count++; next} count==1 && /^version:/{print $2; exit}' "$SKILL_FILE")
+PLUGIN_VER=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['version'])")
+MARKET_VER=$(python3 -c "import json; print(json.load(open('$MARKETPLACE'))['plugins'][0]['version'])")
+if [ "$SKILL_VER" != "$PLUGIN_VER" ] || [ "$SKILL_VER" != "$MARKET_VER" ]; then
+    echo "ERROR: version mismatch — SKILL.md=$SKILL_VER, plugin.json=$PLUGIN_VER, marketplace.json=$MARKET_VER"
+    echo "       bump all three together (a release changes all of them)"
+    exit 1
+fi
+
+echo "OK: plugin.json valid, name=unforget, matches SKILL.md; version $SKILL_VER consistent across all three manifests"
 exit 0
