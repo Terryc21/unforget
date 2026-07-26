@@ -189,7 +189,7 @@ reintroduce the miss-one-step risk.
     [--discipline="<one line>"] [--death="<condition>"] [--target=SOMEDAY] [--dry-run]
 ```
 
-### The three atomic artifacts
+### The atomic artifacts (three, or four with a maintained recall block)
 
 1. **Scaffold the child's header** (§4b) — axis, discipline, parent back-pointer,
    and (lifespan only) the death condition. The child is written with its own
@@ -199,11 +199,16 @@ reintroduce the miss-one-step risk.
 3. **Register the child** (§5) — a registry entry (name, path, role, axis,
    discipline, parent, death) via `scripts/registry.py`, so `list`/`scan`/`import`
    re-read where it lives.
+4. **Update the maintained recall block** (onboarding §4) — *only when the registry
+   declares `recall_block: maintained` + a `recall_file`*: rebuild the Deferred Work
+   Index from the just-updated registry so the child appears immediately. Skipped for
+   `manual`/`none` or registry-less projects.
 
-**Atomicity:** all three, or none. The helper writes to temp/validates first and
-only commits when every artifact can be written; a failure on any one leaves the
-parent, child, and registry untouched (no half-branched state). `--dry-run` reports
-the three artifacts it *would* write and touches nothing.
+**Atomicity:** all present artifacts, or none. The helper builds every artifact's
+content and checks every guard *before* any write; a failure on any one rolls the
+others back (child deleted, parent/registry/recall restored to their prior bytes) —
+no half-branched state. `--dry-run` reports the artifacts it *would* write and touches
+nothing.
 
 ### Guards (refuse rather than half-create)
 
@@ -221,14 +226,14 @@ the three artifacts it *would* write and touches nothing.
 
 ### The recall block
 
-The project's recall trigger (the `## Deferred Work Index` block in
-CLAUDE.md/AGENTS.md) points at the **canonical index** (the main ledger); a child is
-reached through the parent's pointer row, so a branch does not require rewriting the
-recall block to stay reachable. **When a marker-delimited recall block exists**
-(Phase 6's recall-block writer), `branch` appends a one-line child pointer to it as
-a fourth atomic step; **until that writer lands**, `branch` reports the child so the
-user can note it, and does not hand-edit the prose block. This keeps `branch` atomic
-on the artifacts that exist today without pre-building Phase 6.
+When the registry declares a **maintained** recall block (`recall_block: maintained`
++ a `recall_file`), `branch` updates it as a **fourth atomic artifact** — it rebuilds
+the marker-delimited Deferred Work Index (`scripts/recall_block.py`) from the
+just-updated registry so the new child appears immediately, and rolls it back with the
+other three on any write failure. When there is **no** maintained recall block (a
+`manual`/`none` project, or no registry yet), `branch` skips it — the child stays
+reachable through the parent's pointer row, which points at the canonical index. This
+keeps `branch` atomic whether or not a maintained recall block is configured.
 
 ### After creating
 
@@ -246,20 +251,22 @@ deterministic and delegates to the helper:
 python3 scripts/branch_create.py --dir <ledger-dir> --name <name> \
     --axis <actor|lifespan|domain> --parent <parent-file> \
     [--discipline "<one line>"] [--death "<condition>"] \
-    [--target SOMEDAY] [--parent-id U18] [--dry-run]
+    [--target SOMEDAY] [--parent-id U18] [--recall-home "<display path>"] [--dry-run]
 ```
 
 It returns `{ok, dry_run, child_path, parent_path, pointer_id, registered,
-needs_confirmation, refusal, artifacts, advisory}`. On a guard failure it returns
-`ok:false` with a `refusal` string and writes nothing. On success (non-dry-run) it
-has written all three artifacts atomically. Registry read/write reuses
-`scripts/registry.py`.
+recall_updated, needs_confirmation, refusal, artifacts, advisory}`. On a guard failure
+it returns `ok:false` with a `refusal` string and writes nothing. On success
+(non-dry-run) it has written all present artifacts atomically (three, or four when a
+maintained recall block is configured — `recall_updated:true`). Registry and recall
+read/write reuse `scripts/registry.py` and `scripts/recall_block.py`.
 
 **Algorithm fallback** (Python unavailable): (1) create `<child>.md` with a
 `<!-- unforget-format: v2 -->` marker and a header naming the axis, discipline,
 parent back-pointer, and — if lifespan — the death condition, plus empty section
 tables; (2) append one pointer row to the parent (pointer shape, `→ see <child>` in
 Status), reusing the next `U-NN` id; (3) add a registry row (name/path/role/axis/
-discipline/parent/death) to the ledger `README.md` block. Do all three or roll back
-by hand. Refuse if the name is already registered, if a lifespan branch has no death
+discipline/parent/death) to the ledger `README.md` block; (4) if a maintained recall
+block exists, add a bullet for the child to it. Do all present steps or roll back by
+hand. Refuse if the name is already registered, if a lifespan branch has no death
 condition, or (for actor) if the actor is not a human.

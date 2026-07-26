@@ -24,14 +24,23 @@ The skill must NOT silently overwrite or merge into an existing UNFORGET.md. The
 
 ### Phase 1: Setup questions
 
-Three short questions before any scanning happens:
+Short questions before any scanning happens. The first three (path, cadence, recall) have always been asked; format v2 adds the **git-posture** question and upgrades the recall answer to a *skill-maintained* block. Keep it tight — more questions is friction that makes users skip `init`. The v2 answers are persisted to the **registry** (Phase 7 writes it) so they are never re-guessed (`reference/registry.md`).
 
-1. **File path.** The default depends on what the project already has. Check the repo first:
+1. **File path / ledger home.** The default depends on what the project already has. Check the repo first:
    - If `Documentation/` exists with subdirectories: default `Documentation/Development/Deferred/UNFORGET.md` (matches projects with formal docs trees, like iOS/macOS apps)
    - If `docs/` exists: default `docs/UNFORGET.md` (matches conventional library / web projects)
    - If neither exists: default `UNFORGET.md` at repo root (matches minimal single-purpose repos like skills, CLI tools, small libraries)
 
-   Always offer the user the chance to override. The point is to not impose a directory structure the project doesn't already use.
+   Always offer the user the chance to override. The point is to not impose a directory structure the project doesn't already use. **Archives are NOT a separate question** — they default to an `archive/` subfolder of the chosen home. Don't ask what you can sensibly default.
+
+   **Out-of-repo homes** (a separate notes tree, e.g. an Obsidian vault) are allowed, but WARN: an out-of-repo ledger is the split-brain risk vector (a session can't find it from the repo). The registry mitigates it, but the recall block (question below) must then carry the **absolute** path.
+
+1b. **Git posture (format v2).** How should the ledgers relate to version control? Not binary — name the third posture, because most users don't know it exists:
+   - **Split (recommended default for solo/private):** ledger *contents* are gitignored, but a tracked `README.md`/index documents where each ledger lives and what it is. Keeps working notes private while leaving the repo self-documenting — no future session hunts for a "missing" ledger, because the tracked index names it. This is the registry's home under Split.
+   - **Committed:** tracked in the repo — a team-shared backlog (the skill's README suggests this for multi-user).
+   - **Ignored:** local-only working notes, never committed.
+
+   The chosen posture is **applied automatically** — the skill writes the `.gitignore` rules (ignore contents; un-ignore the index for Split) rather than leaving the user to hand-edit. Also add the ephemeral `.unforget-session.json` (the deferral-gate per-session tally) to `.gitignore` under every posture — it's churn, never a record.
 
 2. **Cadence preset.**
    > "How does this project ship?"
@@ -41,7 +50,7 @@ Three short questions before any scanning happens:
    > - Solo / side project / want minimal columns routes to **Lean** preset (6 columns)
    > - Custom: pick from a fixed pool of 12 columns
 
-3. **AI instructions file wiring.** Different AI tools use different conventions:
+3. **Recall block — write AND maintain a pointer in the AI instructions file?** Different AI tools use different conventions:
    - Claude Code: `CLAUDE.md`
    - Anthropic Agent SDK / generic: `AGENTS.md`
    - Warp: `WARP.md`
@@ -49,17 +58,22 @@ Three short questions before any scanning happens:
    - Aider: `.aider.conf.yml`
    - Continue: `.continue/`
 
-   Scan the repo for any of these. Wiring this block is the **strong default**, not a neutral option — an unwired ledger is the single most common way unforget silently fails: the user runs `init`, writes rows, then asks "what's deferred?" three weeks later and gets nothing, because no session-recall trigger was installed. Frame the question so the default is clearly yes:
+   Scan the repo for any of these. This is the **most important** of the setup questions: questions 1/1b decide *where* things are; this is what makes future sessions *find* them. Without a recall block, the registry is correct but unread — the skill knows where the ledgers are, but the next session doesn't know to ask. It's the single most common way unforget silently fails: the user runs `init`, writes rows, then asks "what's deferred?" three weeks later and gets nothing. Three options, default the first:
 
-   - **Exactly one found:** "I'll add a 'Deferred Work Index' section to `<filename>` so future AI sessions auto-recall UNFORGET.md when you ask 'what's deferred?' — this is what makes the skill work across sessions. Add it? **(recommended; default yes)**". Proceed on a bare Enter / "yes" / no objection; only skip on an explicit decline.
-   - **Multiple found:** list them, wire all by default, and let the user narrow or decline.
-   - **None found:** "No AI instructions file found. Without one, unforget won't auto-recall — you'd have to invoke `/unforget list` manually every time. Create a `CLAUDE.md` with the Deferred Work Index block? **(recommended; default yes)**".
+   - **Maintained (recommended default, format v2):** the skill writes a **marker-delimited** Deferred Work Index block and thereafter UPDATES it on `import`/`promote`/`branch`/move — so it can't silently rot (the 2026-07-25 stale-pointer failure). The block records the git posture + ledger home and lists every registered ledger with its one-line purpose. Written by `scripts/recall_block.py` (see Phase 7).
+   - **Manual:** the skill prints the block once for the user to paste and maintain themselves (the pre-v2 behavior; offered but not recommended — it's exactly what went stale).
+   - **None:** no recall block. Warn plainly: future sessions won't auto-route deferred-work questions here unless the user points them at the ledger every time.
 
-   When the user does decline, say so plainly and once: "Recall trigger not installed — deferred-work questions won't auto-route to unforget until you add the block (re-run `init`, or `/unforget --version` in this project will report it as missing)." Never impose the block over an explicit no; do make the consequence of declining visible rather than silent.
+   Framing per what's found:
+   - **Exactly one instructions file found:** "I'll add a skill-maintained 'Deferred Work Index' block to `<filename>` so future AI sessions auto-recall your ledgers — and keep it current as ledgers change. **(recommended; default yes)**". Proceed on a bare Enter / "yes"; only step down to manual/none on an explicit choice.
+   - **Multiple found:** list them, maintain the block in all by default, and let the user narrow.
+   - **None found:** "No AI instructions file found. Without one, unforget won't auto-recall. Create a `CLAUDE.md` with a maintained Deferred Work Index block? **(recommended; default yes)**".
 
-   The wiring step shouldn't hardcode filenames. It should detect what the project actually uses and adapt.
+   When the user declines, say so plainly and once: "Recall trigger not installed — deferred-work questions won't auto-route to unforget until you add the block (re-run `init`, or `/unforget --version` will report it missing)." Never impose over an explicit no; do make the consequence visible rather than silent. Don't hardcode filenames — detect what the project uses.
 
-These three questions take 90 seconds or less. After this, the user is hands-off until Phase 5.
+**Policies (inherited, not re-asked).** `init` also sets the two companion-spec policies with recommended defaults, stored in the registry so they persist and aren't re-litigated each run: **Policy 1 — deferral aggressiveness** (default `aggressive`; `reference/deferral-gate.md` §5) and **Policy 2 — multi-axis placement tiebreak** (default `lifespan-wins`; `reference/branching.md` §2.5). These are defaults, not questions — a start-of-run may one-tap re-confirm them but never forces a re-answer, and per-row overrides are always available.
+
+These questions take ~90 seconds or less. After this, the user is hands-off until Phase 5.
 
 ### Phase 2: Surface survey (read-only)
 
@@ -275,17 +289,33 @@ The collapsed form removes noise on minimal projects where most sections are emp
 
 User can preview the rows before committing. If they cancel, no files are touched. If they proceed:
 
-1. **Write UNFORGET.md** with all imported rows in their assigned sections. If Surface 6 returned candidates and the scan emitted `pin_action.action == "write"`, write `<!-- unforget-config: memory-dir=<encoded> -->` on its own line immediately under the `<!-- unforget-format: vN -->` marker. The pin caches "this directory worked for this project" so subsequent `/unforget import` runs skip the cwd-encode + ancestor-walk resolution. Skip the pin write when `pin_action.action == "none"` (no files found, or directory resolved to zero matches). See `reference/surfaces.md` § Memory-dir config pin (post-resolution) for the full read order.
+1. **Write UNFORGET.md** with all imported rows in their assigned sections, carrying the `<!-- unforget-format: v2 -->` marker (new ledgers are v2). If Surface 6 returned candidates and the scan emitted `pin_action.action == "write"`, write `<!-- unforget-config: memory-dir=<encoded> -->` on its own line immediately under the format marker. The pin caches "this directory worked for this project" so subsequent `/unforget import` runs skip the cwd-encode + ancestor-walk resolution. Skip the pin write when `pin_action.action == "none"`. See `reference/surfaces.md` § Memory-dir config pin (post-resolution).
 2. **Move RESOLVED / FIXED items** to a separate archive file (`UNFORGET-archive-<date>.md` in the same directory).
 3. **Optionally rename / replace the source files**: e.g., replace root `Deferred.md` with a redirect pointer to UNFORGET.md (preserving git history). Always ask before modifying any source file.
-4. **Wire CLAUDE.md / AGENTS.md** with the Deferred Work Index section (if user agreed in Phase 1).
-5. **Print a final summary** with the row count, the path, the next-step suggestion ("run `/unforget list --target=THIS` to see release blockers").
+4. **Write the registry (format v2).** Record the answers to the Phase 1 questions — git posture, recall mode + file, ledger home, and the two policy defaults — plus one entry for UNFORGET.md, in the ledger directory's `README.md` manifest (canonical) via `python3 scripts/registry.py write --dir <ledger-dir> --json <payload>`. README-canonical, `.unforget.json` is a regenerable cache; see `reference/registry.md`.
+5. **Apply the git posture.** Write the `.gitignore` rules the chosen posture implies (Split: ignore ledger contents, un-ignore the `README.md` index; Ignored: ignore all; Committed: nothing to ignore). Add `.unforget-session.json` (the deferral-gate per-session tally) and `.unforget.json` (the registry cache) to `.gitignore` under every posture — both are churn, not records. Preview the `.gitignore` diff before writing.
+6. **Wire the recall block** (if the user chose *maintained* or *manual* in Phase 1). For **maintained**, run `python3 scripts/recall_block.py write --file <CLAUDE.md/AGENTS.md> --dir <ledger-dir> [--home "<display path>"]` — it writes the marker-delimited Deferred Work Index block from the registry (rewriting only between its markers, never the user's surrounding content). For **manual**, `python3 scripts/recall_block.py render --dir <ledger-dir>` prints the block for the user to paste. For **none**, skip (the Phase 1 warning already fired).
+7. **Print a final summary** with the row count, the path, the registry + recall status, and the next-step suggestion ("run `/unforget list --target=THIS` to see release blockers").
+
+### Phase 6b: Migration for EXISTING (already-messy) ledgers (format v2)
+
+Most real adoption is a user who already has ledgers scattered around — the Stuffolio case (a main ledger plus `TERRY-*` / `MI-*` in a *parallel tree* the skill didn't know about). `init` must handle the already-messy case, not just greenfield. This is a **one-way-door-ish** action: propose, confirm, verify, then move — never auto-move.
+
+1. **Detect existing ledgers** across likely locations — the surface survey extended to **ASK the user for non-standard locations** (parallel trees, an Obsidian vault, gitignored files), not just scan the default. That ask is the fix for the gap that hid the parallel tree; see `reference/surfaces.md` § Non-standard ledger locations. Bounded scan, not a disk-wide `find` (a disk-wide find timed out in the session that motivated this — a cautionary datum).
+2. **Offer consolidation** — propose one home, show exactly what would move, and leave non-ledger docs behind. Show the plan before touching anything.
+3. **Verify byte-identical before removing an original.** Copy to the new home, confirm the destination is byte-for-byte identical to the source, and only then remove the source (or replace it with a redirect pointer). A move that isn't verified-identical is a data-loss risk — this discipline is non-negotiable.
+4. **Backfill the registry** from what's found: infer each ledger's axis/discipline/parent/death from its own header (a by-lifespan child like MI already declares its cap / eviction / death condition — parseable), and register it. Then run the drift check (`/unforget import`, below) to confirm the registry now matches disk.
+5. **Wire the recall block** to list every consolidated ledger.
+
+Never silently relocate. Consolidation always previews + verifies before moving (the discipline actually used when this was done by hand).
 
 ### Success criteria for `/unforget init`
 
 After init runs:
 
-- UNFORGET.md exists at the chosen path with rows imported from existing surfaces and items captured from the user's memory.
-- Source files (Deferred.md, ledgers, etc.) are either archived or replaced with redirects, never silently deleted.
-- CLAUDE.md / AGENTS.md has a Deferred Work Index section so future AI sessions auto-recall UNFORGET.md.
+- UNFORGET.md exists at the chosen path with rows imported from existing surfaces and items captured from the user's memory, carrying the `<!-- unforget-format: v2 -->` marker.
+- Source files (Deferred.md, scattered ledgers, etc.) are either archived, consolidated (verified byte-identical before removal), or replaced with redirects — never silently deleted.
+- The **registry** (`README.md` manifest) records the git posture, recall mode, ledger home, policies, and every ledger; the git posture's `.gitignore` rules (incl. ignoring `.unforget-session.json` / `.unforget.json`) are applied.
+- CLAUDE.md / AGENTS.md has a maintained (or manual) Deferred Work Index block so future AI sessions auto-recall the ledgers — and, under *maintained*, it stays current as ledgers change.
 - The user can run `/unforget list --target=THIS` and see exactly what's blocking the next release, in one screen.
+- `/unforget import` reports **no drift** (registry matches disk; recall block matches registry).

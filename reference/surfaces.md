@@ -23,6 +23,18 @@ Scan the project for existing deferred-work artifacts across six tractable surfa
 | **GitHub issues** (if `gh` CLI authenticated AND repo accessible) | Open issues labeled `deferred`, `wontfix-for-now`, `post-release`, `backlog` | High when labeled |
 | **Memory files** | Filename match `^deferred_*.md` or `^project_deferred_*.md` (strict, because body-text "defer" matches produce too many false positives from book/feedback files that mention deferral in passing) | High when filename matches; deprioritized for body-only matches |
 
+## Non-standard ledger locations (format v2 — ASK, don't only scan)
+
+The default surface scan looks in the repo's standard locations. But the failure that motivated the registry was a set of ledgers (`TERRY-UNFORGET.md`, `MI-UNFORGET.md`) stranded in a **parallel tree outside the repo** — a location no default scan would reach, and a session reported them "missing." The fix is not a wider scan (a disk-wide `find` timed out in that session — a real cautionary datum); it is to **ASK**.
+
+On `init` (migration, Phase 6b) and on `import`, in addition to scanning the defaults:
+
+- **Ask the user for non-standard ledger locations:** "Do you keep any deferred-work ledgers outside this repo — a notes tree, an Obsidian vault, a parallel directory?" If yes, take the path(s) and survey them explicitly. Do NOT deep-scan the whole disk to find them.
+- **Also flag ledger-shaped files found on disk but not registered** (`*UNFORGET*.md`, `TERRY-*`, `MI-*`, excluding `-archive`/`README`) — the "found-but-unregistered" drift check (`scripts/import_drift.py`; see `reference/commands.md` § `/unforget import` drift checks). This surfaces a stranded ledger the user forgot to mention.
+- **Record every confirmed location in the registry** so it never has to be re-discovered — that is the whole point of §0 of the onboarding design: nothing the skill relies on should live only in memory.
+
+Bounded and consented: ask for paths, survey what the user names plus what the drift check finds, and register the result. Never a disk-wide crawl.
+
 ### Surface 1: Deferred-named files — redirect-pointer pre-check
 
 Before parsing a Surface 1-matched file, check whether it is a redirect pointer rather than a real backlog. A file qualifies as a redirect pointer if BOTH conditions hold:

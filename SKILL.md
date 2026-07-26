@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.3.0
+version: 1.4.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -106,7 +106,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
 | `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
 | `reference/branching.md` | (format v2+) the branching model: the three axes (actor / lifespan / domain), the decision cascade, parent/child conventions, and the atomic `branch` command | Deciding whether work earns a child ledger; running `/unforget branch` |
-| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
+| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
 
@@ -147,7 +147,7 @@ This block is what makes the skill's recall trigger work. Without it, future AI 
 
 ### Format-version contract
 
-Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v1.1) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, and the `verify` lint; a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
+Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verify`) checks for an HTML comment marker of the form `<!-- unforget-format: vN -->` near the top of UNFORGET.md. The marker declares which version of the unforget file format the file conforms to. This skill (v1.4) supports formats `v1` and `v2`. `v2` adds the `@status`/`@verified` status tokens, the registry, the `verify` lint, the deferral gate, branching, and the onboarding/recall-block wiring; a `v1` file has none of those and is read/written as a legacy ledger (tokens optional, never required). Three cases:
 
 - **Marker absent.** The skill prompts: "this file may not be in unforget format; proceed anyway?" Default response is no. If the user proceeds, the skill operates as best it can without format guarantees, and recommends adding `<!-- unforget-format: v2 -->` near the top of the file to silence the prompt on future reads.
 - **Marker recognized (`v1` or `v2`).** The skill proceeds normally. A `v1` file is treated as a legacy ledger: the v2-only features (status tokens, registry, `verify` errors) simply don't apply; nothing is required or auto-added until the file is upgraded to `v2`.
@@ -166,6 +166,35 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v1.4.0 — onboarding, registry wiring, and the maintained recall block (2026-07-26) · format v2
+Phase 6 of the v1.1 design build: `init`/`import` now write and reconcile the two persisted
+surfaces the whole system depends on — the **registry** and the **maintained recall block** — so
+nothing the skill relies on lives only in memory (the through-line of the onboarding design). This
+is the fix for the 2026-07-25 split-brain (ledgers stranded in a parallel tree) and stale-pointer
+(a CLAUDE.md index that described an old layout) failures.
+
+- **Onboarding questions** (`reference/init.md`). `init` adds the **git-posture** question (split /
+  committed / ignored — split recommended, and the skill writes the `.gitignore` rules itself,
+  incl. ignoring the ephemeral `.unforget-session.json` and `.unforget.json` cache), and upgrades
+  the recall question to **maintained / manual / none**. It writes the registry + the two policy
+  defaults (Policy 1 deferral, Policy 2 multi-axis) at the end.
+- **The maintained recall block** (`reference/init.md`, `scripts/recall_block.py`). A
+  marker-delimited Deferred Work Index in CLAUDE.md/AGENTS.md, rebuilt from the registry by
+  init/import/branch so it can't rot — rewriting only between its markers, never the user's
+  content. `branch` now updates it as a **fourth atomic artifact** (rolls back with the other three
+  on any write failure).
+- **`import` drift detection** (`scripts/import_drift.py`). Reconciles the registry against reality
+  — **registered-but-missing** (error), **found-but-unregistered** (the stranded-parallel-tree
+  check), **posture-mismatch**, and **stale-recall**. Read-only; reports, you fix.
+- **Migration for already-messy projects** (`reference/init.md` § Phase 6b, `reference/surfaces.md`
+  § non-standard locations). `init` ASKS for out-of-repo ledger locations (rather than a disk-wide
+  scan), proposes consolidation, and **verifies byte-identical before removing any original** — the
+  one-way-door discipline for not losing a ledger during a move.
+
+Backward compatible: all of it is v2; a v1 ledger keeps working, and a project with no registry
+just gets the pre-v2 behavior (branch stays reachable via the parent pointer, no recall
+maintenance).
 
 ### v1.3.0 — branching + the `branch` command (2026-07-26) · format v2
 Phase 5 of the v1.1 design build: the **branching model** and an atomic `/unforget branch`
@@ -252,11 +281,11 @@ blocker unless it is cleanly `done-verified` or `withdrawn`.
 simply don't apply until the file is upgraded to v2. No big-bang reformat; rows gain tokens as
 they're touched.
 
-### Still designed, not yet implemented (Phases 6–8)
+### Still designed, not yet implemented (Phases 7–8)
 The remaining `DESIGN-*.md` documents (in the ledger directory alongside the ledgers) describe the
-rest of the roadmap, not yet built: **onboarding `init`/`import` wiring** (Phase 6, incl. the
-marker-delimited recall-block writer), the **row-length sweep** (Phase 7), and **companion skill
-handoffs** (Phase 8). `DESIGN-implementation-plan.md` links them and orders the build.
+rest of the roadmap, not yet built: the **row-length discipline sweep** (Phase 7 — bounded index
+rows + detail blocks) and **companion skill handoffs** (Phase 8). `DESIGN-implementation-plan.md`
+links them and orders the build.
 
 ### v1.0.4 — docs (2026-07-26)
 Documentation only, no behavior change: recorded the v1.1 design pass as a changelog entry and a

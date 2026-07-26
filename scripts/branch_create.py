@@ -2,10 +2,10 @@
 r"""Atomically create a child unforget ledger (the `branch` command's deterministic half).
 
 Implements the atomic child-creation of the branching model (see
-reference/branching.md §8, from the Branching Model design spec §8-#4). Creating a
-child ledger does three things TOGETHER, OR NONE — because those three drifting
-apart IS the split-brain failure this exists to prevent (a child ledger the
-parent/registry lost track of):
+reference/branching.md §8, from the Branching Model design spec §8-#4, extended by
+the Onboarding & Registry spec §4). Creating a child ledger does its artifacts
+TOGETHER, OR NONE — because those drifting apart IS the split-brain failure this
+exists to prevent (a child ledger the parent/registry/recall lost track of):
 
   1. SCAFFOLD the child's header (§4b) — axis, discipline, parent back-pointer, and
      (lifespan only) the death condition — plus its own format marker and empty
@@ -14,6 +14,12 @@ parent/registry lost track of):
      copy of child rows.
   3. REGISTER the child (§5) via registry.py — name/path/role/axis/discipline/
      parent/death, so list/scan/import re-read where it lives.
+  4. UPDATE the maintained recall block (onboarding §4) — when the registry declares
+     a maintained recall_file, rebuild the CLAUDE.md/AGENTS.md Deferred Work Index
+     from the just-updated registry so the new child appears immediately (else the
+     block goes stale the moment the child is created). Skipped when no maintained
+     recall block is configured; the branch then stays reachable via the parent
+     pointer alone. All present artifacts roll back together on any write failure.
 
 The AXIS DECISION (which axis, is it a human actor, would it balloon the task) is
 LLM judgment following the §3 cascade — NOT this script. This script is given the
@@ -72,6 +78,7 @@ from pathlib import Path
 # there is ONE registry writer, not two divergent implementations.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import registry  # type: ignore  # noqa: E402
+import recall_block  # type: ignore  # noqa: E402
 
 FORMAT_MARKER = "<!-- unforget-format: v2 -->"
 AXES = {"actor", "lifespan", "domain"}
@@ -168,6 +175,7 @@ def run(args) -> dict:
     result = {
         "ok": False, "dry_run": args.dry_run, "child_path": None,
         "parent_path": None, "pointer_id": None, "registered": False,
+        "recall_updated": False,
         "needs_confirmation": None, "refusal": None,
         "artifacts": ["child header", "parent pointer row", "registry entry"],
         "advisory": "",
@@ -248,16 +256,38 @@ def run(args) -> dict:
         "death": (args.death or None),
     })
 
+    reg_global = reg.get("global", {})
+    recall_file = reg_global.get("recall_file")
+    recall_maintained = (reg_global.get("recall_block") or "").strip().lower() == "maintained"
+    if recall_maintained and recall_file:
+        result["artifacts"] = result["artifacts"] + ["recall block"]
+
     if args.dry_run:
         result["ok"] = True
+        recall_note = (f", and update the recall block in {Path(recall_file).name}"
+                       if (recall_maintained and recall_file) else "")
         result["advisory"] = (result["advisory"] + " " if result["advisory"] else "") + (
             f"DRY RUN — would write child {child_name}, pointer {pointer_id} in {args.parent}, "
-            f"and register {name_stem}. Nothing written.")
+            f"register {name_stem}{recall_note}. Nothing written.")
         return result
 
-    # --- atomic write: child → parent → registry, roll back on failure -----
+    # --- atomic write: child → parent → registry → recall block, roll back on failure -----
+    #
+    # The recall block is the FOURTH atomic artifact when the registry declares a
+    # maintained block (onboarding §4 + branching §8-#4): a new child must appear in
+    # the CLAUDE.md/AGENTS.md Deferred Work Index or the block goes stale the moment
+    # it's created. It is rebuilt from the just-updated registry, so it always
+    # reflects the new ledger. If the registry has no maintained recall_file, this
+    # step is skipped (a v1/registry-less project just gets the three-artifact branch,
+    # which stays reachable via the parent pointer).
+    # (reg_global / recall_file / recall_maintained were computed above the dry-run gate.)
 
     written: list[Path] = []
+    registry_backup = None
+    recall_backup = None
+    recall_existed = False
+    registry_attempted = False   # did we reach (and thus possibly mutate) the README?
+    recall_attempted = False     # did we reach (and thus possibly mutate) the recall file?
     try:
         child_path.write_text(child_content, encoding="utf-8")
         written.append(child_path)
@@ -266,10 +296,30 @@ def run(args) -> dict:
         parent_path.write_text(new_parent_text, encoding="utf-8")
         written.append(parent_path)  # (rolled back to backup, not deleted)
 
-        registry.write_registry(dir_path, reg.get("global", {}), reg_ledgers)
+        # snapshot the registry README for rollback, then write.
+        readme = dir_path / "README.md"
+        registry_backup = readme.read_text(encoding="utf-8") if readme.exists() else None
+        registry_attempted = True
+        registry.write_registry(dir_path, reg_global, reg_ledgers)
         result["registered"] = True
+
+        # fourth artifact: the maintained recall block (best-effort, atomic-guarded).
+        if recall_maintained and recall_file:
+            rf = Path(recall_file)
+            if rf.exists():
+                recall_backup = rf.read_text(encoding="utf-8")
+                recall_existed = True
+            recall_home = args.recall_home if args.recall_home is not None else reg_global.get("recall_home")
+            new_block = recall_block.render_block(reg_global, reg_ledgers, recall_home)
+            existing = recall_backup if recall_existed else ""
+            new_text, _ = recall_block.upsert_block(existing, new_block) if existing else (new_block + "\n", "wrote")
+            recall_attempted = True
+            rf.write_text(new_text, encoding="utf-8")
+            result["recall_updated"] = True
     except OSError as exc:
-        # roll back: delete the freshly-created child, restore the parent text.
+        # roll back EVERY artifact we ACTUALLY reached — no half-branched state, and
+        # never touch a file we didn't write (a failure before the recall step must
+        # leave the recall file exactly as it was, not delete it).
         for p in written:
             try:
                 if p == child_path:
@@ -278,14 +328,29 @@ def run(args) -> dict:
                     p.write_text(parent_backup, encoding="utf-8")
             except OSError:
                 pass
+        if registry_attempted and registry_backup is not None:
+            try:
+                (dir_path / "README.md").write_text(registry_backup, encoding="utf-8")
+            except OSError:
+                pass
+        if recall_attempted and recall_file:
+            try:
+                rf = Path(recall_file)
+                if recall_existed and recall_backup is not None:
+                    rf.write_text(recall_backup, encoding="utf-8")
+                elif not recall_existed:
+                    rf.unlink(missing_ok=True)
+            except OSError:
+                pass
         result["ok"] = False
         result["refusal"] = f"write failed ({exc}); rolled back — no half-branched state"
         return result
 
     result["ok"] = True
+    recall_note = " + recall block updated" if result["recall_updated"] else ""
     result["advisory"] = (
         f"Child {name_stem} created at {child_name}, pointer {pointer_id} in {args.parent}, "
-        f"registered. Add rows with /unforget add --ledger={name_stem}.")
+        f"registered{recall_note}. Add rows with /unforget add --ledger={name_stem}.")
     return result
 
 
@@ -301,6 +366,8 @@ def main() -> int:
     parser.add_argument("--parent-id", default=None, help="force the pointer row id (default next U-NN)")
     parser.add_argument("--actor-is-human", action="store_true",
                         help="(actor axis) assert the actor is a human")
+    parser.add_argument("--recall-home", default=None,
+                        help="display path for the recall block's ledger home (if maintained)")
     parser.add_argument("--dry-run", action="store_true", help="report artifacts, write nothing")
     args = parser.parse_args()
 

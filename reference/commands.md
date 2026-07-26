@@ -244,6 +244,13 @@ Same as `/unforget init` Phases 2 to 4 and Phase 7 (see `reference/init.md` and 
 - Duplicate detection: if a survey row matches an existing UNFORGET.md row by similarity (fuzzy match on Finding text + source pointer), the skill flags it and asks whether to skip or import as a separate row.
 - **Memory-dir pin maintenance:** the survey emits `pin_action` for Surface 6 (memory files). When `pin_action.action` is `write` (no pin present), patch `<!-- unforget-config: memory-dir=<encoded> -->` into UNFORGET.md directly under the `<!-- unforget-format: vN -->` marker as part of the same import write. When `pin_action.action` is `rewrite` (pin exists but resolved to a different encoded path), replace the existing marker line with the new value. When `pin_action.action` is `none`, leave the file alone. See `reference/surfaces.md` § Memory-dir config pin (post-resolution).
 - The Phase 7 diff preview shows what's NEW, not the full file state.
+- **Drift checks (format v2+):** `import` reconciles the registry against reality — this is the check set that would have caught the 2026-07-25 split-brain. Run `python3 scripts/import_drift.py --dir <ledger-dir> [--recall-file <CLAUDE.md/AGENTS.md>]` and report its findings most-severe first:
+  - **registered-but-missing** (error) — a ledger in the registry not found on disk. Report the last-known path (`"MI-UNFORGET registered at <path> — not found; moved or deleted?"`) instead of silently proceeding. Turns a 20-minute "are they lost?" hunt into one line.
+  - **found-but-unregistered** (warn) — a ledger-shaped file on disk (`*UNFORGET*.md`, `TERRY-*`, `MI-*`) not in the registry → **offer to register it**. This is the check that surfaces a stranded parallel-tree ledger.
+  - **posture-mismatch** (warn) — a ledger whose actual git-tracked state disagrees with its registered `git_posture` (e.g. registered `ignored` but git tracks it) → flag.
+  - **stale-recall** (warn, only with `--recall-file`) — the maintained recall block's content doesn't match the registry → offer to rewrite it (`scripts/recall_block.py write`) if maintained; if manual, just warn.
+  The helper is **read-only** — it reports; you walk the fixes with the user (register the stranded file, rewrite the recall block, correct the posture). Exit 1 means drift was found. See `reference/init.md` § Phase 6b migration and `reference/registry.md`.
+- **Recall-block maintenance (format v2+):** when the registry's recall mode is `maintained`, after importing new rows or registering a found ledger, refresh the Deferred Work Index block: `python3 scripts/recall_block.py write --file <recall-file> --dir <ledger-dir>`. It rewrites only between its markers; the user's surrounding content is untouched. This is what keeps the block from rotting between sessions.
 - **Branch auto-suggest (format v2+):** after importing, if the newly-added rows reveal a repeated pattern that clears the `reference/branching.md` §3 cascade to "new ledger" for **≥2 related items** (same actor / lifespan-scope / subject cluster), `import` may *offer* a `/unforget branch` — naming the pattern it saw, never branching unilaterally, at most once per pattern. `import` is the more likely place to catch this than `add`, since it surfaces a batch at once (e.g. several stranded ledgers or a cluster of user-only findings). See `/unforget add` § Branch auto-suggest and `reference/branching.md` §6.
 
 `/unforget import` is the second-most-important command after `/unforget add`. It's how the skill stays current with the project's evolving deferral surfaces.
@@ -410,9 +417,9 @@ python3 scripts/branch_create.py --dir <ledger-dir> --name <name> \
 4. **`--dry-run` first** when unsure — it reports the three artifacts it would write and touches nothing.
 5. **Report** all three artifact paths and the next step (`/unforget add --ledger=<name>`).
 
-### The recall block
+### The recall block (the 4th atomic artifact, when maintained)
 
-The project's `## Deferred Work Index` recall trigger points at the **canonical index** (the main ledger); a child is reached through the parent's pointer row, so a branch does not need the recall block rewritten to stay reachable. When Phase 6's marker-delimited recall-block writer lands, `branch` will append a child pointer to it as a fourth atomic step. Until then, `branch` reports the child so it can be noted, and does not hand-edit the prose recall block.
+When the registry declares a **maintained** recall block (`recall_block: maintained` + a `recall_file`), `branch` updates it as a **fourth atomic artifact** — it rebuilds the marker-delimited Deferred Work Index from the just-updated registry so the new child appears immediately (else the block goes stale the moment the child is created). Pass `--recall-home "<display path>"` for the header. This artifact rolls back with the others on any write failure. When there is **no** maintained recall block (a `manual`/`none` project, or no registry), `branch` simply skips it — the child stays reachable through the parent's pointer row, which points at the canonical index.
 
 ### Auto-suggest (offer on a REPEATED pattern, never branch unilaterally)
 

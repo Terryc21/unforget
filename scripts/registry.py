@@ -62,6 +62,7 @@ GLOBAL_KEYS = [
     "git_posture",
     "recall_block",
     "recall_file",
+    "recall_home",
     "policy_deferral",
     "policy_multiaxis",
     "ratio_flag_threshold",

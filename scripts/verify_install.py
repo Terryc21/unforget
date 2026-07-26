@@ -78,6 +78,8 @@ REQUIRED_COMPANIONS = [
     "scripts/verify_ledger.py",
     "scripts/defer_tally.py",
     "scripts/branch_create.py",
+    "scripts/recall_block.py",
+    "scripts/import_drift.py",
 ]
 
 VERSION_RE = re.compile(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)", re.MULTILINE)

@@ -59,6 +59,7 @@ and never touches the surrounding human prose:
 | `git_posture` | `ignored` \| `committed` \| `split` |
 | `recall_block` | `maintained` \| `manual` \| `none` |
 | `recall_file` | path to the CLAUDE.md / AGENTS.md carrying the recall block |
+| `recall_home` | display path shown as the recall block's "Ledger home"; persisted so `recall_block.py check` re-renders an identical block (writer/checker agree) |
 | `policy_deferral` | `aggressive` \| `conservative` \| `same-file-only` (deferral-gate Policy 1) |
 | `policy_multiaxis` | `lifespan-wins` \| `actor-wins` \| `nearest-death` (branching Policy 2) |
 | `ratio_flag_threshold` | integer; deferral-gate defer/fix ratio flag (default 3) |
