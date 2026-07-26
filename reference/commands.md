@@ -8,6 +8,7 @@ Subcommands here:
 - `/unforget import` — re-run the surface survey after init
 - `/unforget list` — show current state, filterable
 - `/unforget scan` — identify rows past their staleness threshold
+- `/unforget branch` — atomically create a child ledger (operational summary here; full model in `reference/branching.md`)
 - `/unforget archive` — move completed rows out of the active tables (lightweight; distinct from the release-time `promote` in `reference/promotion.md`)
 - `/unforget --version` — install-verification health check
 
@@ -96,9 +97,19 @@ blocks the write path — it redirects and counts, never refuses (see
 - `--target=THIS|NEXT|LATER|SOMEDAY` sets Target without prompting.
 - `--urgent` is shorthand for `--target=THIS --urgency=HIGH`.
 
+### Branch auto-suggest (format v2+, on a repeated pattern only)
+
+After capturing a row, `add` MAY offer to branch into a child ledger — but only when the `reference/branching.md` §3 cascade would land on "new ledger" for **≥2 related items**, a pattern rather than a one-off. This is how an emerging track (a cluster of user-only App Store Connect rows, a set of sprint-scoped items) gets noticed instead of silently accumulating in the main ledger — the 2026-07-25 split-brain failure was exactly a pattern no session spotted.
+
+Rules:
+- **Never branch unilaterally.** `add` *offers*; the user (or an obvious call) decides. The offer routes to `/unforget branch`.
+- **≥2 related items, not 1.** "related" = same actor, same lifespan-scope, or same subject cluster across the recent adds. A single item never triggers a suggestion.
+- **Name the pattern seen.** Don't ask a generic "want to branch?" — say what you saw: *"3 App-Store-Connect rows this session — split into a user-action ledger?"*
+- **Non-blocking, at most once per pattern per session.** The suggestion must never add latency to the 30s `add` promise or nag; if it can't be made instantly, skip it.
+
 ### Speed target
 
-30 seconds or less, end-to-end, for default usage. If the skill ever takes longer than 30 seconds to capture an item, it has failed at its core promise.
+30 seconds or less, end-to-end, for default usage. If the skill ever takes longer than 30 seconds to capture an item, it has failed at its core promise. The branch auto-suggest above is subject to this: it is an instant, non-blocking offer or it is skipped.
 
 ---
 
@@ -233,6 +244,7 @@ Same as `/unforget init` Phases 2 to 4 and Phase 7 (see `reference/init.md` and 
 - Duplicate detection: if a survey row matches an existing UNFORGET.md row by similarity (fuzzy match on Finding text + source pointer), the skill flags it and asks whether to skip or import as a separate row.
 - **Memory-dir pin maintenance:** the survey emits `pin_action` for Surface 6 (memory files). When `pin_action.action` is `write` (no pin present), patch `<!-- unforget-config: memory-dir=<encoded> -->` into UNFORGET.md directly under the `<!-- unforget-format: vN -->` marker as part of the same import write. When `pin_action.action` is `rewrite` (pin exists but resolved to a different encoded path), replace the existing marker line with the new value. When `pin_action.action` is `none`, leave the file alone. See `reference/surfaces.md` § Memory-dir config pin (post-resolution).
 - The Phase 7 diff preview shows what's NEW, not the full file state.
+- **Branch auto-suggest (format v2+):** after importing, if the newly-added rows reveal a repeated pattern that clears the `reference/branching.md` §3 cascade to "new ledger" for **≥2 related items** (same actor / lifespan-scope / subject cluster), `import` may *offer* a `/unforget branch` — naming the pattern it saw, never branching unilaterally, at most once per pattern. `import` is the more likely place to catch this than `add`, since it surfaces a batch at once (e.g. several stranded ledgers or a cluster of user-only findings). See `/unforget add` § Branch auto-suggest and `reference/branching.md` §6.
 
 `/unforget import` is the second-most-important command after `/unforget add`. It's how the skill stays current with the project's evolving deferral surfaces.
 
@@ -365,6 +377,53 @@ Default to **investigate** if uncertain. The scan never modifies UNFORGET.md. It
 
 ---
 
+## /unforget branch
+
+Atomically create a **child ledger** (format v2+). The everyday default is NOT to branch — most deferred work is a row or a section. A new ledger is justified only when the work differs from the parent on one of three axes (actor / lifespan / domain). **Full model, the decision cascade, and the anti-patterns: `reference/branching.md`** — read it before running this. This section is the operational summary.
+
+### Usage
+
+```
+/unforget branch <name> --axis=<actor|lifespan|domain> [--parent=<ledger>] \
+    [--discipline="<one line>"] [--death="<condition>"] [--target=SOMEDAY] [--dry-run]
+```
+
+### The axis decision is YOURS; the write is the script's
+
+Deciding *whether* to branch and *on which axis* is judgment — walk the §3 cascade in `reference/branching.md` (first "no-branch" answer wins: trivial → do-now; same actor/lifespan/dir → a row; subject-only → a section; only a real axis difference → a ledger). Do NOT branch to avoid reconciling a messy ledger (that's avoidance, a cousin of deferral-laundering). Once the axis is settled, the **atomic write** is deterministic:
+
+```
+python3 scripts/branch_create.py --dir <ledger-dir> --name <name> \
+    --axis <actor|lifespan|domain> --parent <parent-file> \
+    [--discipline "<one line>"] [--death "<condition>"] [--actor-is-human] [--dry-run]
+```
+
+### Steps
+
+1. **Confirm the axis** via the `reference/branching.md` §3 cascade. If the work doesn't clear the cascade to "new ledger," STOP — it's a row or a section, not a branch.
+2. **Run the helper.** It creates three artifacts **atomically — all, or none**: (a) the child's header (axis, discipline, parent back-pointer, death condition if lifespan) with its own `<!-- unforget-format: v2 -->` marker and empty section tables; (b) the parent's single **pointer row** (never a copy of child rows); (c) the **registry entry**. A failure on any one rolls back the others — no half-branched state.
+3. **Honor the guards** (the helper returns them; do not force past them):
+   - `refusal` "already a registered ledger" → the name is taken; pick another or edit the existing child.
+   - `refusal` on `--axis=lifespan` with no `--death` → a lifespan child MUST declare its death condition; ask the user and re-run with `--death="…"`.
+   - `needs_confirmation` on `--axis=actor` → the actor axis is **humans only**. Confirm a different *human* acts on the work, then re-run with `--actor-is-human`. A machine/automation actor is a Target value or a status tag inside the actionable ledger, NOT a new file.
+   - `advisory` "no --discipline" on lifespan/domain → a same-discipline split is usually a section, not a ledger; state the child's distinct discipline or reconsider.
+4. **`--dry-run` first** when unsure — it reports the three artifacts it would write and touches nothing.
+5. **Report** all three artifact paths and the next step (`/unforget add --ledger=<name>`).
+
+### The recall block
+
+The project's `## Deferred Work Index` recall trigger points at the **canonical index** (the main ledger); a child is reached through the parent's pointer row, so a branch does not need the recall block rewritten to stay reachable. When Phase 6's marker-delimited recall-block writer lands, `branch` will append a child pointer to it as a fourth atomic step. Until then, `branch` reports the child so it can be noted, and does not hand-edit the prose recall block.
+
+### Auto-suggest (offer on a REPEATED pattern, never branch unilaterally)
+
+`add`/`import` may *offer* a branch — but only when the §3 cascade lands on "new ledger" for **≥2 related items** (a pattern, not a one-off). See `/unforget add` § Branch auto-suggest and `reference/branching.md` §6. One item never triggers a suggestion; the skill names the pattern it saw when it offers.
+
+### Backward compatibility
+
+`branch` is a format-v2 command. It writes v2 children. It reads the registry (a v2 feature); on a project with no registry block, register the parent first (via `import`/`init`) so the child has a home and the parent can carry its pointer.
+
+---
+
 ## /unforget verify
 
 Read-only integrity lint (format v2+). Audits the ledger for the decay failures a row can hide — a self-contradicting status, an unproven "done", bloat, a stale premise, registry drift — and reports a severity-ranked finding list. Full spec: `reference/verify.md`.
@@ -453,13 +512,15 @@ Print the installed skill's version, install path, format-version support, **ins
 ### Output format
 
 ```
-unforget v1.0.3
+unforget v1.3.0
 Install path: <detected at runtime>  (Claude Code plugin)
-Supported format-version: v1
-Subcommands: init, add, edit, import, list, scan, archive, promote, --version
-Install integrity: ✓ all 10 companion files reachable
+Supported format-version: v1, v2
+Subcommands: init, add, edit, import, list, scan, branch, verify, archive, promote, --version
+Install integrity: ✓ all companion files reachable
 Recall trigger: ✓ installed in CLAUDE.md
 ```
+
+(The exact companion-file count is whatever `verify_install.py`'s `REQUIRED_COMPANIONS` list holds — report the count it returns, not a hardcoded number.)
 
 When the install is broken or the recall trigger is missing, the last two lines carry the diagnosis instead:
 

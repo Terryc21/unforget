@@ -24,6 +24,7 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 | `registry.py` | (format v2+) Read/write the registry (README-canonical block + `.unforget.json` cache); report cache-vs-README drift. README wins on disagreement. | `reference/registry.md` |
 | `verify_ledger.py` | (format v2+) Run the integrity lint (contradiction, tier, unknown-value, THIS-blocker, char-budget, stale-recipe, registry drift); return a severity-ranked finding list and a gate pass/fail. Read-only. | `reference/verify.md`; before `archive`/`promote` |
 | `defer_tally.py` | (format v2+) The deferral gate's deterministic half: route a would-be deferral (trivial tripwire + why-not-now allow-list) and keep the per-session defer/fix tally with the defer-heavy flag. Writes the ephemeral `.unforget-session.json` state file. | `reference/deferral-gate.md`; `/unforget add`, `list` |
+| `branch_create.py` | (format v2+) Atomically create a child ledger — scaffold the child header, write the parent's pointer row, and register the child, all-or-none (rolls back on any failure). Guards refuse a duplicate name / a lifespan child with no death condition / an unconfirmed non-human actor. Reuses `registry.py`. | `reference/branching.md`; `/unforget branch` |
 
 ## Invoking from the skill
 

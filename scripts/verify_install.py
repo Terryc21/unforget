@@ -60,11 +60,24 @@ REQUIRED_COMPANIONS = [
     "reference/surfaces.md",
     "reference/promotion.md",
     "reference/commands.md",
+    # format v2 reference specs
+    "reference/status.md",
+    "reference/registry.md",
+    "reference/verify.md",
+    "reference/deferral-gate.md",
+    "reference/branching.md",
+    # v1 helpers
     "scripts/check_format_version.py",
     "scripts/scan_surfaces.py",
     "scripts/dedup_findings.py",
     "scripts/encode_project_path.py",
     "scripts/prune_backups.py",
+    # format v2 helpers
+    "scripts/parse_status.py",
+    "scripts/registry.py",
+    "scripts/verify_ledger.py",
+    "scripts/defer_tally.py",
+    "scripts/branch_create.py",
 ]
 
 VERSION_RE = re.compile(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)", re.MULTILINE)

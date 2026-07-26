@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 1.2.0
+version: 1.3.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -68,6 +68,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
 | `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
+| `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
 | `/unforget verify` | (format v2+) Integrity lint: contradictions, unproven "done", bloat, stale recipes, registry drift; read-only; gates `archive`/`promote` | `reference/verify.md` |
 | `/unforget archive` | Move completed (Done/Fixed) rows out of the active tables into an archive file; lightweight, run anytime; holds back "Done-but-owed" rows | `reference/commands.md` |
 | `/unforget promote` | Release-time ritual: verify 🔴 THIS rows fixed, promote 🔵 NEXT to 🔴 THIS | `reference/promotion.md` (with backups in same file) |
@@ -81,6 +82,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **A new audit / plan / memory file appeared since init** → `/unforget import`
 - **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only)
 - **You want to find rows that have aged past their thresholds** → `/unforget scan`
+- **Deferred work differs on actor (a different *human* acts on it) / lifespan (a sprint with its own discipline) / domain (a different repo or subject)** → `/unforget branch` (but default to a row or section — see `reference/branching.md`)
 - **Completed rows have piled up and you want them out of the active view** → `/unforget archive` (lightweight; use this between releases instead of `promote`)
 - **You're about to ship a release** → `/unforget promote`
 - **You want to verify the install loaded correctly** → `/unforget --version`
@@ -103,7 +105,8 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
 | `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
-| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
+| `reference/branching.md` | (format v2+) the branching model: the three axes (actor / lifespan / domain), the decision cascade, parent/child conventions, and the atomic `branch` command | Deciding whether work earns a child ledger; running `/unforget branch` |
+| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
 
@@ -164,6 +167,34 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 
 ## Changelog
 
+### v1.3.0 — branching + the `branch` command (2026-07-26) · format v2
+Phase 5 of the v1.1 design build: the **branching model** and an atomic `/unforget branch`
+command. The default is still NOT to branch — most deferred work is a row or a section. A new
+ledger is justified only when work differs from the parent on one of three axes.
+
+- **The three axes** (`reference/branching.md` §2): **actor** (a different *human* acts on it —
+  earns a file even at identical discipline, that's what a `TERRY-UNFORGET` is; a machine/
+  automation actor does NOT — that's a Target value or tag), **lifespan** (a sprint — earns a
+  ledger only when paired with a *different discipline* like a cap/eviction, not a plain
+  time-box), and **domain** (a different repo/subject). Plus the decision cascade (§3) and the two
+  placement policies (§2.5).
+- **The atomic `branch` command** (§8, `scripts/branch_create.py`). Creating a child does three
+  things **together, or none** — scaffold the child header (axis, discipline, parent back-pointer,
+  death condition if lifespan), write the parent's single pointer row (never a copy of child
+  rows), and register the child. A failure on any one rolls the others back — no half-branched
+  state. That structural atomicity makes the 2026-07-25 split-brain (a child the parent/registry
+  lost track of) impossible. Guards refuse rather than half-create: a duplicate name, a lifespan
+  child with no death condition, or an unconfirmed non-human actor.
+- **Auto-suggest on a repeated pattern** (§6). `add`/`import` *offer* a branch — never branch
+  unilaterally — only when the cascade lands on "new ledger" for ≥2 related items, naming the
+  pattern seen. One item never triggers it. This is how an emerging track gets noticed instead of
+  silently accumulating.
+
+Backward compatible: `branch` writes v2 children and reads the registry; on a project with no
+registry, register the parent first. The recall block still points at the canonical index; a
+child is reachable via the parent's pointer row (the marker-delimited recall-block writer that
+would add a per-child pointer line is Phase 6).
+
 ### v1.2.0 — deferral gate (2026-07-26) · format v2
 Phase 4 of the v1.1 design build: the **deferral gate**, which fires at `/unforget add` — the
 moment work is about to become a deferred row. It targets *deferral-laundering*: a row looks
@@ -221,10 +252,10 @@ blocker unless it is cleanly `done-verified` or `withdrawn`.
 simply don't apply until the file is upgraded to v2. No big-bang reformat; rows gain tokens as
 they're touched.
 
-### Still designed, not yet implemented (Phases 5–8)
+### Still designed, not yet implemented (Phases 6–8)
 The remaining `DESIGN-*.md` documents (in the ledger directory alongside the ledgers) describe the
-rest of the roadmap, not yet built: **branching + the `branch` command** (Phase 5), **onboarding
-`init`/`import` wiring** (Phase 6), the **row-length sweep** (Phase 7), and **companion skill
+rest of the roadmap, not yet built: **onboarding `init`/`import` wiring** (Phase 6, incl. the
+marker-delimited recall-block writer), the **row-length sweep** (Phase 7), and **companion skill
 handoffs** (Phase 8). `DESIGN-implementation-plan.md` links them and orders the build.
 
 ### v1.0.4 — docs (2026-07-26)
