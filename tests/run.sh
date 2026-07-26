@@ -152,6 +152,19 @@ _p = _split.rstrip().split("|")
 if "risk‹★" not in _p[-2] or "@status:done-verified" not in _p[-3]:
     print("FAIL: build_index_row mis-targeted the 1-Star column (should trim Status, not the risk strip)"); ok = False
 
+# 2c. branch_create.build_pointer_row must match the PARENT's column width (WATCH #4
+#     fix): a Lean/Compact/1-Star parent must not get a hardcoded 10-column pointer row.
+import branch_create as _bc  # noqa: E402
+for _hdr, _n in (
+    ("| # | Target | Finding | Urgency | Effort | Status |", 6),                                   # Lean
+    ("| # | Finding | Urgency | Risk: Fix | Risk: No Fix | ROI | Blast Radius | Fix Effort | Status |", 9),  # Compact
+    ("| # | Target | Finding | Urgency | Risk: Fix | Risk: No Fix | ROI | Blast Radius | Fix Effort | Status | 1-Star Risk |", 11),  # 1-Star
+):
+    _pr = _bc.build_pointer_row("U9", "⚪ SOMEDAY", "C.md", "actor", _bc.parent_header_cells(_hdr))
+    _cols = len([c for c in _pr.strip().strip("|").split("|")])
+    if _cols != _n:
+        print(f"FAIL: pointer row has {_cols} cols for a {_n}-col parent (hardcoded-width regression)"); ok = False
+
 # 3. the verify gate passes on the example (no error-severity findings)
 r = subprocess.run([sys.executable, str(scripts / "verify_ledger.py"), "--file", str(ex)],
                    capture_output=True, text=True)

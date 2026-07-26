@@ -131,13 +131,64 @@ def build_child(name_stem: str, axis: str, parent_name: str,
     return "\n".join(lines) + "\n"
 
 
+# A separator/header cell is all dashes/colons/spaces (the |---|---| row).
+_SEP_CELL_RE = re.compile(r"^[-: ]+$")
+
+
+def parent_header_cells(parent_text: str) -> list[str] | None:
+    """Return the column names of the parent's first ledger header row, or None.
+
+    A ledger header is a table row whose cells include both a `#` column and a
+    Target/Finding column (so roadmap/feedback tables are ignored). Returns the
+    lowercased header cell names so the pointer row can be built to match the
+    parent's actual preset width — not a hardcoded 10 columns.
+    """
+    for line in parent_text.splitlines():
+        s = line.strip()
+        if not s.startswith("|"):
+            continue
+        cells = [c.strip() for c in s.strip("|").split("|")]
+        if any(_SEP_CELL_RE.match(c) for c in cells):  # separator row
+            continue
+        low = [c.lower() for c in cells]
+        if "#" in low and ("target" in low or "finding" in low or "window" in low):
+            return low
+    return None
+
+
 def build_pointer_row(pointer_id: str, target: str, child_name: str,
-                      axis: str) -> str:
-    """The parent's single pointer row (§4a) — pointer shape, — filler."""
+                      axis: str, header_cells: list[str] | None) -> str:
+    """The parent's single pointer row (§4a), built to the PARENT'S column width.
+
+    Places content by column NAME so it lands correctly whatever preset the parent
+    uses (Standard/Lean/Continuous keep a Target column; Compact drops it and inlines
+    the badge in Finding; a 1-Star Risk column may be appended). Every column the
+    pointer doesn't fill gets `—`. Falls back to the Standard 10-column shape when the
+    parent has no readable header.
+    """
     finding = (f"→ child ledger `{child_name}` ({axis} axis). This row is a POINTER; "
                f"the live rows live there. Do not track that work here.")
     status = f"→ see {child_name}"
-    return (f"| {pointer_id} | {target} | {finding} | — | — | — | — | — | — | {status} |")
+
+    if not header_cells:
+        # No header to match — emit the canonical Standard 10-column shape.
+        return (f"| {pointer_id} | {target} | {finding} | — | — | — | — | — | — | {status} |")
+
+    has_target = "target" in header_cells
+    values = []
+    for name in header_cells:
+        if name == "#":
+            values.append(pointer_id)
+        elif name == "target" or name == "window":
+            values.append(target)
+        elif name == "finding":
+            # Compact has no Target column → inline the Target badge in Finding.
+            values.append(finding if has_target else f"**{target} · {finding}**")
+        elif name == "status":
+            values.append(status)
+        else:
+            values.append("—")
+    return "| " + " | ".join(values) + " |"
 
 
 def insert_pointer_row(parent_text: str, pointer_row: str) -> str:
@@ -242,7 +293,10 @@ def run(args) -> dict:
 
     child_content = build_child(name_stem, args.axis, args.parent,
                                 args.discipline, args.death)
-    pointer_row = build_pointer_row(pointer_id, args.target, child_name, args.axis)
+    # Build the pointer row to the parent's ACTUAL column width (preset-aware), not a
+    # hardcoded 10 — so a Lean/Compact/Continuous or 1-Star parent gets a well-formed row.
+    header_cells = parent_header_cells(parent_text)
+    pointer_row = build_pointer_row(pointer_id, args.target, child_name, args.axis, header_cells)
     new_parent_text = insert_pointer_row(parent_text, pointer_row)
 
     reg_ledgers = list(reg.get("ledgers", []))
