@@ -112,6 +112,34 @@ Honest assessment from the project author:
 - **What would sharpen it most:** feedback from projects whose shape differs from the source. Non-Apple stacks, continuous-deployment workflows, libraries, single-page apps, anything other than "mobile app shipping discrete releases." [Open an issue](https://github.com/Terryc21/unforget/issues) if you try it on something different and the format breaks down.
 - **The install path got smoother in v0.2.** v0.1 required cloning a git repo. v0.2 ships as a Claude Code plugin: two one-line commands and you invoke as `/unforget` (no prefix). The clone-and-copy fallback still works.
 
+## What's next (v1.1 — designed, not yet shipped)
+
+v1.0 is the solid, shipping baseline above. In 2026 a full design pass landed for the next
+major evolution — and every piece of it traces to a real failure caught while running unforget on
+a big, long-lived ledger (a ~155 KB `UNFORGET.md` whose rows had grown into multi-KB walls of
+text). Not a wishlist — a list of things that actually bit, and the fix for each:
+
+- **Branching** — when a sprint or a user-only punch-list earns its *own* ledger, and how to keep
+  siblings from drifting into a "which file is the real one?" mess. (That drift is a bug the
+  design was written *after* hitting: two ledgers stranded in parallel folders.)
+- **A deferral gate** — the honest one. Deferring is frictionless and quietly self-flattering
+  ("I'll capture that for later" *feels* like progress). The gate makes it cost a moment — a
+  trivial-fix tripwire ("just do it now, don't table a one-liner") and a session defer/fix tally,
+  because a single well-worded row hides a lazy deferral but a 7-deferred-to-2-fixed ratio doesn't.
+- **Structured status + a `verify` lint** — so a row can't quietly contradict itself (a header
+  that says "reopened" over a tail that says "closed" — a real thing that misread a session), and
+  so "done" can't secretly mean "someone *claimed* it's done" when it was never checked against
+  reality.
+- **Self-maintaining recall** — the skill keeps the pointer in your CLAUDE.md current, so a future
+  session never goes hunting for a "missing" ledger.
+- **Smart companion hand-offs** — recommends the right neighbor skill at the right moment (bug-echo
+  after you close a code-fix, for instance) through a manifest *you* control, recommending a
+  *capability* rather than hardcoding a link that'll rot.
+
+These live as `DESIGN-*.md` documents kept alongside the ledgers they describe; the changelog in
+`SKILL.md` indexes them, and the implementation plan orders the build. None of it is implemented
+yet — it's the map, written down so the design can't slip the way the work it tracks used to.
+
 ## See it first
 
 Excerpt from [`examples/UNFORGET.md`](examples/UNFORGET.md) (a sanitized version of a real shipping project's file):

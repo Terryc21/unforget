@@ -157,6 +157,55 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 
 ---
 
+## Changelog
+
+> **Note on this entry:** the v1.1 items below are **design, not yet shipped.** Six spec
+> documents describe the next major evolution; none of the behavior is implemented in this v1.0.x
+> skill yet. They're recorded here so the design isn't lost and a future build has a map. See
+> "Design specs (v1.1, not yet implemented)" below for where they live.
+
+### v1.1.0 — design complete (2026-07-25) · NOT YET IMPLEMENTED
+A full design pass, driven by real failures observed while operating the skill on a large,
+long-lived ledger (a ~155 KB `UNFORGET.md` with multi-KB rows). Every enhancement traces to a
+concrete failure, not a hypothetical. Six documents:
+
+- **Branching model** — when deferred work becomes a row, a section, or a NEW ledger. Three axes
+  (actor / lifespan / domain), a first-answer-wins decision cascade, and parent↔child conventions
+  (pointer rows, per-child headers, a registry) that prevent the "ledgers scattered across two
+  trees" split-brain.
+- **Deferral gate** — makes deferral *cost something* so it stops being the frictionless,
+  self-flattering default. A trivial-fix tripwire (do it now, don't table it), a "why not now?"
+  allow-list, and a session defer/fix tally — because a single well-worded row hides a bad
+  deferral but a 7:2 ratio doesn't.
+- **Onboarding & registry** — `init` asks three things (git posture, location, a self-maintaining
+  recall block in CLAUDE.md) and persists them in a registry, so the skill never re-guesses where
+  ledgers live or loses one.
+- **Maintenance & integrity** — a machine-readable `@status` token (so a row can't contradict
+  itself), a `@verified` tier (code / device / session-claimed — a *claim* can never count as
+  *verified*), row-length discipline (bounded index rows + detail blocks), and a `verify`/`doctor`
+  lint that gates archive/promote.
+- **Companion skill handoffs** — recommends the *right* companion skill at the right moment
+  (e.g. bug-echo after a code-fix closes) via a global, user-owned function→skill manifest.
+  Recommends a *capability*, not a hardcoded URL; discloses its default; works with none installed.
+- **Implementation plan** — an 8-phase, dependency-ordered build roadmap whose acceptance test is
+  "catch every failure a human caught by hand this session."
+
+**Format impact (planned):** the structured `@status`/`@verified` fields and the registry make
+this a format change → a future `v1 → v2` bump, with read-legacy / upgrade-on-write migration and
+no big-bang reformat.
+
+### Design specs (v1.1, not yet implemented)
+The six documents above live together in the ledger's own directory as tracked `DESIGN-*.md`
+files (kept alongside the ledgers they describe, next to the ledger `README.md`). Start with
+`DESIGN-implementation-plan.md` — it links the other five and orders the build.
+
+### v1.0.3 and earlier
+Shipping skill: init / add / edit / import / list / scan / archive / promote / `--version`, the
+10-column rating format, the format-version contract, and the `scripts/*.py` deterministic
+helpers. This is the implemented baseline the v1.1 design builds on.
+
+---
+
 ## License
 
 Apache License 2.0. See LICENSE.
