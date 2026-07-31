@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.0.1
+version: 2.0.2
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -167,6 +167,33 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.0.2 — release-gate false negative (2026-07-31) · patch
+
+Bug fixes only, backward compatible. A first-ever `verify` run against a mature
+three-ledger installation found that the row-id pattern was matching too little, and that
+rows it missed were invisible to **every** check in the lint:
+
+- **`ROW_ID_RE` accepted at most one leading letter and no suffix.** Real ids skipped in the
+  field: `A48a`/`A48b` (a finding split into sub-rows), `MI-08` (a hyphen-prefixed sibling
+  ledger), `**S12**` (bold-wrapped). Consequence: two 🔴 THIS ship-blockers were excluded
+  from the release gate, which reported **2 blockers over a ledger holding 4** — and
+  reported it as a clean number. An entire sibling ledger reported `rows_checked: 0` while
+  appearing healthy. Widened to an optional 1-3 letter prefix (optional hyphen), digits,
+  optional letter suffix, optional bold. Strictly wider: every previously-matching row still
+  matches, bare-numeric ids still work, headers and separators still correctly do not.
+
+- **New check 10, `cell-count`.** Flags a row whose cell count differs from its table's
+  declared header width. The cause is nearly always an unescaped `|` in cell prose (a
+  `grep 'a\|b'` recipe, a regex alternation), which silently shifts every positional column
+  read past it — a status token can land in a rating cell. Error severity. Width is tracked
+  per-table, so a 10-column section and a 5-column sprint table coexist without false
+  positives.
+
+- **Regression bench.** `tests/test_row_visibility.py` (23 assertions) covers the id grammar
+  positively and negatively plus the cell-count check, builds its own fixture, and is wired
+  into `tests/run.sh`. The shared fixture project exercised none of these id shapes, which is
+  precisely why the bug survived to production.
 
 ### v2.0.1 — column-layout robustness (2026-07-26) · patch
 Bug fixes only, no new features, backward compatible. A refreshed example that finally
