@@ -16,6 +16,7 @@ Checks (§4a):
   7. table cell over the char budget              (bloat; Phase 7 owns the full rule)
   8. stale verify-still-open recipe               (a file-citing row lacking a recipe)
   9. registry drift                               (cache != README, or block absent)
+ 10. cell-count != the table's declared width     (an unescaped '|' shifting every column)
 
 Findings are returned most-severe first. This command NEVER edits — fixes are the
 user's call (a future `verify --fix` proposes edits with approval).
@@ -81,13 +82,53 @@ def finding_cell(row: str) -> str:
     return parse_status.finding_cell(row)
 
 
+HEADER_CELL_RE = re.compile(r"^\|\s*#?\s*\|.*\bStatus\b.*\|\s*$")
+
+
+def _declared_width(line: str) -> int:
+    """Column count declared by a table header row, or 0 if not a header."""
+    if not HEADER_CELL_RE.match(line):
+        return 0
+    return len(parse_status.data_cells(line))
+
+
 def check_rows(text: str, char_budget: int) -> list[dict]:
     findings = []
+    declared = 0  # width of the most recent header row; 0 = unknown
     for line in text.splitlines():
+        # Track the enclosing table's declared width. A ledger legitimately holds
+        # several tables of DIFFERENT widths (Standard 10-col sections alongside a
+        # 5-col sprint table), so the width is per-table, never a global constant.
+        width = _declared_width(line)
+        if width:
+            declared = width
+            continue
+
         if not parse_status.ROW_ID_RE.match(line):
             continue
         parsed = parse_status.parse_row(line)
         rid = parsed["id"] or "?"
+
+        # Check 10 (U5): cell count != the enclosing table's declared width.
+        # Root cause is almost always an unescaped `|` inside cell prose — a
+        # `grep -c 'a\|b'` recipe, a regex alternation, a table drawn in a
+        # detail note. The damage is silent: every positional column read
+        # (Target, Urgency, Status) shifts by one, so a status token can land
+        # in a rating cell and a ship-blocker can be misread as a rating.
+        # Error severity: it corrupts data the other checks depend on.
+        if declared:
+            actual = len(parse_status.data_cells(line))
+            if actual != declared:
+                findings.append({
+                    "severity": "error",
+                    "check": "cell-count",
+                    "id": rid,
+                    "message": (
+                        f"row has {actual} cells; the table declares {declared}. "
+                        "Almost always an unescaped '|' in cell prose — every column "
+                        "read past that point is shifted."
+                    ),
+                })
 
         # Checks 1-4: everything parse_status already flags is an integrity issue.
         for issue in parsed["issues"]:

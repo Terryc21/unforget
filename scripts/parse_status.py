@@ -91,7 +91,20 @@ STATUS_RE = re.compile(r"@status:\s*([a-z-]+)")
 VERIFIED_RE = re.compile(r"@verified:\s*([a-z-]+)")
 # A table data row starts with "| <id> |". Capture the id and the LAST cell
 # (the Status cell) for token parsing.
-ROW_ID_RE = re.compile(r"^\|\s*([A-Za-z]?\d+)\s*\|")
+#
+# The id grammar is deliberately permissive, because a too-narrow pattern makes
+# rows INVISIBLE to every check in the lint — a silent false-negative in the
+# release gate, which is the worst failure mode this tool has. Real ledger ids
+# observed in the field that the original `[A-Za-z]?\d+` did NOT match:
+#   A48a, A48b  — a finding split into sub-rows by a letter suffix
+#   MI-08       — a hyphenated prefix used by a scoped sibling ledger
+#   **S12**     — an id wrapped in bold
+# Missing A48a/A48b hid two 🔴 THIS ship-blockers from the gate (2026-07-31).
+# Grammar: optional bold, an OPTIONAL 1-3 letter prefix (with optional hyphen),
+# digits, optional letter suffix. The prefix stays optional so bare-numeric ids
+# (`| 1 |`, used by the roadmap rating tables) keep matching as they did before.
+# Header (`| # |`) and separator (`|---|`) rows still fail to match.
+ROW_ID_RE = re.compile(r"^\|\s*\*{0,2}((?:[A-Za-z]{1,3}-?)?\d+[a-z]?)\*{0,2}\s*\|")
 
 
 def status_cell(row: str) -> str:

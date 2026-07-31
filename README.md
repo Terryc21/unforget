@@ -272,6 +272,7 @@ Shows only the rows that block submission. Fix them, mark them Fixed, run `/unfo
 | `/unforget import` | Re-scan your project for new deferred items that appeared after init. |
 | `/unforget list` | Show what's in the file. Filter by section, Target, Urgency, or staleness. |
 | `/unforget scan` | Find rows that have been sitting too long for their priority. Read-only. |
+| `/unforget verify` | Integrity lint (format v2+). Read-only. Catches rows that contradict themselves, a `done-verified` carrying no verification tier, unproven 🔴 THIS blockers, malformed rows, over-budget cells, and registry drift. Run it **before** `archive` or `promote` — those are release decisions, and they are only as trustworthy as the "done" claims underneath them. |
 | `/unforget archive` | Move completed (Fixed/Done) rows out of the active tables into an archive file. Lightweight — run anytime between releases to keep the active view uncluttered. |
 | `/unforget promote` | Release-time check. Verifies all 🔴 THIS rows are Fixed, then promotes 🔵 NEXT rows up to 🔴 THIS for the next cycle. |
 | `/unforget --version` | Print version, install path, and supported format-version — plus an install-integrity check (are all companion files reachable?) and, in a project, whether the recall trigger is wired. Useful for verifying a fresh install loaded correctly. |

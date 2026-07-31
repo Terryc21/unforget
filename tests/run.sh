@@ -202,6 +202,17 @@ if ! bash "$TESTS_DIR/behavioral/run-behavioral.sh" --check; then
   FAILED=1
 fi
 
+# --- Row-visibility + cell-count regression bench -------------------------
+# Self-contained (builds its own fixture in a temp dir), so pass/fail is the
+# exit code rather than a golden diff. Guards the 2026-07-31 invisible-row bug:
+# a too-narrow ROW_ID_RE hid two 🔴 THIS ship-blockers from the release gate.
+echo
+echo "--- row visibility + cell-count ---"
+if ! python3 "$TESTS_DIR/test_row_visibility.py"; then
+  echo "FAIL: row-visibility / cell-count regression"
+  FAILED=1
+fi
+
 if [[ "$FAILED" == 1 ]]; then
   echo
   echo "One or more tests failed."
