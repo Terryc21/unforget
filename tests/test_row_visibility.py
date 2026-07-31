@@ -97,6 +97,34 @@ with tempfile.TemporaryDirectory() as td:
     check("no false positive on the narrower table",
           [x["id"] for x in cc if x["id"] == "MI-08"], [])
 
+# --- 4. contradiction matching: no false positives on ordinary prose ---------
+# Bare substring matching produced three FP classes in the field (2026-07-31).
+# A false contradiction sets archivable=False, so the row is held out of archive
+# forever while a human hunts a conflict that was never there.
+print("\ncontradiction matching:")
+ROW = ("| A1 | THIS | finding | HIGH | Low | High | Good | 1 file | Small | {} |")
+for cell, expect, label in [
+    ("`@status:done-verified` · viewers can still open + view detail", False,
+     "verb phrase 'still open +' is not a contradiction"),
+    ("`@status:done-verified` · users can still open the sheet", False,
+     "verb phrase 'still open the' is not a contradiction"),
+    ("`@status:done-verified` · not a blocker", False,
+     "negated 'blocker' is not a contradiction"),
+    ("`@status:done-unverified` `@verified:code` · round-trip owed", False,
+     "a row's own @status token is not narration"),
+    ("`@status:done-verified` · the issue is still open", True,
+     "adjective 'still open' IS a contradiction"),
+    ("`@status:done-verified` · this is a blocker", True,
+     "'blocker' IS a contradiction"),
+    ("`@status:done-verified` · re-opened 07/30", True,
+     "'re-opened' IS a contradiction"),
+    ("`@status:withdrawn` · still broken", True,
+     "withdrawn over 'still broken' IS a contradiction"),
+]:
+    got = any("narration says" in i
+              for i in parse_status.parse_row(ROW.format(cell))["issues"])
+    check(label, got, expect)
+
 print()
 if FAILURES:
     print(f"FAIL — {len(FAILURES)} assertion(s): {', '.join(FAILURES)}")

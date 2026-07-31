@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.0.2
+version: 2.0.3
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -167,6 +167,32 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.0.3 — contradiction false positives (2026-07-31) · patch
+
+Bug fix only, backward compatible. The §1b contradiction check matched its phrase list
+as bare substrings, which fired on ordinary prose. Three classes found in the field:
+
+- **`"still open"` matched a VERB phrase.** "viewers can still open + view detail" — a
+  sentence about a UI affordance — was read as "this row is still open," contradicting its
+  own `done` token. Now distinguishes the adjective (clause-final: "the issue is still
+  open") from the verb (takes an object or conjunction: "still open the sheet", "still
+  open + view"). Only the adjective contradicts.
+- **`"blocker"` matched its own negation.** "not a blocker" was read as "is a blocker."
+  Negation-aware now (`not` / `never` / `no longer` / `isn't` / `wasn't` within two words).
+- **`"unverified"` matched the row's own `@status:done-unverified` token.** The narration
+  is stripped of `@status:`/`@verified:` tokens before scanning, so a token can no longer
+  be read as prose about itself.
+
+Matching is also word-bounded now, so a phrase inside a longer word no longer fires.
+
+**Why this mattered.** A false contradiction sets `archivable` to False, so the row is held
+out of `archive` indefinitely while a human is sent to reconcile a real sentence against a
+conflict that never existed. On the source installation it produced a phantom 5th error over
+a ledger whose true error count was 4.
+
+8 regression cases added to `tests/test_row_visibility.py` (4 false-positive shapes, 4 real
+contradictions that must still fire), verified to fail against the old matcher.
 
 ### v2.0.2 — release-gate false negative (2026-07-31) · patch
 

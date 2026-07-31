@@ -230,20 +230,48 @@ def parse_row(row: str) -> dict:
 
     # Contradiction (§1b): a done/closed token over narration that still says
     # reopened/broken/owed/unverified.
+    #
+    # Matching is WORD-BOUNDED, and the narration is stripped of its own status
+    # tokens first. Bare substring matching produced three false-positive classes
+    # in the field (2026-07-31):
+    #   "still open"  matched "viewers can still open + view detail"  (a verb phrase)
+    #   "blocker"     matched "not a blocker"                          (its own negation)
+    #   "unverified"  matched the row's own `@status:done-unverified`  (the token)
+    # A false contradiction is not harmless: `archivable` goes False, so the row is
+    # held out of archive forever and a human is sent to reconcile a real sentence
+    # against a phantom conflict.
+    narration_scan = re.sub(r"@(?:status|verified):[a-z-]+", " ", narration_lc)
     contradiction = False
     if status in ("done-verified", "done-unverified", "withdrawn"):
         for phrase in CONTRADICTION_PHRASES:
-            if phrase in narration_lc:
-                # done-unverified legitimately says "owed"/"unverified"; only a
-                # done-VERIFIED or withdrawn row is contradicted by those.
-                owed_phrases = {"still owed", "device round-trip still owed",
-                                "device-verify owed", "not yet verified",
-                                "not verified", "unverified"}
-                if status == "done-unverified" and phrase in owed_phrases:
-                    continue
-                contradiction = True
-                issues.append(f"token says {status} but narration says {phrase!r}")
-                break
+            if not re.search(rf"(?<![\w-]){re.escape(phrase)}(?![\w-])", narration_scan):
+                continue
+            # A negated mention ("not a blocker", "no longer still failing") is
+            # the row AGREEING with its token, not contradicting it.
+            if re.search(rf"\b(?:not|never|no longer|isn't|wasn't)\s+(?:\w+\s+){{0,2}}"
+                         rf"{re.escape(phrase)}(?![\w-])", narration_scan):
+                continue
+            # "still open" is ambiguous English: the ADJECTIVE ("the issue is
+            # still open") contradicts a done token, but the VERB ("viewers can
+            # still open + view detail") is ordinary prose about a UI action.
+            # Distinguish by what follows: a verb reading takes an object or a
+            # conjunction ("still open the sheet", "still open + view"), while the
+            # adjective reading ends the clause. Only the adjective contradicts.
+            if phrase == "still open" and not re.search(
+                r"(?<![\w-])still open(?![\w-])(?!\s+(?:the|a|an|it|them|this|that|"
+                r"\+|and|,|&))", narration_scan
+            ):
+                continue
+            # done-unverified legitimately says "owed"/"unverified"; only a
+            # done-VERIFIED or withdrawn row is contradicted by those.
+            owed_phrases = {"still owed", "device round-trip still owed",
+                            "device-verify owed", "not yet verified",
+                            "not verified", "unverified"}
+            if status == "done-unverified" and phrase in owed_phrases:
+                continue
+            contradiction = True
+            issues.append(f"token says {status} but narration says {phrase!r}")
+            break
 
     # Archivable ONLY when the closure is CLEAN: withdrawn, or a done-verified
     # whose tier is valid and whose narration doesn't contradict it. A row whose
