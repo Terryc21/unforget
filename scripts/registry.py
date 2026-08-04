@@ -44,6 +44,8 @@ Exit codes:
   1  drift detected (check) OR block absent (read)
   2  usage error / dir not found / no README
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

@@ -48,6 +48,8 @@ Exit codes:
   1  at least one error-severity finding (gate FAILS; archive/promote should refuse)
   2  usage error / file not found
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

@@ -49,6 +49,8 @@ Exit codes:
   1  drift found (≥1 finding)
   2  usage error / dir not found / no registry
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

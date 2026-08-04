@@ -43,6 +43,8 @@ Exit codes:
      unknown status)
   2  usage error / file not found / nothing parseable
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

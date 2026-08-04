@@ -59,6 +59,8 @@ Exit codes:
   1  rotcheck found a rotted entry / resolve found an unset function
   2  usage error / manifest unreadable
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

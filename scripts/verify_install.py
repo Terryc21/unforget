@@ -45,6 +45,8 @@ Exit codes:
   1  integrity FAILED (one or more companion files missing)
   2  usage error / skill root not found
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

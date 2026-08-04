@@ -47,6 +47,8 @@ Exit codes:
   1  one or more headers violate canonical order
   2  usage error / root not found
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

@@ -46,6 +46,8 @@ Exit codes:
   1  drift (check: file block is stale vs the registry) OR block absent (check)
   2  usage error / file or dir not found / no registry
 """
+
+from __future__ import annotations
 import argparse
 import json
 import sys

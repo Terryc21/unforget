@@ -28,6 +28,8 @@ Exit codes:
   1  marker absent OR future-version (skill should treat as read-only or prompt)
   2  usage error / file not found
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

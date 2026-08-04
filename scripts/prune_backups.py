@@ -24,6 +24,8 @@ Output (stdout, JSON):
 
 Exit codes: 0 on success, 2 on usage error / directory not found.
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

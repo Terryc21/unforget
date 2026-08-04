@@ -75,6 +75,8 @@ Exit codes:
      a defer-heavy session flag is raised (readout/record with flag=true)
   2  usage error / dir not found
 """
+
+from __future__ import annotations
 import argparse
 import json
 import sys

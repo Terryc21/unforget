@@ -68,6 +68,8 @@ Exit codes:
   1  refused (a guard failed) OR needs confirmation (actor-not-confirmed-human)
   2  usage error / dir or parent not found
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re

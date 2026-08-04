@@ -56,6 +56,8 @@ Exit codes:
   check: 0 no rows over budget · 1 ≥1 over budget · 2 usage error
   split: 0 planned/applied · 1 refused (not over budget / not lossless / id absent) · 2 usage
 """
+
+from __future__ import annotations
 import argparse
 import json
 import re
