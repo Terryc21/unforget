@@ -64,8 +64,27 @@ import registry  # noqa: E402
 DEFAULT_CHAR_BUDGET = 400  # per-cell soft budget; Phase 7 formalizes/《configures》 this
 # A row that cites a file path in its Finding/detail but carries no
 # verify-still-open recipe is a stale-recipe risk. Detect a file-ish token.
-FILE_CITE_RE = re.compile(r"[\w./-]+\.\w{1,5}\b")
+#
+# The naive form `[\w./-]+\.\w{1,5}\b` also matched ordinary prose: abbreviations
+# ("e.g", "i.e") and decimals ("0.50", "3.99") all look like <stem>.<ext>. That
+# inflated the warning count and trained users to ignore the check. Require
+# EITHER a path separator plus any short extension (so `Sources/Foo.bar` still
+# counts), OR a known source/doc extension on a bare filename.
+_SOURCE_EXT = (
+    "swift|js|jsx|ts|tsx|py|rb|go|rs|java|kt|mm|cpp|hpp|sh|bash|zsh|"
+    "json|yml|yaml|toml|plist|xcstrings|xcconfig|entitlements|pbxproj|"
+    "md|txt|csv|sql|html|css|cfg|ini|lock|env"
+)
+FILE_CITE_RE = re.compile(
+    r"(?:[\w.-]*/[\w.-]+\.\w{1,5}"       # path separator: Sources/Foo.swift
+    rf"|[\w.-]+\.(?:{_SOURCE_EXT}))\b",  # or a known extension: Foo.swift
+    re.IGNORECASE,
+)
 RECIPE_MARKERS = ("verify-still-open", "verify still open")
+# A literal status token quoted inside a Finding cell. Matches the same shape
+# parse_status.STATUS_RE does, so the write-time warning and the parser agree on
+# what counts as a token.
+STATUS_TOKEN_RE = re.compile(r"@status:\s*([a-z-]+)")
 
 # Severity ranking for "most-severe first" ordering.
 SEVERITY_ORDER = {"error": 0, "warn": 1}
@@ -132,16 +151,50 @@ def check_rows(text: str, char_budget: int) -> list[dict]:
                     ),
                 })
 
+        # Check 4b: a status token quoted ILLUSTRATIVELY in the Finding cell.
+        # `status_cell` scans last-cell-backward so the row's REAL status still
+        # parses correctly, but a quoted token is still a live hazard: every
+        # human-run `grep -c '@status:done-verified'` over the file counts it,
+        # which is the exact reading CLAUDE.md documents for the ship gate. Warn
+        # at WRITE time, naming the token, so the author fixes it here rather
+        # than discovering a miscount later. Suggest breaking the literal.
+        quoted = STATUS_TOKEN_RE.findall(finding_cell(line))
+        if quoted:
+            findings.append({
+                "severity": "warn",
+                "check": "quoted-status-token",
+                "id": rid,
+                "message": (
+                    f"Finding cell quotes {len(quoted)} literal status token(s) "
+                    f"({', '.join('@status:' + q for q in sorted(set(quoted)))}); "
+                    "a human `grep -c` over this file will count them as real rows. "
+                    "Break the literal (e.g. insert a separator after the '@')."
+                ),
+            })
+
         # Checks 1-4: everything parse_status already flags is an integrity issue.
         for issue in parsed["issues"]:
             # Classify severity: contradiction + bad tier + unknown = error.
+            # A contradiction on a row that ALSO quotes a token in its Finding is
+            # very likely caused by the quote, not by the narration the message
+            # names — say so, or the author edits the innocent half. (Earned
+            # 2026-08-11: the bare message sent an editor after their prose while
+            # a quoted token was the actual cause.)
+            check = ("contradiction" if "narration says" in issue
+                     else "unknown-value" if "unknown @" in issue
+                     else "tier")
+            message = issue
+            if check == "contradiction" and quoted:
+                message += (
+                    " — NOTE: this row also quotes a literal status token in its "
+                    "Finding cell; that quote is the likely cause. Fix the quote "
+                    "before rewriting the narration."
+                )
             findings.append({
                 "severity": "error",
-                "check": ("contradiction" if "narration says" in issue
-                          else "unknown-value" if "unknown @" in issue
-                          else "tier"),
+                "check": check,
                 "id": rid,
-                "message": issue,
+                "message": message,
             })
 
         # Check 6: THIS-target + not proven → still blocks release (a warn, since

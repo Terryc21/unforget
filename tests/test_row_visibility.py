@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import parse_status  # noqa: E402
+import verify_ledger  # noqa: E402
 
 FAILURES = []
 
@@ -124,6 +125,73 @@ for cell, expect, label in [
     got = any("narration says" in i
               for i in parse_status.parse_row(ROW.format(cell))["issues"])
     check(label, got, expect)
+
+# --- 5. status_cell reads the ROW's token, not one quoted in prose -----------
+# Found 2026-08-11 editing a live ledger. `status_cell` scanned first-cell-FORWARD
+# for the first cell carrying a token, and Finding precedes Status — so a row that
+# quoted a status token illustratively (rows documenting the format do this, and so
+# does any row citing a sibling row's state) had the QUOTED token become its status
+# for every consumer: list, archive, and the release gate. Concrete damage: an
+# `open` row quoting `done-verified` parsed as done-verified and failed the gate
+# with a contradiction error that blamed the row's prose. Scanning backward returns
+# the rightmost token, which is the real Status cell in every layout the format
+# allows — including with the optional 1-Star Risk column appended after Status,
+# since that column carries no token. Both directions are asserted below.
+print("\nstatus_cell token selection:")
+QUOTE = ("| A1 | THIS | sibling is `@status:done-verified` here | HIGH | Low | High "
+         "| Good | 1 file | Small | `@status:open` · really open |")
+check("a token quoted in Finding does not hijack status",
+      parse_status.parse_row(QUOTE)["status"], "open")
+
+RISK = ("| A2 | THIS | finding | HIGH | Low | High | Good | 1 file | Small "
+        "| `@status:open` · open | 1★ MED |")
+check("1-Star Risk column after Status still parses (no regression)",
+      parse_status.parse_row(RISK)["status"], "open")
+
+TIER = ("| A3 | THIS | cites `@status:open` sibling | HIGH | Low | High | Good "
+        "| 1 file | Small | `@status:done-verified` `@verified:device` · done |")
+check("quoted token does not shadow the real tier either",
+      parse_status.parse_row(TIER)["verified"], "device")
+
+# --- 6. quoted status tokens are warned about at WRITE time ------------------
+# The parser fix above keeps the TOOL correct, but a quoted token is still a live
+# hazard for humans: CLAUDE.md documents `grep -c '@status:done-verified'` as the
+# ship-gate reading, and grep counts a quoted token as a real row. This is the
+# original S70 report (2026-07-31): a row written ABOUT the token format made
+# done-verified read 5 when the true count was 4. Warn where it can be fixed.
+print("\nquoted-status-token warning:")
+HDR = ("| # | Target | Finding | Urgency | Risk:Fix | Risk:No Fix | ROI | Blast "
+       "| Effort | Status |\n|---|---|---|---|---|---|---|---|---|---|\n")
+
+
+def _checks(row):
+    return verify_ledger.check_rows(HDR + row, 400)
+
+
+quoted = _checks(QUOTE)
+check("warns when a Finding quotes a literal token",
+      any(f["check"] == "quoted-status-token" for f in quoted), True)
+check("the warning names the offending token",
+      any("done-verified" in f["message"]
+          for f in quoted if f["check"] == "quoted-status-token"), True)
+check("it is a warn, not an error (does not block the gate)",
+      all(f["severity"] == "warn"
+          for f in quoted if f["check"] == "quoted-status-token"), True)
+
+CLEAN = ("| A4 | THIS | an ordinary finding with no token | HIGH | Low | High "
+         "| Good | 1 file | Small | `@status:open` · open |")
+check("no false positive on a row with no quoted token",
+      any(f["check"] == "quoted-status-token" for f in _checks(CLEAN)), False)
+
+# A contradiction on a row that ALSO quotes a token is very likely caused by the
+# quote. The bare message ("token says X but narration says Y") points the author
+# at the innocent half — earned 2026-08-11, when it did exactly that.
+BOTH = ("| A5 | THIS | cites `@status:done-verified` | HIGH | Low | High | Good "
+        "| 1 file | Small | `@status:withdrawn` · still broken |")
+contra = [f for f in _checks(BOTH) if f["check"] == "contradiction"]
+check("contradiction fires alongside the quote", len(contra), 1)
+check("contradiction message points at the quote, not the prose",
+      "likely cause" in contra[0]["message"] if contra else False, True)
 
 print()
 if FAILURES:

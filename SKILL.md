@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.0.3
+version: 2.1.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -167,6 +167,29 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.1.0 — quoted status tokens no longer hijack a row's status (2026-08-11) · minor
+
+Bug fix, backward compatible, but a **behavior** change in the parser — hence minor, not patch.
+
+- **`parse_status.status_cell` now scans last-cell-BACKWARD.** It scanned first-forward for
+  the first cell carrying an `@status:` token, and Finding precedes Status. A row that quoted
+  a token illustratively — rows documenting the format do this, and so does any row citing a
+  sibling row's state — had the QUOTED token silently become its status for `list`, `archive`,
+  and the release gate. Found on a live ledger 2026-08-11: an `open` row citing a closed
+  sibling parsed as `done-verified` and failed the gate. Backward scanning returns the real
+  Status cell in every layout the format allows, including with the optional `1-Star Risk`
+  column appended (it carries no token). Regression-tested both directions.
+- **New `quoted-status-token` warning (warn, not error).** The parser fix keeps the tool
+  correct, but a quoted token still corrupts the `grep -c` reading that ledger docs commonly
+  prescribe for humans. Fires at write time and names the offending token.
+- **Contradiction messages now point at the quote.** When a row both contradicts and quotes a
+  token, the bare "token says X but narration says Y" sent authors to edit their prose — the
+  innocent half. It now names the quote as the likely cause.
+- **`FILE_CITE_RE` no longer matches ordinary prose.** `[\w./-]+\.\w{1,5}` counted `e.g`,
+  `i.e`, and decimals like `0.50` as file citations, inflating `stale-recipe` warnings and
+  training users to ignore the check. Now requires a path separator or a known source/doc
+  extension. Measured on a 3-ledger installation: 33 → 27 warnings on the worst file.
 
 ### v2.0.3 — contradiction false positives (2026-07-31) · patch
 

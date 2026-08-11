@@ -119,11 +119,23 @@ def status_cell(row: str) -> str:
     silently breaking list/archive/verify. When no cell carries a token (a legacy
     tokenless row, or a v2 row whose Status genuinely IS last), fall back to the
     last non-empty cell so those keep working unchanged.
+
+    Scan LAST-cell-backward, not first-forward. A row may quote a status token
+    ILLUSTRATIVELY in its Finding prose — rows documenting the format itself do
+    this, and so does any row citing a sibling row's state. Finding precedes
+    Status, so a first-forward scan returns the QUOTED token and that becomes the
+    row's status for every consumer (list, archive, verify) — silently, and
+    against the row's own real token. Reproduced 2026-08-11: a Finding quoting
+    `done-verified` while citing a sibling flipped an `open` row to done-verified
+    and failed the release gate with a contradiction error that blamed the prose.
+    Scanning backward returns the rightmost token, which is the real Status cell
+    in every layout the format allows — including with 1-Star Risk appended,
+    since that column carries no token.
     """
     cells = [c.strip() for c in row.rstrip().rstrip("|").split("|")]
     if not cells:
         return ""
-    for cell in cells:
+    for cell in reversed(cells):
         if STATUS_RE.search(cell):
             return cell
     return cells[-1]

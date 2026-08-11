@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "unforget",
-      "version": "2.0.3",
+      "version": "2.1.0",
       "source": "./",
       "description": "A single source of truth for deferred work: ONE file per project (UNFORGET.md), four sections of 10-column rating tables, and a release-cycle Target column that promotes items toward shipping. Format v2 adds machine-readable status tokens (a done isn't done until it's verified), a ledger registry, an integrity-lint verify gate, a deferral gate that makes deferring cost something, atomic child ledgers, self-maintaining recall, and companion-skill handoffs. Backward compatible with v1 ledgers.",
       "author": {
