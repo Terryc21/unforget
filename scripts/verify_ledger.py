@@ -171,9 +171,15 @@ def check_rows(text: str, char_budget: int) -> list[dict]:
         # filename ("→ see RELEASE-1.0.md"), which trips the file-cite regex, but a
         # pointer is a signpost, not a work item — asking it for a verify recipe is
         # a false positive (every branched ledger would carry one).
+        # Skip CLEANLY-CLOSED rows for the same reason: a withdrawn or clean
+        # done-verified row cites files as the EVIDENCE FOR CLOSURE, not as a live
+        # premise needing recheck. Reuse `archivable` rather than a status list, so
+        # done-unverified (device round-trip still owed) and blocked keep tripping —
+        # those are exactly the premises that CAN decay.
         fcell = finding_cell(line)
         is_pointer = "this row is a pointer" in line.lower() or "→ see " in status_cell(line).lower()
-        if not is_pointer and FILE_CITE_RE.search(fcell):
+        is_closed = parse_status.parse_row(line).get("archivable", False)
+        if not is_pointer and not is_closed and FILE_CITE_RE.search(fcell):
             whole = line.lower()
             if not any(m in whole for m in RECIPE_MARKERS):
                 findings.append({

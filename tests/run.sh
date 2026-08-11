@@ -175,6 +175,27 @@ _vf = _vl.check_rows(_ptr + "\n", 400)
 if any(f["check"] == "stale-recipe" for f in _vf):
     print("FAIL: verify flagged stale-recipe on a pointer row (false positive)"); ok = False
 
+# 2e. verify must NOT flag a CLEANLY-CLOSED row for a missing verify-still-open
+#     recipe: a withdrawn or clean done-verified row cites files as the evidence
+#     FOR closure, not as a live premise (Stuffolio A73, 2026-08-11). The exemption
+#     keys off `archivable`, so rows whose premise CAN still decay keep tripping.
+_closed_cases = [
+    ("withdrawn",            "`@status:withdrawn`",                          True),
+    ("clean done-verified",  "`@status:done-verified` `@verified:device`",   True),
+    ("done-unverified",      "`@status:done-unverified`",                    False),
+    ("done-verified no tier","`@status:done-verified`",                      False),
+    ("open",                 "`@status:open`",                               False),
+    ("blocked",              "`@status:blocked`",                            False),
+]
+for _name, _tok, _exempt in _closed_cases:
+    _row = ("| Z1 | — | Traced to Foo.swift:12 | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ | None | "
+            + _tok + " |\n")
+    _hit = any(f["check"] == "stale-recipe" for f in _vl.check_rows(_row, 400))
+    if _exempt and _hit:
+        print(f"FAIL: stale-recipe flagged a {_name} row (should be exempt)"); ok = False
+    if not _exempt and not _hit:
+        print(f"FAIL: stale-recipe did NOT flag a {_name} row (premise can still decay)"); ok = False
+
 # 3. the verify gate passes on the example (no error-severity findings)
 r = subprocess.run([sys.executable, str(scripts / "verify_ledger.py"), "--file", str(ex)],
                    capture_output=True, text=True)
