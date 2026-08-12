@@ -29,7 +29,7 @@ contradictions, tiers, or any other finding. See `reference/commands.md` §
 | **unknown-value** — an `@status`/`@verified` value not in the enum | error | typos / drift in the token vocabulary |
 | **this-blocker** — a 🔴 THIS row not proven (`done-verified` clean) | error if it CLAIMS done (`done-verified`/`done-unverified`); warn if merely open | a "done" ship-blocker that isn't actually proven |
 | **char-budget** — a Status or Finding cell over the budget (default 400) | warn | the multi-KB bloat (Phase 7 owns the full row-length rule) |
-| **stale-recipe** — a row whose Finding cites a file path but carries no verify-still-open recipe | warn | a premise that may have silently decayed as code moved |
+| **stale-recipe** — a row whose Finding cites a file path but carries no verify recipe (still-open or still-DONE) | warn | a premise that may have silently decayed as code moved |
 | **registry / registry-drift** — no registry block, or the `.unforget.json` cache disagrees with the README | warn | a stranded/mis-registered ledger; cache drift |
 
 **Errors fail the gate; warnings do not.** Warnings are hygiene the user should
@@ -64,7 +64,7 @@ table) is handled correctly — the width is per-table, never a global constant.
 what Markdown splits on in most renderers. Phrase it as prose ("grep for BOTH terms") or
 use `grep -E` with the alternation described rather than literal.
 
-## The `verify-still-open` recipe check (§4c)
+## The verify recipe check (§4c)
 
 The format already suggests open rows carry a 10-second grep recipe that
 confirms the row's premise still matches source (`reference/format.md` §
@@ -72,6 +72,15 @@ Verify-still-open recipe). `verify` makes it enforceable: a row whose Finding
 cites a file path but carries no recipe is flagged (stale-recipe, warn), because
 its premise can silently decay when a refactor moves the cited code. This is the
 structural catch for "the row now describes code that changed."
+
+**Both polarities count.** A `done-unverified` row's recipe asks the INVERSE
+question — "is the fix still in place?" — and is legitimately labelled
+`**Verify-still-DONE:**`. The check accepts `Verify-still-open` and
+`Verify-still-DONE` equally. Matching only the "open" spelling flagged those rows
+as recipe-less, which pressured authors to relabel a still-DONE recipe as
+still-open — silencing the warning by inverting the recipe's stated meaning. Pick
+the label that matches what the command actually checks, not the one the linter
+recognizes.
 
 ## Preferred implementation
 
@@ -91,9 +100,9 @@ token (see `reference/status.md`); flag as ERROR a contradiction (done/closed
 token over "re-opened"/"still broken"/"still owed" narration), a `done-verified`
 lacking a device/user tier or backed by `session-claimed`, an unknown status
 value, and a THIS row that claims done but isn't cleanly `done-verified`. Flag as
-WARN a Status/Finding cell over ~400 chars, a file-citing row with no
-verify-still-open recipe, and (if a registry exists) a cache that disagrees with
-the README. Gate fails if any ERROR is present.
+WARN a Status/Finding cell over ~400 chars, a file-citing row with no verify
+recipe (`Verify-still-open` or `Verify-still-DONE` both satisfy it), and (if a
+registry exists) a cache that disagrees with the README. Gate fails if any ERROR is present.
 
 ## Companion handoffs at verify (format v2+)
 

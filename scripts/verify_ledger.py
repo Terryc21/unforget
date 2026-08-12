@@ -14,7 +14,8 @@ Checks (§4a):
   5. done-unverified would be archived            (only relevant with --archiving; see note)
   6. THIS-target + not-proven still blocks release
   7. table cell over the char budget              (bloat; Phase 7 owns the full rule)
-  8. stale verify-still-open recipe               (a file-citing row lacking a recipe)
+  8. stale verify recipe                          (a file-citing row lacking a recipe;
+                                                   still-open OR still-done both count)
   9. registry drift                               (cache != README, or block absent)
  10. cell-count != the table's declared width     (an unescaped '|' shifting every column)
 
@@ -63,7 +64,7 @@ import registry  # noqa: E402
 
 DEFAULT_CHAR_BUDGET = 400  # per-cell soft budget; Phase 7 formalizes/《configures》 this
 # A row that cites a file path in its Finding/detail but carries no
-# verify-still-open recipe is a stale-recipe risk. Detect a file-ish token.
+# verify recipe is a stale-recipe risk. Detect a file-ish token.
 #
 # The naive form `[\w./-]+\.\w{1,5}\b` also matched ordinary prose: abbreviations
 # ("e.g", "i.e") and decimals ("0.50", "3.99") all look like <stem>.<ext>. That
@@ -80,7 +81,17 @@ FILE_CITE_RE = re.compile(
     rf"|[\w.-]+\.(?:{_SOURCE_EXT}))\b",  # or a known extension: Foo.swift
     re.IGNORECASE,
 )
-RECIPE_MARKERS = ("verify-still-open", "verify still open")
+# A `done-unverified` row's recipe asks the INVERSE question — "is the fix still
+# in place?" — so it is legitimately labelled `Verify-still-DONE:`. Matching only
+# the "open" spelling flagged those rows as recipe-less, which pushed authors to
+# relabel a still-DONE recipe as still-open: silencing the warning by inverting
+# the recipe's stated meaning. Accept both spellings instead.
+RECIPE_MARKERS = (
+    "verify-still-open",
+    "verify still open",
+    "verify-still-done",
+    "verify still done",
+)
 # A literal status token quoted inside a Finding cell. Matches the same shape
 # parse_status.STATUS_RE does, so the write-time warning and the parser agree on
 # what counts as a token.
@@ -219,7 +230,7 @@ def check_rows(text: str, char_budget: int) -> list[dict]:
                 })
 
         # Check 8: stale-recipe risk — a Finding that cites a file but the row
-        # carries no verify-still-open recipe anywhere in its cells.
+        # carries no verify recipe anywhere in its cells.
         # Skip POINTER rows: a branch pointer's Finding cites the CHILD ledger's
         # filename ("→ see RELEASE-1.0.md"), which trips the file-cite regex, but a
         # pointer is a signpost, not a work item — asking it for a verify recipe is
@@ -239,7 +250,7 @@ def check_rows(text: str, char_budget: int) -> list[dict]:
                     "severity": "warn",
                     "check": "stale-recipe",
                     "id": rid,
-                    "message": "row cites a file path but has no verify-still-open recipe; premise may have decayed",
+                    "message": "row cites a file path but has no verify recipe (still-open or still-done); premise may have decayed",
                 })
 
     return findings
