@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.5.0
+version: 2.6.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -70,7 +70,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget show` | Synthesized current-state read for ONE row (Finding/Impact/Fix, no history); `--full` appends the raw Detail block; markdown baseline, optional interactive card view where available | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
 | `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
-| `/unforget verify` | (format v2+) Integrity lint: contradictions, unproven "done", bloat, stale recipes, registry drift; read-only; gates `archive`/`promote` | `reference/verify.md` |
+| `/unforget verify` | (format v2+) Integrity lint: contradictions, unproven "done", bloat, dangling detail-block pointers, stale recipes, registry drift; read-only; gates `archive`/`promote` | `reference/verify.md` |
 | `/unforget archive` | Move completed (Done/Fixed) rows out of the active tables into an archive file; lightweight, run anytime; holds back "Done-but-owed" rows | `reference/commands.md` |
 | `/unforget promote` | Release-time ritual: verify 🔴 THIS rows fixed, promote 🔵 NEXT to 🔴 THIS | `reference/promotion.md` (with backups in same file) |
 | `/unforget --version` | Print version, install path, supported format-version; install-verification | `reference/commands.md` |
@@ -169,6 +169,37 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.6.0 — `verify`: catch a detail-block pointer that leads nowhere (2026-08-13) · minor
+
+New check, `warn` severity, no new flag. Additive: existing `verify` behavior for every other
+check is unchanged.
+
+- **`detail-pointer`** flags a row whose Finding or Status cell contains `detail block
+  **<ID>**` (either the canonical `→ see detail block` phrasing `row_budget.py` writes, or the
+  shorter `→ detail block` form) when no matching `- **<ID>** -` bullet exists under any
+  `### Detail - <section>` heading in the file. The inverse (a bullet with no pointer) is
+  reported informationally, not counted as a finding — usually just a row written with full
+  detail from the start.
+- **Origin:** found on the same real row this whole v2.2-2.5 arc traces back to. Stuffolio's
+  A65 row read `→ detail block **A65**`, but no `**A65**` bullet existed anywhere in the file's
+  Detail sections — the row's entire 3,707-character history was still sitting in the table
+  cell, the exact shape the char-budget check exists to catch, except the pointer made the row
+  LOOK already-split when it wasn't. Nothing before this checked that a stated pointer actually
+  resolves.
+- **Now load-bearing for `/unforget show`, not just cosmetic.** `show`'s Fix field reads the
+  LAST dated entry in a row's Detail bullet as its source of truth (v2.5.0, above). A dangling
+  pointer means `show` silently degrades to "no detail history on file," quietly losing the
+  richest part of its own output with no signal that anything was missing. This check is what
+  makes that failure visible instead of silent.
+- **`warn`, not `error` — deliberately, unlike char-budget's hard-threshold escalation.** A
+  dangling pointer doesn't itself prove the row's rating columns or `@status` token are wrong;
+  gating `archive`/`promote` on it would need real field data first, the same caution that kept
+  the char-budget hard threshold at 4x rather than 1x.
+- **No auto-fix.** Unlike char-budget overflow (which `verify --fix` splits fresh), a dangling
+  pointer's right remedy depends on WHY it's dangling — deleted content, a moved section, a
+  typo'd ID — which a mechanical fixer can't distinguish. `verify` reports it; a human decides.
+- Full spec: `reference/verify.md` § The `detail-pointer` check (§4f).
 
 ### v2.5.0 — `/unforget show`: one-row synthesis instead of the full history dump (2026-08-13) · minor
 

@@ -20,7 +20,7 @@ A **skill** is a markdown file Claude Code knows how to run. When you type `/unf
 - **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
 - **Rescan anytime:** `/unforget import` re-runs the 6-surface scan to catch new deferred items that appeared after init (new audit reports, plan files, memory entries, TODO comments). Has duplicate detection so it won't double-import.
 - **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
-- **Maturity:** v2.5.0 (backward compatible with v1 ledgers); used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+- **Maturity:** v2.6.0 (backward compatible with v1 ledgers); used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
 
 ## What it looks like
 
@@ -309,7 +309,7 @@ Shows only the rows that block submission. Fix them, mark them Fixed, run `/unfo
 | `/unforget list` | Show what's in the file. Filter by section, Target, Urgency, or staleness. `--view=open`/`done`/`split`/`next` picks which rows show (a `done-unverified` row still counts as open); `--group-by=section` groups by section instead of Target; `--ledgers=`/`--all-ledgers` reads across sibling ledgers already declared in your registry. |
 | `/unforget show <ID>` | One row's current state, not its whole history: Finding, Impact, Fix, in plain sentences. `--full` adds the raw history below it. Nothing is ever hidden from the file, only from this default view. |
 | `/unforget scan` | Find rows that have been sitting too long for their priority. Read-only. |
-| `/unforget verify` | Integrity lint (format v2+). Read-only. Catches rows that contradict themselves, a `done-verified` carrying no verification tier, unproven 🔴 THIS blockers, malformed rows, over-budget cells, and registry drift. Run it **before** `archive` or `promote` — those are release decisions, and they are only as trustworthy as the "done" claims underneath them. |
+| `/unforget verify` | Integrity lint (format v2+). Read-only. Catches rows that contradict themselves, a `done-verified` carrying no verification tier, unproven 🔴 THIS blockers, malformed rows, over-budget cells (an ERROR past 4x budget, not just a warning), a "see detail block" pointer that leads to no bullet, and registry drift. Run it **before** `archive` or `promote` — those are release decisions, and they are only as trustworthy as the "done" claims underneath them. |
 | `/unforget archive` | Move completed (Fixed/Done) rows out of the active tables into an archive file. Lightweight — run anytime between releases to keep the active view uncluttered. |
 | `/unforget promote` | Release-time check. Verifies all 🔴 THIS rows are Fixed, then promotes 🔵 NEXT rows up to 🔴 THIS for the next cycle. |
 | `/unforget --version` | Print version, install path, and supported format-version — plus an install-integrity check (are all companion files reachable?) and, in a project, whether the recall trigger is wired. Useful for verifying a fresh install loaded correctly. |

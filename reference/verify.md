@@ -30,6 +30,7 @@ contradictions, tiers, or any other finding. See `reference/commands.md` §
 | **this-blocker** — a 🔴 THIS row not proven (`done-verified` clean) | error if it CLAIMS done (`done-verified`/`done-unverified`); warn if merely open | a "done" ship-blocker that isn't actually proven |
 | **char-budget** — a Status or Finding cell over the budget (default 400) | warn (error above `--char-budget-hard`, default 4x = 1600) | the multi-KB bloat (Phase 7 owns the full row-length rule) |
 | **stale-recipe** — a row whose Finding cites a file path but carries no verify recipe (still-open or still-DONE) | warn | a premise that may have silently decayed as code moved |
+| **detail-pointer** — a row's cell claims `→ (see) detail block **<ID>**` but no matching bullet exists in the file's Detail sections | warn | a promised split that never happened, or a Detail bullet that was later deleted out from under a live pointer |
 | **registry / registry-drift** — no registry block, or the `.unforget.json` cache disagrees with the README | warn | a stranded/mis-registered ledger; cache drift |
 
 **Errors fail the gate; warnings do not.** Warnings are hygiene the user should
@@ -98,6 +99,48 @@ split (`scripts/row_budget.py`) for char-budget findings at either severity — 
 severity doesn't require new remediation tooling, only makes the existing one-command fix
 mandatory before a ship decision instead of optional. See § What it does above.
 
+## The `detail-pointer` check (§4f)
+
+**Why this exists.** A row over char-budget is supposed to leave a pointer — `→ see detail
+block **<ID>**` (the form `row_budget.py` writes) or the shorter `→ detail block **<ID>**`
+seen in hand-edited rows — that sends the reader to a `- **<ID>** - …` bullet under this
+ledger's `### Detail - <section>` heading. Nothing has ever checked that the pointer actually
+resolves to a bullet. Confirmed missing on a real row (Stuffolio A65, 2026-08-13): the row's
+cell read `→ detail block **A65**`, but no `**A65**` bullet existed anywhere in the file's
+Detail sections — the entire history was still sitting in the table cell itself, the exact
+shape the char-budget check (§4e) exists to catch, except this row's pointer made it LOOK
+already-split when it wasn't. A pointer that lies is worse than no pointer: a reader who trusts
+it stops looking for the history, and `/unforget show` (which reads the Detail bullet as its
+source of truth for a row's Fix field) degrades silently to "no detail history on file" instead
+of surfacing the real gap.
+
+**What it checks.** For every row whose Finding or Status cell contains `detail block
+**<ID>**` (either pointer phrasing, case-sensitive on the ID), search this ledger's `### Detail
+- <section>` blocks for a `- **<ID>** -` bullet with that same ID. Two failure shapes:
+
+- **Pointer with no bullet** — the split was promised (in the cell or by prior narration) but
+  never happened, or a bullet that once existed was later deleted (accidentally, or by a
+  find-replace that missed the Detail section). `warn`, naming the row ID and the section it
+  claims to point into.
+- **Bullet with no pointer** *(the inverse, checked for completeness)* — a Detail bullet exists
+  for an ID whose current table row carries no pointer text at all. Usually harmless (the row
+  was written directly with full detail and never needed a split-generated pointer), so this is
+  informational only, not a finding — surfaced in `verify`'s advisory text, not counted toward
+  `warn_count`.
+
+**Severity: `warn`, not `error`.** Unlike char-budget's hard-threshold escalation, a broken
+pointer doesn't itself prove a row's rating columns or `@status` token are wrong — the table
+row can still be internally correct even if its "see more" link dangles. Escalating this to a
+gate-blocking error would need real-world data on how often it fires falsely first, the same
+caution that kept char-budget's hard threshold at 4x rather than 1x (§4e above).
+
+**No auto-fix offered.** `row_budget.py --fix` remediates char-budget overflow by performing
+the split fresh; it isn't the right tool for a pointer that's ALREADY dangling, because the
+tool can't know whether the missing bullet's content is recoverable (deleted content, moved
+section, ID typo) or simply never existed. `verify` reports the dangling pointer and the
+row/section involved; a human decides whether to reconstruct the bullet, remove the stale
+pointer text, or (if the ID was mistyped) fix the reference.
+
 ## The verify recipe check (§4c)
 
 The format already suggests open rows carry a 10-second grep recipe that
@@ -128,6 +171,9 @@ python3 scripts/verify_ledger.py --file <UNFORGET.md> [--dir <ledger-dir>] [--ch
 - `--char-budget-hard` overrides the hard per-cell budget (default 4x `--char-budget`,
   i.e. 1600; over this: **error**, gates `archive`/`promote`). See § Char-budget severity
   escalation.
+- No separate flag for `detail-pointer` — it has no threshold to tune, only a match/no-match
+  outcome, so it runs unconditionally whenever `--file` is given. See § The `detail-pointer`
+  check.
 - Returns `{rows_checked, findings[], error_count, warn_count, gate_pass, advisory}`.
 - **Exit 0** = gate passes (no errors; warnings may exist). **Exit 1** = gate
   FAILS (≥1 error; `archive`/`promote` should refuse). **Exit 2** = usage error.
@@ -136,12 +182,14 @@ python3 scripts/verify_ledger.py --file <UNFORGET.md> [--dir <ledger-dir>] [--ch
 token (see `reference/status.md`); flag as ERROR a contradiction (done/closed
 token over "re-opened"/"still broken"/"still owed" narration), a `done-verified`
 lacking a device/user tier or backed by `session-claimed`, an unknown status
-value, a THIS row that claims done but isn't cleanly `done-verified`, **and now a
-Status/Finding cell over ~1600 chars (4x the soft budget)**. Flag as WARN a
+value, a THIS row that claims done but isn't cleanly `done-verified`, and a
+Status/Finding cell over ~1600 chars (4x the soft budget). Flag as WARN a
 Status/Finding cell over ~400 chars but under the hard threshold, a file-citing
 row with no verify recipe (`Verify-still-open` or `Verify-still-DONE` both
-satisfy it), and (if a registry exists) a cache that disagrees with the README.
-Gate fails if any ERROR is present.
+satisfy it), a row whose cell contains `detail block **<ID>**` (either pointer
+phrasing) with no matching `- **<ID>** -` bullet under any `### Detail -
+<section>` heading in the file, and (if a registry exists) a cache that
+disagrees with the README. Gate fails if any ERROR is present.
 
 ## Companion handoffs at verify (format v2+)
 

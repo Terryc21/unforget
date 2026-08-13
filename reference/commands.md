@@ -553,10 +553,11 @@ deletes it") applied one level up: showing less by default never means keeping l
 ### Failure modes
 
 - **Row not found:** exact error naming the ID and the file searched, no guessing at a close match silently.
-- **Row has no Detail block at all** (either never split, or the pointer is broken — see
-  `reference/verify.md`'s planned `detail-pointer` check): synthesize Finding/Impact from the
-  table cells alone, and say so explicitly in the Fix line (`"No detail history on file — fix
-  approach not recorded."`) rather than inventing one.
+- **Row has no Detail block at all** (either never split, or the pointer is broken — this is
+  exactly what `reference/verify.md`'s `detail-pointer` check flags; `show`'s job here is to
+  degrade gracefully at read time, not to run that check itself): synthesize Finding/Impact from
+  the table cells alone, and say so explicitly in the Fix line (`"No detail history on file —
+  fix approach not recorded."`) rather than inventing one.
 - **Multiple ledgers, ambiguous ID:** if `--ledgers=`/`--all-ledgers` scope is active (see
   § Multi-ledger scope under `/unforget list`) and the ID exists in more than one registered
   ledger, `show` asks which one rather than picking silently.
