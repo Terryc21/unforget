@@ -31,6 +31,8 @@
   "declared_versions": {
     "changelog": "2.7.0",
     "plugin_manifest": "2.7.0",
+    "readme_badge": "2.7.0",
+    "readme_maturity": "2.7.0",
     "skill_md": "2.7.0"
   },
   "integrity_ok": true,

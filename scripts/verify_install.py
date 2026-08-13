@@ -18,13 +18,20 @@ Two concerns, one command, both feeding `/unforget --version`:
      invisible and the skill looks broken when it is working as designed. This
      check reports whether that trigger is installed for the given project.
 
-  3. Version reconciliation. The version is declared in three places (SKILL.md
-     frontmatter, .claude-plugin/plugin.json, the newest changelog heading) and
-     nothing used to compare them — so the plugin manifest sat FIVE releases
-     stale without any check noticing (measured 2026-08-13). Drift is ADVISORY,
-     not a failure: a wrong manifest version misreports what is installed, but
+  3. Version reconciliation. The version is declared in FIVE places (SKILL.md
+     frontmatter, .claude-plugin/plugin.json, the newest changelog heading, the
+     README's shields.io badge cache-buster, and the README's "Maturity:"
+     bullet) and nothing used to compare them — so the plugin manifest sat FIVE
+     releases stale without any check noticing (measured 2026-08-13). Drift is
+     ADVISORY, not a failure: a wrong version misreports what is installed, but
      unlike a missing companion file it does not break the router. Reported in
      `versions_in_sync` / `declared_versions` and surfaced in the advisory.
+
+     The two README sites were added after the first pass shipped covering only
+     three: bumping to 2.7.0 required hand-grepping the README, which is the
+     manual step this check exists to eliminate. A source that declares no
+     version (no manifest, no badge) casts no vote rather than counting as a
+     mismatch.
 
 Usage:
   python3 verify_install.py --skill-root <dir> [--project-root <dir>]
@@ -40,8 +47,9 @@ Output (stdout, JSON):
     "skill_root": "<input>",
     "version": "1.0.0"|null,
     "versions_in_sync": true|false,
-    "declared_versions": {"skill_md": "2.6.0", "plugin_manifest": "2.6.0",
-                          "changelog": "2.6.0"},   # null == that source declares none
+    "declared_versions": {"skill_md": "2.7.0", "plugin_manifest": "2.7.0",
+                          "changelog": "2.7.0", "readme_badge": "2.7.0",
+                          "readme_maturity": "2.7.0"},  # null == declares none
     "integrity_ok": true|false,
     "companion_files_present": ["reference/commands.md", ...],
     "companion_files_missing": [...],
@@ -125,6 +133,15 @@ def read_version(skill_root: Path) -> str | None:
 # "measure, don't cite" rule it applies to everything else.
 CHANGELOG_RE = re.compile(r"^###\s+v([0-9]+\.[0-9]+\.[0-9]+)", re.MULTILINE)
 
+# The README declares the version twice more, and the first pass of this check
+# missed both -- they were caught by hand-grep during the 2.7.0 bump, which is
+# exactly the manual step this check exists to replace. Both patterns are
+# deliberately narrow (anchored to the shields.io cache-buster param and to the
+# literal "Maturity:" bullet) so an ordinary version mention elsewhere in the
+# prose is not mistaken for a declaration.
+README_BADGE_RE = re.compile(r"img\.shields\.io/github/v/tag/[^\s)]*?[?&]v=([0-9]+\.[0-9]+\.[0-9]+)")
+README_MATURITY_RE = re.compile(r"\*\*Maturity:\*\*\s*v([0-9]+\.[0-9]+\.[0-9]+)")
+
 
 def read_declared_versions(skill_root: Path) -> dict:
     """Every place a version is declared, keyed by source. Absent -> None.
@@ -154,6 +171,19 @@ def read_declared_versions(skill_root: Path) -> dict:
         match = CHANGELOG_RE.search(skill_md.read_text(encoding="utf-8", errors="replace"))
         changelog_version = match.group(1) if match else None
     versions["changelog"] = changelog_version
+
+    # README: the shields.io badge cache-buster and the "Maturity:" bullet.
+    # Both are optional -- a README without either simply casts no vote.
+    readme = skill_root / "README.md"
+    badge_version = maturity_version = None
+    if readme.exists():
+        readme_text = readme.read_text(encoding="utf-8", errors="replace")
+        badge_match = README_BADGE_RE.search(readme_text)
+        badge_version = badge_match.group(1) if badge_match else None
+        maturity_match = README_MATURITY_RE.search(readme_text)
+        maturity_version = maturity_match.group(1) if maturity_match else None
+    versions["readme_badge"] = badge_version
+    versions["readme_maturity"] = maturity_version
 
     return versions
 

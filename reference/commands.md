@@ -1072,7 +1072,7 @@ Install path: <detected at runtime>  (Claude Code plugin)
 Supported format-version: v1, v2
 Subcommands: init, add, edit, import, list, scan, branch, verify, archive, promote, --version
 Install integrity: ✓ all companion files reachable
-Version declarations: ✓ SKILL.md, plugin manifest, changelog all agree (2.6.0)
+Version declarations: ✓ all 5 sites agree (2.7.0)
 Recall trigger: ✓ installed in CLAUDE.md
 ```
 
@@ -1091,11 +1091,14 @@ The version string is read from the SKILL.md frontmatter `version` field. The in
 
 ### Version reconciliation
 
-The version is declared in **three** places: `SKILL.md`'s frontmatter, `.claude-plugin/plugin.json`, and the newest `### vN.N.N` changelog heading. Nothing used to compare them, so the plugin manifest sat **five releases stale** (2.1.0 while everything else read 2.6.0) with no check noticing — found 2026-08-13, the third instance of doc-vs-code drift in a single session (the others: the changelog describing `verify` checks the code didn't implement, and a test golden pinned to an old version).
+The version is declared in **five** places: `SKILL.md`'s frontmatter, `.claude-plugin/plugin.json`, the newest `### vN.N.N` changelog heading, the README's shields.io badge cache-buster (`&v=N.N.N`), and the README's `**Maturity:** vN.N.N` bullet. Nothing used to compare them, so the plugin manifest sat **five releases stale** (2.1.0 while everything else read 2.6.0) with no check noticing — found 2026-08-13, the third instance of doc-vs-code drift in a single session (the others: the changelog describing `verify` checks the code didn't implement, and a test golden pinned to an old version).
 
-`--version` now reconciles all three and reports `versions_in_sync` + `declared_versions`. Rules:
+The two README sites were added after the first pass shipped covering only three: bumping to 2.7.0 still required hand-grepping the README, which is precisely the manual step this check exists to eliminate. A check that covers most of the sites still leaves the release manual.
 
-- **Only sources that actually declare a version vote.** A manual (v0.1) install with no plugin manifest is not drift — it simply has one fewer declaration. Same for an unparseable manifest: undeclared, never a crash.
+`--version` now reconciles all five and reports `versions_in_sync` + `declared_versions`. Rules:
+
+- **Only sources that actually declare a version vote.** A manual (v0.1) install with no plugin manifest is not drift — it simply has one fewer declaration. Same for an unparseable manifest, or a README with no badge/Maturity line: undeclared, never a crash.
+- **The README patterns are deliberately narrow**, anchored to the badge URL and the literal `**Maturity:**` bullet. Ordinary prose mentioning `v1.0.3` or "upgrading from 2.4.0" is NOT a declaration and must not be read as one — verified against a README containing exactly those strings.
 - **SKILL.md's frontmatter is canonical**, because that is what `read_version` — and therefore the `unforget vN.N.N` line above — already reports.
 - **Drift is ADVISORY, never a failure.** A stale manifest misreports what is installed; unlike a missing companion file it does not break the router, so it does not fail the command (exit stays 0). A missing companion still exits 1 and still outranks drift in the advisory line.
 

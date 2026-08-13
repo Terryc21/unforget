@@ -217,13 +217,19 @@ plugin manifest five releases stale, and a spec asserting a merge that did not e
   but **no reader for them was ever implemented** (the only `unforget-config:` marker any script
   parses is `memory-dir`), and no ledger was found carrying them, so the migration moved no data
   and broke no code path. A legacy in-file block is still honored, registry winning on conflict.
-- **`--version` reconciles its own version declarations.** SKILL.md frontmatter,
-  `.claude-plugin/plugin.json`, and the newest changelog heading are now compared; `--version`
-  reports `versions_in_sync` + `declared_versions`. The manifest had been stale at 2.1.0 while
-  everything else read 2.6.0. Only sources that actually declare a version vote (a manual install
-  with no manifest is not drift; an unparseable manifest degrades rather than crashing), and
-  drift is **advisory, exit 0** — it misreports what is installed but, unlike a missing companion
-  file, does not break the router.
+- **`--version` reconciles its own version declarations — all FIVE of them.** SKILL.md
+  frontmatter, `.claude-plugin/plugin.json`, the newest changelog heading, the README's
+  shields.io badge cache-buster, and the README's `**Maturity:**` bullet are now compared;
+  `--version` reports `versions_in_sync` + `declared_versions`. The manifest had been stale at
+  2.1.0 while everything else read 2.6.0. Only sources that actually declare a version vote (a
+  manual install with no manifest is not drift; an unparseable manifest or a README lacking both
+  markers degrades rather than crashing), and drift is **advisory, exit 0** — it misreports what
+  is installed but, unlike a missing companion file, does not break the router. The README
+  patterns are anchored to the badge URL and the literal `**Maturity:**` bullet, so prose
+  mentioning `v1.0.3` or "upgrading from 2.4.0" is not mistaken for a declaration.
+  ⚠️ The first cut of this check covered only three sites; bumping to 2.7.0 still needed a
+  hand-grep of the README to catch the other two — a check that covers *most* declaration sites
+  leaves the release manual, which is the failure it was built to prevent.
 
 ⚠️ **Known remaining gap:** the version check compares strings across declaration sites; it
 cannot catch a changelog entry that *describes behavior the code does not implement*. That was
