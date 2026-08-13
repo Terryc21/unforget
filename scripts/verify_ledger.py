@@ -75,8 +75,13 @@ DEFAULT_CHAR_BUDGET_HARD_MULTIPLE = 4  # hard threshold = this × the soft budge
 # and the shorter "→ detail block **A65**". Case-sensitive on the ID (§4f).
 DETAIL_POINTER_RE = re.compile(r"detail block \*\*([A-Za-z0-9-]+)\*\*")
 # A Detail-section bullet: "- **A65** - ..." under a "### Detail - <section>" heading.
-DETAIL_HEADING_RE = re.compile(r"^###\s+Detail\s*-")
-DETAIL_BULLET_RE = re.compile(r"^-\s*\*\*([A-Za-z0-9-]+)\*\*\s*-")
+# The separator may be an ASCII hyphen, en dash, or em dash: ledgers are hand-written
+# markdown and both dash styles occur in practice (UNFORGET.md uses "-",
+# TERRY-UNFORGET.md uses "—"). Matching only "-" made this check silently blind to
+# every em-dash ledger — the bullet set came back empty, so ALL pointers in those
+# files read as dangling while the check still passed cleanly on the hyphen ledger.
+DETAIL_HEADING_RE = re.compile(r"^###\s+Detail\s*[-–—]")
+DETAIL_BULLET_RE = re.compile(r"^-\s*\*\*([A-Za-z0-9-]+)\*\*\s*[-–—]")
 # A row that cites a file path in its Finding/detail but carries no
 # verify recipe is a stale-recipe risk. Detect a file-ish token.
 #
