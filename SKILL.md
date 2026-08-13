@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.4.0
+version: 2.5.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -67,6 +67,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget edit` | Refine a row's columns; closure recommendations on `--status=Fixed` | `reference/commands.md` |
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
 | `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers | `reference/commands.md` |
+| `/unforget show` | Synthesized current-state read for ONE row (Finding/Impact/Fix, no history); `--full` appends the raw Detail block; markdown baseline, optional interactive card view where available | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
 | `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
 | `/unforget verify` | (format v2+) Integrity lint: contradictions, unproven "done", bloat, stale recipes, registry drift; read-only; gates `archive`/`promote` | `reference/verify.md` |
@@ -81,6 +82,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **You want to update an existing row's columns** → `/unforget edit <ID>`
 - **A new audit / plan / memory file appeared since init** → `/unforget import`
 - **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only)
+- **You've picked one row to actually work on and want its current state, not its whole history** → `/unforget show <ID>` (add `--full` for the complete raw history)
 - **You want to find rows that have aged past their thresholds** → `/unforget scan`
 - **Deferred work differs on actor (a different *human* acts on it) / lifespan (a sprint with its own discipline) / domain (a different repo or subject)** → `/unforget branch` (but default to a row or section — see `reference/branching.md`)
 - **Completed rows have piled up and you want them out of the active view** → `/unforget archive` (lightweight; use this between releases instead of `promote`)
@@ -100,7 +102,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/init.md` | Phases 1–7 of the init walkthrough, success criteria | Running `/unforget init` |
 | `reference/surfaces.md` | Six core surfaces, Surface 1b general doc scanning, redirect-pointer pre-check, memory-dir resolution, path encoding, meta-file pre-check, audit-tool format-aware parsing, cross-surface dedup, GitHub-issues four states, algorithm fallback | Running `init` or `import`, or auditing surface behavior |
 | `reference/promotion.md` | Promote ritual, dry-run mechanics, post-fix-sweep workflow, backups and recovery | Running `/unforget promote` or marking a row Fixed |
-| `reference/commands.md` | Per-subcommand specs for `add`, `edit`, `import`, `list`, `scan`, `archive`, `--version` (incl. `--version`'s install-integrity + recall-trigger checks) | Running any of those subcommands |
+| `reference/commands.md` | Per-subcommand specs for `add`, `edit`, `import`, `list`, `show`, `scan`, `archive`, `--version` (incl. `--version`'s install-integrity + recall-trigger checks) | Running any of those subcommands |
 | `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance | Reading/writing a row's status; running `archive`/`list`/`edit` |
 | `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
@@ -168,6 +170,48 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 
 ## Changelog
 
+### v2.5.0 — `/unforget show`: one-row synthesis instead of the full history dump (2026-08-13) · minor
+
+New subcommand. Read-only, additive, no change to on-disk format or any existing command.
+
+- **`/unforget show <ID>`** renders three fields for ONE row: Finding (current-state, not
+  history), Impact (why it matters left as-is), Fix (what closes it, or the specific
+  verification step still owed for a `done-unverified` row). Deterministic extraction, not a
+  per-call model summary: Finding/Impact come from the row's own table cells; Fix comes from
+  the LAST dated entry in the Detail block, which the row-length discipline's §2b append rule
+  already guarantees is the current state (history is appended, the cell's status is REPLACED
+  to latest) — `show` leans on that existing invariant rather than adding new logic to find
+  "what's current." No caching; recomputed fresh every call, same anti-staleness principle as
+  the char-budget and view-mode work above.
+- **`--full`** prints the synthesis, then the complete raw Detail-block history verbatim below
+  it — the escape hatch for when the full accreted narrative (a reversal, a postmortem) is
+  actually wanted. Nothing is ever hidden from the file, only from the DEFAULT view; same
+  non-negotiable as the row-length split's "moves history, never deletes it" rule, applied one
+  level up.
+- **Markdown is the baseline everywhere**, per this skill's own stated portability goal ("works
+  fine in any editor, on GitHub, in Linear... other AI assistants" — § Compatibility notes).
+  Nothing about the default `show` output depends on any rendering capability beyond stdout.
+  **Carries its own Algorithm fallback** (`reference/commands.md` § `/unforget show` §
+  Algorithm fallback), same as every other non-trivial command in this file — table/string
+  extraction only, no ranking or cross-row logic, so the fallback is a close mirror of the
+  preferred path rather than a simplified approximation.
+- **Interactive card presentation is optional and environment-gated, never a silent swap.**
+  Where a richer surface exists (e.g. Claude's Artifact/widget rendering), `show` may OFFER a
+  click-through card view of the same three fields — explicitly opt-in, generated from the same
+  deterministic extraction (no separate logic, no separate drift risk), and it degrades to
+  nothing (not to an error) anywhere that capability is absent.
+- **Deliberately does not touch `list`'s rating table.** Comparing rows (Urgency/ROI/Risk
+  across many) and reading one row deeply are different tasks — the interactive view carries no
+  rating columns and is not meant to answer "what's next" (that stays `list`/`--view=next`'s
+  job). Extending this pattern to a multi-row interactive `list` is a real design question
+  flagged as explicitly out of scope for this version, not assumed as a natural follow-on.
+- **Origin:** a live demo built from Stuffolio's own open rows, prompted by "these summaries
+  take up a lot of vertical space — what if selecting a row is when a brief description
+  displays, instead of the list itself." The follow-up question ("would we lose the 11-column
+  table?") is what drew the comparison-vs-reading distinction this design rests on: no, because
+  they were never the same job.
+- Full spec: `reference/commands.md` § `/unforget show` (including § Interactive presentation).
+
 ### v2.4.0 — `list --ledgers=` / `--all-ledgers`: opt-in cross-ledger reads (2026-08-13) · minor
 
 Additive, backward compatible: `/unforget list` with no scope flag is single-ledger, unchanged.
@@ -196,6 +240,9 @@ Additive, backward compatible: `/unforget list` with no scope flag is single-led
   scoped to a different actor or a dying sprint ledger as if it were a permanent, generally
   actionable "next," which would misrepresent exactly the separation `branch`'s three axes
   (`reference/branching.md` §2) were designed to preserve.
+- **Algorithm fallback** for `--ledgers=`/`--all-ledgers` is covered in the SAME fallback
+  paragraph as `--view=`/`--group-by=` (see v2.2.0 entry below) — one combined recipe for all
+  three `list` extensions, not a separate one per flag.
 - Full spec: `reference/commands.md` § Multi-ledger scope (under `/unforget list`).
 
 ### v2.3.0 — char-budget hard error + write-time budget offer at `edit` (2026-08-13) · minor
@@ -260,6 +307,10 @@ on-disk file format.
 - **Composes with existing filters** (`--target=`, `--section=`, `--stale`, `--age=`); a
   `--view=<mode>` combined with a bucket-picking `--status=<value>` is redundant, so `--status=`
   wins if both are passed.
+- **Carries an Algorithm fallback** (`reference/commands.md` § `/unforget list` § Algorithm
+  fallback) — every existing command spec in this file has one and these flags initially didn't;
+  added so a Python-unavailable environment (or a human without this skill loaded) has a written
+  recipe for `--view`/`--group-by`'s logic, not just the base filters `list` already covered.
 - **Storage untouched by design.** UNFORGET.md stays one file, one table per section — see
   `reference/commands.md` § View modes for why splitting the file itself would work against this
   skill's "single source of truth" premise.

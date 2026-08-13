@@ -412,6 +412,48 @@ is a legitimate combination: union everything registered, bucket into Open/Compl
 each bucket by section — with the Ledger column making clear which file each row's section
 label belongs to.
 
+### Algorithm fallback (Python unavailable) — `--view`, `--group-by`, `--ledgers`/`--all-ledgers`
+
+The base `list` filters (`--target=`, `--section=`, `--status=`, `--stale`, `--age=`) are simple
+enough to apply by eye against the rendered table and have never needed a fallback. The three
+additions in this file do, because they depend on logic beyond "filter the visible columns":
+
+- **`--view=open` / `--view=done`:** for each row, read its `@status` token per
+  `reference/status.md`'s fallback (first-cell-BACKWARD-scanned `@status:` token; ignore any
+  token that appears earlier in the row, e.g. inside Finding prose, per the v2.1.0 quoted-token
+  fix). `open`/`in-progress`/`blocked`/`done-unverified` → Open bucket. `done-verified`/
+  `withdrawn` → Completed bucket. Legacy tokenless rows: word `Open` → Open bucket, word `Fixed`
+  (or equivalent closed word-status) → Completed bucket. A row matching neither → Unparsed.
+- **`--view=split`:** run the `--view=open` and `--view=done` classification above once each
+  over the same filtered row set (do not re-filter between the two), render as two headed
+  tables with their own row counts, Unparsed as a third heading only if non-empty.
+- **`--view=next`:** restrict to the Open bucket (never rank a Completed row as next). For each
+  candidate, compute three ranks and combine: (1) ship-risk = Target weight (THIS highest, then
+  NEXT, LATER, SOMEDAY) × Urgency weight (CRITICAL highest) × the row's own Risk:No-Fix
+  indicator; (2) closest-to-done = `done-unverified` rows outrank `open`/`in-progress`/`blocked`
+  rows, since the remaining work is a verification step rather than new code; (3) ROI = the
+  row's own 🟠/🟢/🟡/🔴 rating, highest first. Sum or otherwise combine the three (exact weights
+  are a judgment call, not a fixed formula) and take the top row; on a tie, prefer lower Fix
+  Effort. State the dominant factor in the one-line output, and if the winner is
+  `done-unverified`, name the specific verification step from its Detail block rather than
+  saying only "unverified."
+- **`--group-by=section` / `--group-by=none`:** re-sort the already-selected row set. `section`
+  groups by which of the four table sections (Paused Plans / Session Spillover / Audit Findings
+  / User-Reported) each row belongs to, Target-then-Urgency sort within each group. `none` is a
+  flat list sorted by Urgency alone, no group headings.
+- **`--ledgers=<names>` / `--all-ledgers`:** read the registry block from `README.md` between
+  the `<!-- unforget-registry:begin -->` / `:end` markers (see `reference/registry.md`'s own
+  fallback for the exact parse); for `--ledgers=`, keep only the named rows from the **Ledgers**
+  table, error if a name isn't present; for `--all-ledgers`, keep every row regardless of
+  `role`. Read and concatenate each named ledger's matching rows, tag each with its source
+  ledger's `name`, then apply whichever `--view`/`--group-by` was also requested to the
+  combined set. For `--view=next` specifically, do not blindly combine across ledgers: check
+  each candidate ledger's registry `axis` value — a candidate from an `axis: actor` ledger
+  belongs to a different human's declared work, and a candidate from an `axis: lifespan` ledger
+  is inside a container with a stated `death` condition; name the source ledger in the output
+  either way, and when the top-ranked candidate is actor-scoped, also surface the best
+  non-actor-scoped candidate as a labeled alternative rather than presenting only the one pick.
+
 ### Terminal-aware rendering
 
 The full 10-column table is wide (typically 200+ characters with emoji-width quirks). On narrow terminals it wraps or renders as vertical blocks instead of horizontal rows. To stay readable:
@@ -430,6 +472,159 @@ The user can override the auto-detection:
 ```
 
 The auto-fallback is silent (no banner, no warning); the override flags are for power users who know what shape they want. Compact rendering eliminates the "Terminal width" warning callouts that adopters write into their own UNFORGET.md headers today.
+
+---
+
+## /unforget show
+
+Show ONE row's current state as a short, synthesized read: what's wrong, its impact, and the
+fix. No table, no accreted history. This is the read-time answer to a problem `list`/`--view`
+can't solve on their own: a row's rating columns compare well across many rows, but its Detail
+block is an append-only history log (`reference/format.md` § Row-length discipline) that grows
+without bound and is never re-summarized. A reader who scrolls to a row's detail today gets the
+FULL accreted narrative — every arc, every reversal, every "still owed" and "RESOLVED" in the
+order they were written — when what they almost always want is: what's true about this row
+right now. `show` renders that, on demand, per row, instead of asking every row to compress
+itself into an already-crowded table cell (which is what the char-budget rule does) or asking
+every reader to mentally re-derive "current" from a paragraph of history (which is what caused
+the 2026-08-13 A65 misread this feature traces back to).
+
+### Usage
+
+```
+/unforget show A65                    ·  synthesized current-state card for row A65
+/unforget show A65 --full             ·  the synthesis, THEN the complete raw Detail-block history below it
+```
+
+### What gets shown
+
+Three fields, always in this order, each one to three sentences:
+
+- **Finding** — what's wrong, current tense. Not "was buried" if it's now fixed; not "fixed"
+  if a later event reopened it. Reflects the row's LATEST arc only.
+- **Impact** — why it matters if left as-is. Pull from the row's Risk:No-Fix column and/or the
+  Detail block's own stated consequence, not re-derived from scratch.
+- **Fix** — what closes it, or what's blocking closure. For an `open` row: the proposed
+  approach. For `done-unverified`: what's already done and specifically what verification step
+  remains (device test, macOS build, Sentry re-check, etc.) — name the step, don't just say
+  "unverified." For `done-verified`/`withdrawn`: one line confirming what happened and how it
+  was proven.
+
+Below the three fields, one line of provenance: `<ID> · <Target> · <@status token> · last
+touched <date if known>`. This is the ONLY place the raw token appears in `show`'s default
+output — the three fields above are prose, not a re-print of table cells.
+
+### How the synthesis is derived (mechanical, not model-generated)
+
+**Deterministic extraction, not an LLM call per row.** A summary generated fresh by the model
+at display time would be more fluent, but non-deterministic between runs and too expensive to
+default to when `list --view=next` or a future batch flow might want this per row across many
+rows at once. Instead:
+
+- **Finding and Impact** come from the row's own table cells (Finding, Risk:No-Fix) — these are
+  already supposed to be current-state, single-sentence fields per the row-length discipline
+  rule; `show` is mostly reformatting them into prose, not inventing new text.
+- **Fix** is derived from the LAST dated entry in the Detail block's history (§2b: "a status
+  CHANGE appends a dated line to the detail block; the table cell's one-line status is REPLACED
+  to the latest" — so the most recent dated line IS the current fix-state by construction, not
+  a guess). If the Detail block has no dated history yet (a freshly logged row), fall back to
+  the row's Finding cell's own stated fix, if any.
+- **This is why §2b (history is appended to the block, REPLACED in the cell) matters more than
+  it looks:** `show`'s reliability depends on "most recent dated entry = current truth" holding.
+  A ledger that violates §2b (appends new arcs without dating them, or buries the current state
+  mid-block instead of at the end) will make `show` synthesize a stale or wrong Fix. This is a
+  reason to enforce §2b more than it is a reason to complicate `show`'s extraction logic.
+- **No caching, no write-back.** `show` recomputes from the current file on every call. A
+  cached summary is one more artifact that can drift from the history under it — precisely the
+  staleness problem this feature exists to fix. The recomputation is cheap (regex/string
+  extraction, not a model call), so there's no performance reason to cache.
+
+### `--full`: the escape hatch
+
+`--full` prints the synthesis card, then a `---`, then the row's complete raw Detail-block
+content verbatim — unabridged, in original order, nothing summarized or dropped. This is not a
+fallback for when the synthesis is wrong; it's how a reader gets the FULL history when they
+genuinely need it (auditing a reversal, understanding why an earlier fix didn't hold, writing a
+postmortem). **Nothing is ever deleted or hidden from the file** — `show`'s default view is a
+different lens on the same content, not a smaller copy of it. This is the same non-negotiable
+as the row-length split's hard rule ("the budget MOVES history to the detail block; it NEVER
+deletes it") applied one level up: showing less by default never means keeping less on disk.
+
+### Failure modes
+
+- **Row not found:** exact error naming the ID and the file searched, no guessing at a close match silently.
+- **Row has no Detail block at all** (either never split, or the pointer is broken — see
+  `reference/verify.md`'s planned `detail-pointer` check): synthesize Finding/Impact from the
+  table cells alone, and say so explicitly in the Fix line (`"No detail history on file — fix
+  approach not recorded."`) rather than inventing one.
+- **Multiple ledgers, ambiguous ID:** if `--ledgers=`/`--all-ledgers` scope is active (see
+  § Multi-ledger scope under `/unforget list`) and the ID exists in more than one registered
+  ledger, `show` asks which one rather than picking silently.
+
+### Algorithm fallback (Python unavailable)
+
+Locate the row by ID in the ledger's table (same lookup `edit`/`list` already do). Extract:
+
+- **Finding** — the row's Finding cell, minus any `**bold title**` markup, minus any
+  `→ see detail block **<ID>**` pointer text, rewritten as a plain current-tense sentence (drop
+  parenthetical asides and file:line citations — those belong in the Detail block, not the
+  synthesis).
+- **Impact** — the row's Risk:No-Fix cell, rewritten as prose the same way.
+- **Fix** — find the `### Detail - <section>` block matching this row's section, then the
+  `- **<ID>** -` bullet within it. If the bullet contains a `**Status history:**` sub-line (the
+  v2-format dated-history convention), take the LAST dated or most-recently-appended clause in
+  it — per § How the synthesis is derived above, the row-length discipline's §2b rule (history
+  is appended, the cell is replaced to latest) means the last entry IS the current state, not
+  merely the most recent claim. If the bullet has no dated sub-line, take the bullet's own last
+  sentence. If no bullet exists for this ID at all, fall back to any fix-shaped clause already
+  present in the Finding cell, and if none, say plainly that no fix approach is on record — do
+  not synthesize one.
+- Render the three as short prose paragraphs, then the one-line provenance
+  (`<ID> · <Target> · <@status token> · <date if the Detail bullet carries one>`).
+- **`--full`:** after the synthesis, print a `---` divider, then the row's Detail-block bullet
+  verbatim, unedited, in full.
+
+This is table-and-string manipulation only — no ranking, no cross-row logic — so the fallback
+is a close mirror of the preferred implementation, not a simplified approximation of it.
+
+### Interactive presentation (optional, environment-gated)
+
+**Markdown is the baseline and the fallback everywhere.** The three-field card above renders
+as plain markdown — headings, prose, nothing else — because `unforget` is explicitly meant to
+work in "any editor, on GitHub, in Linear" and for "other AI assistants" beyond Claude Code
+(`reference/../SKILL.md` § Compatibility notes). A feature that only worked in one rendering
+environment would contradict that portability goal, so nothing above this line depends on any
+capability beyond writing text to stdout.
+
+**Where a richer interactive surface is available, `show` MAY offer it instead — never as a
+silent substitution, always as an explicit choice.** Concretely, in an environment that
+supports rendering an interactive HTML/widget view (for example, Claude's `Artifact` or
+`show_widget` surfaces), `show <ID>` with no other flags still prints the markdown card by
+default, and additionally offers: `"Render this as an interactive card? (click-through to full
+history, no scrolling)"`. Only on explicit accept does it build a small self-contained view:
+
+- **List-then-detail, not a permanent dashboard.** The pattern that worked when this was
+  demoed: a compact one-line-per-row list (ID badge + finding, no rating columns — those stay
+  in the terminal table, this is a reading surface for ONE row at a time) that expands into the
+  same three fields (Finding / Impact / Fix) on selection, with a `--full`-equivalent link/toggle
+  back to the raw Detail block for that row only.
+- **Never the table's replacement.** The interactive view has NO rating columns (Urgency, ROI,
+  Risk, Effort) and is not meant to answer "what should I work on next" — that comparison task
+  stays in `list`'s table, full stop (see the earlier discussion: comparison and single-row
+  reading are different tasks, not competing views of the same data).
+- **Generated fresh per call, matching the markdown baseline's no-cache rule.** The interactive
+  view is built from the same deterministic extraction `show` already does — it is a different
+  renderer for the same computed fields, not a separate feature with its own logic or its own
+  drift risk.
+- **Degrades to nothing, never to broken.** In any environment without this capability, `show`
+  behaves exactly as the baseline section above describes and never mentions the interactive
+  option — no dead flag, no "not supported here" error. The offer only appears where it can
+  actually be fulfilled.
+- **A future `/unforget list --interactive` (or similar) extending this to the multi-row list
+  itself is a natural next step but explicitly NOT specified here** — this section covers
+  single-row `show` only, since that's the concrete case that was designed and demoed. Widening
+  it to `list` would need its own pass at how rating-column comparison and card-based reading
+  coexist in one view, which is a real design question, not just "reuse the same renderer."
 
 ---
 

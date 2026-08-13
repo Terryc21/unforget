@@ -20,7 +20,7 @@ A **skill** is a markdown file Claude Code knows how to run. When you type `/unf
 - **Maintain:** `/unforget add` captures a new row in 30 seconds. `/unforget promote` runs the release-time ritual.
 - **Rescan anytime:** `/unforget import` re-runs the 6-surface scan to catch new deferred items that appeared after init (new audit reports, plan files, memory entries, TODO comments). Has duplicate detection so it won't double-import.
 - **AI-ready:** the skill wires your project's AI instruction file so future sessions automatically know to read UNFORGET.md when you ask "what's deferred?"
-- **Maturity:** v2.1.0 (backward compatible with v1 ledgers); used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
+- **Maturity:** v2.5.0 (backward compatible with v1 ledgers); used through an actual App Store submission cycle in the source project; setup flow specified in detail with two rounds of nondestructive testing.
 
 ## What it looks like
 
@@ -144,6 +144,42 @@ one-line index and its history moves to a detail block, losslessly, so a `list` 
 and misleads. All eight pieces are built and backward compatible; the changelog in `SKILL.md`
 tracks them phase by phase, and the `DESIGN-*.md` documents that specified the build are indexed
 there too.
+
+## What shipped in v2.5 (reading, not just writing)
+
+Everything above was about writing a row honestly. v2.5 is about *reading* one back, and it
+traces to a single real misread: a 61-row ledger, read start to finish, that got under-counted
+by 18 rows on the first pass — and then, separately, a row whose current state (`done-verified`)
+got misread as still-open, because its Status cell was 3,707 characters of accreted "RESOLVED" /
+"still owed" / "reopened" history stacked in table-cell prose instead of the detail block that
+already existed to hold it. The row-length rule from v2.0 was right; nothing was enforcing it.
+
+- **`list --view=`** — named, one-word answers to "what's left" (`open`), "what shipped"
+  (`done`), both at once as two headed tables (`split`), or skip the table and just tell me what
+  to work on next (`next`, ranked by ship-risk, closeness to done, and ROI, with the reason
+  spelled out so the pick is inspectable, not a black box). A `done-unverified` row — code
+  written, not yet proven — always counts as open. That rule is the point of the whole feature.
+- **`list --group-by=`** — the orthogonal axis: same rows, grouped by Target (the default) or by
+  section instead, so "which rows" and "how grouped" don't grow into one bespoke flag apiece.
+- **`list --ledgers=` / `--all-ledgers`** — read across sibling ledgers your registry already
+  knows about (no new field, no filesystem globbing), with one hard rule: a `--view=next` pick
+  never presents a different person's ledger, or a sprint ledger with a declared end date, as an
+  undifferentiated "do this next" — it names the source and offers a same-scope alternative.
+- **`show <ID>`** — the actual fix for the misread. Three plain sentences (Finding / Impact /
+  Fix) synthesized from the row's own cells and the *last* dated entry in its detail block —
+  never a fresh model guess, never cached, always recomputed from what's on disk right now.
+  `--full` still gets you every word of the raw history; nothing is ever deleted, only no longer
+  the default view. Markdown everywhere `show` runs; an optional interactive card view where the
+  environment supports one, degrading to nothing (never to broken) where it doesn't.
+- **`verify`'s char-budget check has teeth now** — over 4x the soft budget is an `error`, not a
+  `warn`, and gates `archive`/`promote` the same way an unproven `THIS` row already does. The
+  lossless split already existed; what was missing was making it mandatory before shipping.
+  `edit` also offers the split the moment a status change crosses budget, instead of waiting for
+  the next `scan` to notice.
+
+Same discipline as v2.0: every piece here is a fix for something that actually happened, not a
+feature added because it sounded useful. Full spec and the origin story for each piece are in
+`SKILL.md`'s changelog.
 
 ## See it first
 
@@ -270,7 +306,8 @@ Shows only the rows that block submission. Fix them, mark them Fixed, run `/unfo
 | `/unforget add` | Add a new deferred item (defaults to Section 2: Session spillover). |
 | `/unforget edit <ID>` | Update any column on an existing row (raise the Urgency, change the Target, mark Fixed, etc.). |
 | `/unforget import` | Re-scan your project for new deferred items that appeared after init. |
-| `/unforget list` | Show what's in the file. Filter by section, Target, Urgency, or staleness. |
+| `/unforget list` | Show what's in the file. Filter by section, Target, Urgency, or staleness. `--view=open`/`done`/`split`/`next` picks which rows show (a `done-unverified` row still counts as open); `--group-by=section` groups by section instead of Target; `--ledgers=`/`--all-ledgers` reads across sibling ledgers already declared in your registry. |
+| `/unforget show <ID>` | One row's current state, not its whole history: Finding, Impact, Fix, in plain sentences. `--full` adds the raw history below it. Nothing is ever hidden from the file, only from this default view. |
 | `/unforget scan` | Find rows that have been sitting too long for their priority. Read-only. |
 | `/unforget verify` | Integrity lint (format v2+). Read-only. Catches rows that contradict themselves, a `done-verified` carrying no verification tier, unproven 🔴 THIS blockers, malformed rows, over-budget cells, and registry drift. Run it **before** `archive` or `promote` — those are release decisions, and they are only as trustworthy as the "done" claims underneath them. |
 | `/unforget archive` | Move completed (Fixed/Done) rows out of the active tables into an archive file. Lightweight — run anytime between releases to keep the active view uncluttered. |
