@@ -152,6 +152,37 @@ marking something done:
 
 `/unforget edit` is the everyday command for keeping rows accurate. Pair with `/unforget list --age=30+` to find rows that need review.
 
+### Budget check at write time (not just at scan/verify)
+
+**Why this exists.** Char-budget overflow (`reference/verify.md` § Char-budget severity
+escalation) is created one status change at a time — a row that appends a "still owed" /
+"RESOLVED" / "prior arc" line at every edit instead of migrating older narration to the
+detail block. Catching this only reactively, at the next `scan` or `verify`, means the row
+has already crossed the hard threshold before anyone is told. `edit` is the moment the bloat
+is actually written, so it's the cheaper place to catch it.
+
+After applying any `--status=` change (step 4 above), run the same check `scan`/`verify` use
+(`python3 scripts/row_budget.py check --file <path> --id <ID>`, or the char-count fallback) on
+the cell just written. If the edit pushed the Status or Finding cell **past the soft budget**
+(400 chars), offer the split inline rather than waiting for the user to hit it on a later
+`scan`:
+
+> "This status update pushes the row to 512 chars (budget: 400). Split into a bounded index +
+> detail block now? (`/unforget verify --fix` would offer this later anyway.)"
+
+**Advisory, never blocking.** This is a same-shape offer to the companion-skill handoff above:
+surfaced once, easy to decline, never refused by `edit` itself. `edit`'s job is applying the
+requested change; the split offer is a courtesy that catches the common case (one more status
+line pushes an already-long row over) before it becomes a `verify`-blocking error later. If
+the user declines, the change still applies — declining only means the row stays flagged at
+the next `scan`/`verify`.
+
+**Skip the offer** when the edit is not a status change (e.g. `--target=` or `--urgency=`
+alone touch neither prose cell) or when the cell was already over budget before this edit (it
+already surfaced at the last touch; don't re-nag on every subsequent edit to the same
+over-budget row — one offer per edit that CROSSES the threshold, not one per edit to a row
+already past it).
+
 ### Closure handoff (when marking a row done — format v2+)
 
 When `/unforget edit <ID> --status=done` closes a row, unforget MAY offer a **companion-skill handoff** — a function-based recommendation fired at this earned transition. The full mechanic (the five functions, the global manifest, install-state detection, governance) is `reference/skill-handoffs.md`; this is the operational summary. It **supersedes** the older inline `/radar-suite` + `/bug-echo` prose: those hardcoded two URLs at the trigger and detected installs by *directory name* — both are the anti-patterns the handoff design fixes (one manifest, invocable-name detection).
@@ -225,18 +256,22 @@ Show current state. Default view is sorted by Target (🔴 THIS first), then Urg
 ### Usage
 
 ```
-/unforget list                        ·  full table
+/unforget list                        ·  full table (--view=all --group-by=target, unchanged default)
 /unforget list --target=THIS          ·  only ship-blockers
 /unforget list --section=audit        ·  only Section 3
 /unforget list --status=open          ·  filter by @status value (open/in-progress/done-verified/done-unverified/blocked/withdrawn)
 /unforget list --stale                ·  only rows past their staleness threshold
 /unforget list --age=30+              ·  only rows older than 30 days
+/unforget list --view=<mode>          ·  all | open | done | split | next (see § View modes)
+/unforget list --group-by=<axis>      ·  target | section | none (see § Grouping)
+/unforget list --ledgers=<names>      ·  read across named sibling ledgers (see § Multi-ledger scope)
+/unforget list --all-ledgers          ·  read across every registered ledger (see § Multi-ledger scope)
 ```
 
 **Status is read from the `@status` token** (format v2+), not the prose — via `python3 scripts/parse_status.py --file <path>`. Two consequences:
 
 - `--target=THIS` "ship-blockers" counts a 🔴 THIS row as blocking unless its token is `done-verified` or `withdrawn`. **A `done-unverified` THIS row is STILL a blocker** — it is not proven (the script returns `blocks_release:true` for it).
-- `--status=<value>` filters on the token value. Legacy tokenless rows match their old word-status loosely (`Open`→`open`, `Fixed`→a done-* state).
+- `--status=<value>` filters on the token value. Legacy tokenless rows match their old word-status loosely (`Open`→`open`, `Fixed`→a done-* state). It is more granular than `--view` (e.g. `--status=blocked` alone has no `--view` equivalent) and keeps working unchanged; `--view=open`/`--view=done` are the named, common-case spellings for the two buckets most requests actually want.
 
 ### Output format
 
@@ -249,6 +284,133 @@ For the simplest case (`/unforget list` alone), this is the answer the user was 
 **Archive nudge:** after the list output, if 5 or more Fixed/Done rows are sitting in the active tables, append the one-line archive nudge (see `/unforget archive` § The archive nudge). This is the moment the user is already looking at the ledger, so it is where accumulated-completed-row clutter is most usefully surfaced.
 
 **Session defer/fix readout (format v2+):** after the list, append the deferral-gate session readout — `python3 scripts/defer_tally.py readout --dir <ledger-dir>` — as one line, e.g. `This session: 2 fixed inline · 7 deferred (reasons: 3 user-decision, 2 external-block, 2 scope).` When the helper raises the defer-heavy flag (exit 1), also append its advisory (`"7 deferred vs 2 fixed this session — worth a pass to see if any are actually do-now?"`). This is **advisory, never a prompt** — some sessions are legitimately defer-heavy (planning, blocked-on-devices). The reason breakdown is the point: 7 all-`user-decision` is legitimate, 7 all-`scope` is a tell. See `reference/deferral-gate.md` §4. Skip silently on a v1 ledger with no tally state.
+
+### View modes (`--view=`)
+
+**Why this exists.** The default single-table view interleaves open and closed work sorted by Target/Urgency, so a reader answering "what's actually left before ship?" has to visually filter out every `done-verified` / `withdrawn` row while scanning — on a ledger with 40+ rows across a dozen sections' worth of history, that's real work, and it's easy to misread a row's *current* status when the Status cell also narrates its history (a row that was open, got fixed, regressed, and got fixed again reads as a paragraph, not a token). `--view` does that filtering once, mechanically, instead of asking every reader to redo it — and separates "which rows" (`--view`) from "how grouped" (`--group-by`, next section) so the flag surface doesn't grow one bespoke flag per request.
+
+**Status classification for every mode below** is via `python3 scripts/parse_status.py --file <path>` — the same source of truth `--status` already uses, no new parsing logic:
+
+- **Open bucket** — every row where `archivable` is `false`. This includes `open`, `in-progress`, `blocked`, and **`done-unverified`**. A `done-unverified` row has code written but not proven against reality (device test, Sentry re-check, macOS build, etc.) — per `reference/status.md`, that is still open work, not done work, so it belongs in Open, not Completed. **This rule is load-bearing across every mode, not incidental** — a `--view` that put `done-unverified` in Completed would just relocate the exact misreading this feature exists to fix.
+- **Completed bucket** — every row where `archivable` is `true`: `done-verified` or `withdrawn`.
+- Legacy tokenless rows (pre-format-v2) are classified by their loose word-status mapping, same as `--status` does (`Open`→Open bucket, `Fixed`→Completed bucket); a row that cannot be classified at all is listed under a third **Unparsed** heading in modes that show more than one bucket, rather than silently dropped — silent misclassification is worse than a visible "couldn't tell" bucket.
+
+**`--view=all`** (default, unchanged): one table, every matched row, sorted per `--group-by` (default: Target then Urgency). This is today's existing behavior — nothing about it changes.
+
+**`--view=open`**: one table, Open bucket only. Named equivalent of `--status=open` filtered to just that bucket, but framed as a view rather than a raw token filter — the common-case spelling for "what's left."
+
+**`--view=done`**: one table, Completed bucket only. Named equivalent for "what shipped."
+
+**`--view=split`**: two (or three) tables in one output:
+
+```
+## Open (N rows)
+<10-column table, sorted per --group-by>
+
+## Completed (M rows)
+<10-column table, same columns, sorted per --group-by>
+
+## Unparsed (K rows)            ← omitted entirely when K = 0
+<rows parse_status.py could not classify — shown so nothing is silently dropped>
+```
+
+Each heading carries its own count so `--view=split` alone answers "how much is actually left" without the reader counting rows. The one-line summary and archive nudge (see § Output format above) still print once, above all tables.
+
+**`--view=next`**: no table. A single recommended row plus a one-line reason, drawn from the Open bucket only (a Completed row is never "next"). Ranking is a **composite score**, shown in the reason so the pick is inspectable rather than a black box:
+
+- **Ship-risk** — Target (🔴 THIS weighted highest) × Urgency × Risk:No-Fix severity.
+- **Closest-to-done** — `done-unverified` rows need one verification step, not new code; weighted up when the remaining work is a device/build/Sentry check rather than implementation.
+- **ROI** — the row's own 🟠/🟢/🟡/🔴 ROI rating.
+
+Output shape: `"<ID> — <one-line finding>. <why this one, naming the dominant factor>."` e.g. `"A27 — household share scope may render a blank inventory. Highest ship-risk open item: 🚢 THIS, 🔴 risk-no-fix, repro-gated."` If the top-ranked row is `done-unverified`, say so explicitly (`"...code done, needs a 2-Apple-ID device round-trip to close."`) so "next" doesn't read as "start from scratch." Ties broken by lowest Fix Effort (prefer the faster win when scores are equal).
+
+**Composability.** Every `--view` mode combines with the existing filters (`--target=`, `--section=`, `--stale`, `--age=`) — the filter narrows the row set first, then `--view` buckets/ranks the narrowed set. `--view=<mode>` combined with `--status=<value>` is redundant when the value already picks one bucket (`--status=open` + `--view=done` contradict) — honor `--status=` and ignore `--view` in that case, since a single-value filter has nothing left to bucket.
+
+**Not a storage change.** Every `--view` mode is presentation-only, same principle as the compact-vs-wide terminal fallback below: UNFORGET.md keeps its one-file, one-table-per-section format on disk. This is deliberate — splitting the *file* into open/completed documents would break the "single source of truth, one file per project" design goal this skill exists to enforce (see § Why this skill exists) and would need every completed row to migrate back on a regression (exactly the done→broken→done-again case A65-shaped rows hit in practice). Splitting the *display* gets the readability win without that cost.
+
+**Default-view question (explicitly NOT changed here):** this section adds `--view` as opt-in; it does not change the default for a bare `/unforget list`. Revisit only if usage shows most `list` calls immediately follow up with `--view=`; until then, keep the default output backward-compatible for anyone scripting against it.
+
+### Grouping (`--group-by=`)
+
+Orthogonal to `--view` — controls *how* the matched rows are grouped/sorted within whichever table(s) `--view` produces, not which rows are shown.
+
+- **`--group-by=target`** (default, unchanged): group/sort by 🔴 THIS / 🔵 NEXT / 🟡 LATER / ⚪ SOMEDAY, then Urgency within each group. Today's existing sort.
+- **`--group-by=section`**: group by ledger section (Paused Plans / Session Spillover / Audit Findings / User-Reported), Target+Urgency sort within each section. Combined with `--view=split`, this produces one Open/Completed pair per section rather than one pair overall — useful when sections are owned by different people or track genuinely different kinds of work.
+- **`--group-by=none`**: flat list, Urgency-only sort, no grouping headers. For piping into something else that does its own grouping.
+
+`--group-by` never changes which rows are included — that's `--view`'s job exclusively. The two axes are independent by design so the flag surface doesn't grow one bespoke flag per new request; a future "group by owner" or "group by effort" is another `--group-by` value, not a new top-level flag.
+
+### Multi-ledger scope (`--ledgers=` / `--all-ledgers`)
+
+**Default is single-ledger, unchanged.** `/unforget list` (no scope flag) reads only the
+ledger it's pointed at, exactly as today. Cross-ledger reads are opt-in, never automatic —
+a project's sibling ledgers exist because their work was deliberately kept separate (a
+different actor, a different lifespan/discipline, a different domain; see
+`reference/branching.md` §2 for the three axes), and silently unioning them by default would
+work against that separation the first time someone ran a routine `list` and got, say,
+sprint-scoped rows mixed into a release read.
+
+**Scope comes from the registry, not from re-discovering files.** The registry already
+records every ledger's `role` (`main`/`child`), `axis`, `parent`, and `death` condition
+(`reference/registry.md` § The schema) — that's the authoritative sibling declaration, and
+this feature adds no new registry field. `--ledgers=`/`--all-ledgers` read that existing
+table; they do not glob for `*UNFORGET*.md` in the project. A file that looks like a ledger
+but was never registered is not in scope, on purpose — an unregistered file is exactly the
+"stranded ledger" failure the registry exists to prevent (`reference/registry.md`'s own
+opening rationale).
+
+**Usage:**
+
+```
+/unforget list --ledgers=MI-UNFORGET.md              ·  union with one named sibling
+/unforget list --ledgers=MI-UNFORGET.md,TERRY-UNFORGET.md   ·  union with several, by name
+/unforget list --all-ledgers                          ·  union with every registered ledger (main + all children)
+```
+
+Names are matched against the registry's `name` column (`python3 scripts/registry.py read
+--dir <ledger-dir>`), not re-typed paths — a name not present in the registry is an error
+("`MI-UNFORGET.md` is not registered in this project; run `/unforget branch` or add it to the
+registry first"), not a silent no-op.
+
+**What "combine" means depends on the operation — three different safety levels, not one:**
+
+1. **Reading (`--view=all`/`open`/`done`/`split`)** — safe to union unconditionally. Rows from
+   different ledgers are just more rows in the same table; nothing about display conflates
+   their identity. Each row's own ID is already unique within its ledger by convention, and the
+   output should carry a **Ledger** column (or a leading badge) whenever more than one ledger
+   is in scope, so a reader always knows which file a row came from — this is the one
+   presentation change multi-ledger scope requires.
+2. **Ranking (`--view=next`)** — safe to union, but **axis-aware, not blind.** A straight
+   composite-score comparison across ledgers would rank a `TERRY-UNFORGET.md` row (axis:
+   `actor` — a different human's work by definition) as "next" in a general session where
+   Terry-only work may not even be actionable right now, or rank a soon-to-die
+   `MI-UNFORGET.md` row (axis: `lifespan`, has a `death` condition) as equally durable to a
+   permanent main-ledger row. `--view=next --all-ledgers` MUST name the source ledger in its
+   one-line output (`"A27 (UNFORGET.md) — ..."`, not just `"A27 — ..."`), and when the
+   top-ranked row's ledger has `axis: actor` set to someone other than the current session's
+   assumed actor, say so explicitly rather than presenting it as an undifferentiated top pick
+   (`"top pick is TERRY-UNFORGET S12 — actor-scoped to Terry; here's the best NON-Terry-scoped
+   row too"`). This is advisory phrasing, not a filter — the row still surfaces, just labeled.
+3. **Writes (`archive`/`edit`/`promote`)** — **out of scope for `--ledgers=`/`--all-ledgers`
+   entirely.** Those commands keep operating on exactly the one ledger they're pointed at, full
+   stop. A mis-scoped read just shows an extra row with a label; a mis-scoped write moves or
+   mutates a row in the wrong file, which is a different risk class and gets no shortcut here.
+   Editing a sibling ledger means pointing the command at that ledger directly, the same as
+   today — multi-ledger scope is a `list`/`scan`/`--view=next` feature only.
+
+**Why the registry and not auto-discovery.** The alternative — union every `*UNFORGET*.md`
+found under the project root by default, let a flag narrow instead of widen — was considered
+and rejected. It would mean a bare `/unforget list` could silently change its answer as new
+sibling ledgers get created (a `branch` call today changes tomorrow's default output with no
+flag touched), and it would surface unregistered stray files the registry was built specifically
+to stop the skill from losing track of or confusing with real ledgers. Explicit opt-in, declared
+once in the registry and invoked per-call, keeps the default behavior stable and keeps scope a
+decision the user makes, not one the tool infers.
+
+**Composes with `--view` and `--group-by`.** `--all-ledgers --view=split --group-by=section`
+is a legitimate combination: union everything registered, bucket into Open/Completed, group
+each bucket by section — with the Ledger column making clear which file each row's section
+label belongs to.
 
 ### Terminal-aware rendering
 

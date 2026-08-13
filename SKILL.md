@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.1.0
+version: 2.4.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -66,7 +66,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget add` | Capture a new deferral (defaults to Section 2 / Session spillover); 30s end-to-end | `reference/commands.md` |
 | `/unforget edit` | Refine a row's columns; closure recommendations on `--status=Fixed` | `reference/commands.md` |
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
-| `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness | `reference/commands.md` |
+| `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
 | `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
 | `/unforget verify` | (format v2+) Integrity lint: contradictions, unproven "done", bloat, stale recipes, registry drift; read-only; gates `archive`/`promote` | `reference/verify.md` |
@@ -167,6 +167,103 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.4.0 — `list --ledgers=` / `--all-ledgers`: opt-in cross-ledger reads (2026-08-13) · minor
+
+Additive, backward compatible: `/unforget list` with no scope flag is single-ledger, unchanged.
+
+- **`--ledgers=<names>` / `--all-ledgers`** union rows from sibling ledgers already declared in
+  the registry (`role`/`axis`/`parent`/`death` per `reference/registry.md`) — no new registry
+  field, and no globbing for stray `*UNFORGET*.md` files. A name not present in the registry is
+  an error, not a silent skip.
+- **Default stays opt-in, by design decision, not just default caution.** The alternative
+  (auto-union every discovered ledger file, narrow with a flag) was considered and rejected: it
+  would make `branch`'s side effect silently change tomorrow's `list` output with no flag
+  touched, and it would surface files the registry exists specifically to avoid losing track of
+  or confusing with real ledgers.
+- **Three safety levels, not one blanket "combine":** reading (`--view=all/open/done/split`) is
+  a safe, unconditional union — output gains a Ledger column whenever more than one ledger is in
+  scope. Ranking (`--view=next --all-ledgers`) is axis-aware: an `axis:actor` sibling
+  (a different human's work, e.g. a project's TERRY-only ledger) or an `axis:lifespan` sibling
+  (has a `death` condition — meant to disappear) is never presented as an undifferentiated top
+  pick; the source ledger is always named, and an actor-scoped top result gets an explicit
+  best-non-actor-scoped alternative alongside it. Writes (`archive`/`edit`/`promote`) are
+  entirely out of scope for these flags — they keep operating on the one ledger they're pointed
+  at, same as today.
+- **Origin:** a follow-up to the `--view=`/`--group-by=` work above, prompted by "would a user
+  choose or combine which ledgers to work from?" The axis-aware ranking rule specifically
+  guards against the failure a blind cross-ledger `--view=next` would invite: surfacing a row
+  scoped to a different actor or a dying sprint ledger as if it were a permanent, generally
+  actionable "next," which would misrepresent exactly the separation `branch`'s three axes
+  (`reference/branching.md` §2) were designed to preserve.
+- Full spec: `reference/commands.md` § Multi-ledger scope (under `/unforget list`).
+
+### v2.3.0 — char-budget hard error + write-time budget offer at `edit` (2026-08-13) · minor
+
+- **`char-budget` escalates to `error` past a hard threshold** (default 4x the soft budget,
+  1600 chars; new `--char-budget-hard` flag). Previously `char-budget` was `warn` at every
+  size, so a row could sit at any length indefinitely without ever blocking `archive`/`promote`.
+  **Origin:** a real ledger (Stuffolio, 2026-08-13) carried a row at 3,707 chars — 9x the 400
+  soft budget — through repeated ship cycles; its accreted "RESOLVED" / "still owed" / "prior
+  arc" history (never migrated to the detail block that already existed for it) directly caused
+  a session to misread the row's current status. The lossless split (`verify --fix`,
+  `scripts/row_budget.py`) already existed and already worked; what was missing was a severity
+  that made using it mandatory before shipping, not optional. Applies to v1 (tokenless) ledgers
+  too — the failure this catches doesn't depend on `@status` tokens being present. Full spec:
+  `reference/verify.md` § Char-budget severity escalation.
+- **`/unforget edit` now offers the split at write time**, not just reactively at the next
+  `scan`/`verify` — checked once per status-changing edit, right after the change is applied,
+  only when the edit CROSSES the soft-budget threshold (not re-offered on every subsequent edit
+  to a row already over budget). Advisory, same shape as the existing companion-skill handoff:
+  easy to decline, never blocks the edit itself. Catches the bloat where it's actually created
+  (one status change at a time) instead of only where it's later discovered. Full spec:
+  `reference/commands.md` § Budget check at write time (under `/unforget edit`).
+
+### v2.2.0 — `list --view=` / `--group-by=`: named row-selection modes, orthogonal grouping (2026-08-13) · minor
+
+Additive, backward compatible: new opt-in flags, no change to the default `list` output or the
+on-disk file format.
+
+- **`--view=<all|open|done|split|next>`** picks which rows show. `all` is today's unchanged
+  default (one table, everything). `open`/`done` are named equivalents of filtering to just the
+  Open or Completed bucket — the common-case spelling for "what's left" / "what shipped."
+  `split` renders both as two headed tables in one output (with counts, so the reader doesn't
+  count rows by hand). `next` skips the table entirely and returns one recommended row plus a
+  one-line reason, ranked by a composite of ship-risk (Target × Urgency × Risk:No-Fix),
+  closest-to-done (a `done-unverified` row needing only a verification step outranks one needing
+  new code, all else equal), and ROI — the dominant factor is named in the reason so the pick is
+  inspectable, not a black box, and ties break toward lower Fix Effort.
+- **`--group-by=<target|section|none>`** is the orthogonal axis: controls how the rows `--view`
+  selected are grouped/sorted, never which rows are included. `target` (default, unchanged) is
+  today's 🔴 THIS → 🔵 NEXT → 🟡 LATER → ⚪ SOMEDAY grouping. `section` groups by Paused
+  Plans / Session Spillover / Audit Findings / User-Reported instead — combined with
+  `--view=split` this produces one Open/Completed pair per section. `none` is a flat
+  Urgency-sorted list for piping elsewhere.
+- **Status classification** (all `--view` modes) is via `parse_status.py`'s existing
+  `archivable` field — `open`/`in-progress`/`blocked`/**`done-unverified`** count as Open,
+  `done-verified`/`withdrawn` count as Completed. **`done-unverified` staying in Open, not
+  Completed, is the load-bearing rule across every mode** — code-written-but-not-proven is
+  still open work by this skill's own status tiering, and `--view=next` explicitly flags when
+  the top pick is a verification step rather than new code so it doesn't read as "start from
+  scratch." Legacy tokenless rows use the same loose word-status mapping `--status` already
+  applies; unclassifiable rows land in an **Unparsed** heading (`split` mode) rather than being
+  silently dropped into either bucket.
+- **Origin:** a live 61-row ledger, read start-to-finish by an agent asked for "what's open,"
+  under-reported by 18 rows on the first pass, then separately misread a row's *current* status
+  from its own history narration (a row that had gone open → fixed → regressed → fixed again
+  read as still-open from the prose alone, even though its token was `done-verified`).
+  Re-deriving "open vs. done" by eye from one merged, sorted-by-Target table is exactly the
+  failure mode `@status` tokens exist to prevent (see `reference/status.md`). The two-axis
+  design (rather than a single `--split` flag, the first cut of this feature) came from a
+  follow-up ask: separate "which rows" from "how grouped" so open-only, done-only, combined, and
+  a future grouping request don't each need their own bespoke flag.
+- **Composes with existing filters** (`--target=`, `--section=`, `--stale`, `--age=`); a
+  `--view=<mode>` combined with a bucket-picking `--status=<value>` is redundant, so `--status=`
+  wins if both are passed.
+- **Storage untouched by design.** UNFORGET.md stays one file, one table per section — see
+  `reference/commands.md` § View modes for why splitting the file itself would work against this
+  skill's "single source of truth" premise.
+- Full spec: `reference/commands.md` § View modes and § Grouping (under `/unforget list`).
 
 ### v2.1.0 — quoted status tokens no longer hijack a row's status (2026-08-11) · minor
 

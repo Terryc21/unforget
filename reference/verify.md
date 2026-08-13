@@ -28,7 +28,7 @@ contradictions, tiers, or any other finding. See `reference/commands.md` §
 | **tier** — `done-verified` with no `@verified` tier, or backed only by `session-claimed` | error | verification-laundering (a claim posing as a proof) |
 | **unknown-value** — an `@status`/`@verified` value not in the enum | error | typos / drift in the token vocabulary |
 | **this-blocker** — a 🔴 THIS row not proven (`done-verified` clean) | error if it CLAIMS done (`done-verified`/`done-unverified`); warn if merely open | a "done" ship-blocker that isn't actually proven |
-| **char-budget** — a Status or Finding cell over the budget (default 400) | warn | the multi-KB bloat (Phase 7 owns the full row-length rule) |
+| **char-budget** — a Status or Finding cell over the budget (default 400) | warn (error above `--char-budget-hard`, default 4x = 1600) | the multi-KB bloat (Phase 7 owns the full row-length rule) |
 | **stale-recipe** — a row whose Finding cites a file path but carries no verify recipe (still-open or still-DONE) | warn | a premise that may have silently decayed as code moved |
 | **registry / registry-drift** — no registry block, or the `.unforget.json` cache disagrees with the README | warn | a stranded/mis-registered ledger; cache drift |
 
@@ -64,6 +64,40 @@ table) is handled correctly — the width is per-table, never a global constant.
 what Markdown splits on in most renderers. Phrase it as prose ("grep for BOTH terms") or
 use `grep -E` with the alternation described rather than literal.
 
+## Char-budget severity escalation (§4e)
+
+**Why a warning wasn't enough.** The soft budget (400 chars, `reference/format.md` § Row-length
+discipline) has existed since format v2, with `--fix` able to split any over-budget row
+losslessly. Despite that, a real ledger (Stuffolio, 2026-08-13) carried a row at **3,707
+characters** — 9x budget — through multiple `archive`/`promote` cycles, because `warn` severity
+never refused the gate and nothing forced the split to happen. The row's own history (repeated
+"RESOLVED", "still owed", "prior arc" narration appended at each status change rather than
+migrated to the detail block) was the direct cause of a session misreading the row's *current*
+status from its accreted prose — the exact failure `@status` tokens and the Detail block exist
+to prevent, defeated by volume rather than by a missing token.
+
+**Two severities, one budget.** `char-budget` now escalates past a second, harder threshold:
+
+- **`--char-budget` (default 400):** unchanged soft budget. Over this: `warn`. Hygiene, not a
+  gate blocker — most rows cross 400 briefly and get cleaned up at the next natural touch.
+- **`--char-budget-hard` (default 4x the soft budget, i.e. 1600):** a NEW threshold. Over this:
+  **`error`**. A row this far over budget is no longer "a bit long" — it is functionally a
+  detail block wearing a table cell, and it is the shape that produced the Stuffolio misread.
+  Gates `archive`/`promote` the same way a contradiction or an unproven THIS-blocker does.
+
+**Why 4x and not the same threshold as the soft budget.** A hard error at 400 chars would fire
+constantly on ordinary rows and train users to ignore `verify` output (the same failure mode
+`v2.0.3`'s contradiction-false-positive fix and `v2.1.0`'s quoted-token fix both existed to
+avoid). 4x gives real headroom for a row that's legitimately a little long, while still catching
+the 9x-and-beyond cases where a row has clearly stopped being an index and started being a
+history log. `--char-budget-hard` is independently configurable (registry-settable, same as
+`--char-budget`) for ledgers that want a tighter or looser multiple.
+
+**The fix path is unchanged and already sufficient.** `verify --fix` already offers the lossless
+split (`scripts/row_budget.py`) for char-budget findings at either severity — escalating the
+severity doesn't require new remediation tooling, only makes the existing one-command fix
+mandatory before a ship decision instead of optional. See § What it does above.
+
 ## The verify recipe check (§4c)
 
 The format already suggests open rows carry a 10-second grep recipe that
@@ -85,12 +119,15 @@ recognizes.
 ## Preferred implementation
 
 ```
-python3 scripts/verify_ledger.py --file <UNFORGET.md> [--dir <ledger-dir>] [--char-budget N]
+python3 scripts/verify_ledger.py --file <UNFORGET.md> [--dir <ledger-dir>] [--char-budget N] [--char-budget-hard N]
 ```
 
 - `--dir` (the directory holding `README.md`/`.unforget.json`) enables the
   registry-drift check.
-- `--char-budget` overrides the per-cell budget (default 400).
+- `--char-budget` overrides the soft per-cell budget (default 400; over this: warn).
+- `--char-budget-hard` overrides the hard per-cell budget (default 4x `--char-budget`,
+  i.e. 1600; over this: **error**, gates `archive`/`promote`). See § Char-budget severity
+  escalation.
 - Returns `{rows_checked, findings[], error_count, warn_count, gate_pass, advisory}`.
 - **Exit 0** = gate passes (no errors; warnings may exist). **Exit 1** = gate
   FAILS (≥1 error; `archive`/`promote` should refuse). **Exit 2** = usage error.
@@ -99,10 +136,12 @@ python3 scripts/verify_ledger.py --file <UNFORGET.md> [--dir <ledger-dir>] [--ch
 token (see `reference/status.md`); flag as ERROR a contradiction (done/closed
 token over "re-opened"/"still broken"/"still owed" narration), a `done-verified`
 lacking a device/user tier or backed by `session-claimed`, an unknown status
-value, and a THIS row that claims done but isn't cleanly `done-verified`. Flag as
-WARN a Status/Finding cell over ~400 chars, a file-citing row with no verify
-recipe (`Verify-still-open` or `Verify-still-DONE` both satisfy it), and (if a
-registry exists) a cache that disagrees with the README. Gate fails if any ERROR is present.
+value, a THIS row that claims done but isn't cleanly `done-verified`, **and now a
+Status/Finding cell over ~1600 chars (4x the soft budget)**. Flag as WARN a
+Status/Finding cell over ~400 chars but under the hard threshold, a file-citing
+row with no verify recipe (`Verify-still-open` or `Verify-still-DONE` both
+satisfy it), and (if a registry exists) a cache that disagrees with the README.
+Gate fails if any ERROR is present.
 
 ## Companion handoffs at verify (format v2+)
 
@@ -124,9 +163,17 @@ Two companion-skill handoffs (full mechanic: `reference/skill-handoffs.md`) atta
 
 ## Backward compatibility
 
-On a v1 (tokenless) ledger, `verify` produces only WARNINGS (bloat, stale-recipe,
-open THIS rows) and **no errors** — the gate passes. A legacy ledger is never
-blocked from archive/promote by the token checks, since it has no tokens to
-violate. Warnings still surface real hygiene (e.g. a 7,000-char cell), inviting
-an upgrade without forcing one. The companion handoffs above are advisory and never
-affect the gate.
+On a v1 (tokenless) ledger, `verify` produces only WARNINGS from the **token**
+checks (contradiction, tier, unknown-value, this-blocker) and **no errors** from
+them — a legacy ledger is never blocked from archive/promote by checks that need
+tokens it doesn't have.
+
+**The char-budget hard-error is the one exception, and it applies to v1 ledgers too.**
+A 7,000-char cell is exactly as misleading on a tokenless ledger as on a v2 one — the
+failure this escalation exists to catch (a row's current state buried in accreted prose)
+has nothing to do with whether tokens are present. Gating archive/promote on it is
+consistent with treating it as a real defect rather than a v2-only nicety. `verify --fix`'s
+lossless split works identically on a v1 ledger (it operates on cell content, not on
+`@status` tokens), so the remediation path is available before the gate is ever hit.
+
+The companion handoffs above are advisory and never affect the gate.
