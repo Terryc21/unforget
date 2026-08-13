@@ -108,12 +108,21 @@ Items that surfaced mid-task in some other session. Captured here in 1-2 lines s
 | S3 | 🔵 NEXT    | Empty-state copy: 3 strings hardcoded English        | 🟢 MED  | ⚪ Low  | 🟢 Med  | 🟢 Good      | 🟢 3 fls  | Sml    | `@status:done-unverified` `@verified:code` strings extracted, not yet eyeballed on device | `risk‹────────★──›clear`<br>🟢 Clear (mid) |
 | S4 | ⚪ SOMEDAY | Color asset catalog has 12 unused entries            | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | ⚪ 1 fl   | Triv   | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
 
-### Detail - Session spillover
+### Detail — Session spillover
 
-- **S1** - Surfaced while debugging a TestFlight crash. `LoginManager.signOut()` and `OnboardingViewModel.complete()` clear the user_id from breadcrumbs before the next event fires, so subsequent crashes show empty user. Affects post-logout crash triage.
-- **S2** - Found while reading code in PerformanceProfiler. Four call sites construct DateFormatter inside hot loops. Each construction is ~5ms. Move to lazy properties on the owning view models.
-- **S3** - **`@status:done-unverified` `@verified:code` — the "done-but-owed" state.** Caught by manual scan: `Text("No items yet")`, `Text("Try a different search")`, `Text("All caught up!")` in three view files, none in `Localizable.xcstrings`. The strings are extracted and the catalog builds (code-verified), but nobody has confirmed the empty states still read right on a device — so this is NOT `done-verified` yet, and `archive` will hold it back until the device check happens. **1-Star Risk 🟢 Clear:** user-facing copy, but low exposure — worst case is an untranslated empty state, an annoyance rather than a one-star trigger.
-- **S4** - 12 colors in `Assets.xcassets` have zero references. Cleanup is mechanical but easy to skip in routine PRs. Worth a 30-min cleanup pass before audit-readiness review.
+> ℹ️ **This section deliberately uses em-dash separators** (`### Detail —`, `- **S1** —`)
+> while the other three use ASCII hyphens. Both are valid; ledgers are hand-written markdown
+> and both styles occur in practice — one real installation has its main ledger on `-` and a
+> sibling on `—`. Keeping both in the shipped example is not cosmetic: `verify`'s
+> `detail-pointer` check matched only `-` until v2.8.1, so it was silently blind to every
+> em-dash ledger, reporting all their pointers as dangling while passing cleanly on the
+> hyphen ledger beside it. The bug survived because **every example and fixture was
+> hyphen-only**. Do not "normalize" this section.
+
+- **S1** — Surfaced while debugging a TestFlight crash. `LoginManager.signOut()` and `OnboardingViewModel.complete()` clear the user_id from breadcrumbs before the next event fires, so subsequent crashes show empty user. Affects post-logout crash triage.
+- **S2** — Found while reading code in PerformanceProfiler. Four call sites construct DateFormatter inside hot loops. Each construction is ~5ms. Move to lazy properties on the owning view models.
+- **S3** — **`@status:done-unverified` `@verified:code` — the "done-but-owed" state.** Caught by manual scan: `Text("No items yet")`, `Text("Try a different search")`, `Text("All caught up!")` in three view files, none in `Localizable.xcstrings`. The strings are extracted and the catalog builds (code-verified), but nobody has confirmed the empty states still read right on a device — so this is NOT `done-verified` yet, and `archive` will hold it back until the device check happens. **1-Star Risk 🟢 Clear:** user-facing copy, but low exposure — worst case is an untranslated empty state, an annoyance rather than a one-star trigger.
+- **S4** — 12 colors in `Assets.xcassets` have zero references. Cleanup is mechanical but easy to skip in routine PRs. Worth a 30-min cleanup pass before audit-readiness review.
 
 ---
 
