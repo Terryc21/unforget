@@ -266,6 +266,7 @@ Show current state. Default view is sorted by Target (🔴 THIS first), then Urg
 /unforget list --group-by=<axis>      ·  target | section | none (see § Grouping)
 /unforget list --ledgers=<names>      ·  read across named sibling ledgers (see § Multi-ledger scope)
 /unforget list --all-ledgers          ·  read across every registered ledger (see § Multi-ledger scope)
+/unforget list --fresh                ·  re-run the display-preference interview, then list (see § Display-preference interview)
 ```
 
 **Status is read from the `@status` token** (format v2+), not the prose — via `python3 scripts/parse_status.py --file <path>`. Two consequences:
@@ -453,6 +454,214 @@ additions in this file do, because they depend on logic beyond "filter the visib
   is inside a container with a stated `death` condition; name the source ledger in the output
   either way, and when the top-ranked candidate is actor-scoped, also surface the best
   non-actor-scoped candidate as a labeled alternative rather than presenting only the one pick.
+
+### Display-preference interview (`--fresh`)
+
+**Why this exists.** `--view`/`--group-by`/`--section`/wide-vs-compact are all opt-in flags with
+a hardcoded default (`all`/`target`/every-section/auto-width) — a user who always wants the same
+shape has to keep re-typing it, or live with the default. `--fresh` is the explicit request to
+set (or re-set) that default once, interactively, so every *plain* `list`/`scan` call afterward
+applies it silently with no prompt.
+
+**`--fresh` ALWAYS re-interviews — it never reads the cache to decide whether to ask.** This is
+the one deliberate exception to "don't nag": the whole point of typing `--fresh` is to be asked
+again, distinct from a bare `list` (which must never prompt) and from re-reading the ledger from
+disk (a separate, unrelated meaning of "fresh" — re-run against live state — that a bare
+`list`/`scan` already does on every call by not caching row content).
+
+**Step 0 — the depth gate, every `--fresh` call, no exceptions:**
+
+> "How much do you want to set? **Quick** (1 question — just a view preset) · **Standard** (3-4
+> questions — view, grouping, sections, verbosity) · **Thorough** (Standard + staleness
+> thresholds, archive-nudge threshold, multi-ledger union default)."
+
+The chosen depth governs ONLY this run of the interview — it is not itself saved. Answer with
+`AskUserQuestion` (or the CLI equivalent); this is the one question `--fresh` cannot skip.
+
+**Quick (1 question):** a single view-preset pick, mapped straight to `display_view` (+ a sane
+paired `display_group_by`, not asked separately):
+- "What's left" → `display_view=open`, `display_group_by=target`
+- "Everything" → `display_view=split`, `display_group_by=target`
+- "What's next" → `display_view=next`, `display_group_by=target`
+
+**Standard (adds, each independently skippable — see below):**
+- View mode (`all`/`open`/`done`/`split`/`next`) — same five choices as `--view=`.
+- Grouping (`target`/`section`/`none`) — same three choices as `--group-by=`.
+- Default section scope (`display_sections`) — **`all` (every section) or ONE named section**
+  (`paused` / `spillover` / `audit` / `observed`), matching what `--section=` actually accepts.
+  ⚠️ Do NOT offer an arbitrary multi-section subset: every documented `--section=` usage is
+  singular (`--section=audit`, "only Section 3"), so a saved subset would imply a filter
+  capability the underlying flag does not have. If `--section=` is ever widened to accept a
+  comma-separated list, widen this question at the same time — not before.
+- Verbosity (`display_verbosity`) — **`auto` (default) / `full` / `compact`.** `auto` preserves
+  the existing terminal-width auto-detection (§ Terminal-aware rendering: ≥120 cols → full
+  10-column, <120 → compact 6-column projection); `full`/`compact` pin the width regardless of
+  terminal size, the saved-default equivalent of the per-call `--wide`/`--compact` overrides.
+  ⚠️ **`auto` must be the default and the skip-value.** Saving a pinned `full` permanently
+  defeats the auto-fallback that exists *because* the 10-column table is unreadable under 120
+  columns — a user who answers "full" on a wide monitor would otherwise get a wrapped mess on a
+  laptop forever, with no signal why. Pinning is a deliberate power-user choice, never a
+  side effect of answering a setup question.
+
+**Thorough (adds, also independently skippable):**
+
+- Staleness thresholds — the four Target-tier day counts from § `/unforget scan`, saved as
+  `stale_days_this` / `stale_days_next` / `stale_days_later` / `stale_days_someday`
+  (defaults 30 / 90 / 180 / 365). Offer them as one grouped question, not four separate ones;
+  skipping keeps every current value.
+- Archive-nudge threshold (`archive_nudge_threshold`, default 5; `0` silences the nudge) — see
+  `/unforget archive` § The archive nudge.
+- Multi-ledger union default — whether a plain `list` (no `--ledgers=`/`--all-ledgers` flag)
+  should behave as if `--all-ledgers` were always passed. Default stays no (§ Multi-ledger
+  scope's opt-in-only design is not overridden by this — the interview can only change what a
+  BARE `list` defaults to, never make cross-ledger reads silently automatic without the user
+  having chosen that here).
+
+**Every question past Q0 is skippable — "keep current / use default" is always an explicit
+option, never buried.** A user who picked Standard or Thorough to get more control is not then
+forced to answer every field; skipping one leaves that key's prior value (or the hardcoded
+default, on a true first run) untouched. This mirrors the `edit`/`branch` guard pattern
+elsewhere in this skill: offering more control is not the same as requiring more input.
+
+**First-run framing differs from re-run framing (same questions, different lead-in) — this is
+presentation only, not a second code path:**
+- **No `display_prefs_set` in the registry yet (true first run):** lead with "No display
+  preference saved yet for this ledger." before Q0.
+- **`display_prefs_set: true` already (an explicit re-run):** lead with "Currently: view=<X>,
+  group-by=<Y>[, ...]. Want to change it?" before Q0, so the user sees what they're revising
+  rather than re-answering blind.
+
+**Writing the result.** After the interview (at whatever depth), write the answered keys — and
+ONLY the answered keys; skipped questions leave their prior registry value untouched — via:
+
+```
+python3 scripts/registry.py write --dir <ledger-dir> --json <payload> --merge
+```
+
+🛑 **`--merge` is MANDATORY here and the payload must contain only the answered keys.** `write`
+without `--merge` REPLACES the whole block: a payload of `{"global": {"display_view": "open"}}`
+renders a registry in which every other global key is `(unset)` **and the entire Ledgers table
+is empty** — measured, not theorized (2026-08-13: a bare write against a 9-key/3-ledger registry
+left 0 ledgers registered). That is precisely the stranded-ledger failure the registry exists to
+prevent, so the partial-write path must never be taken without `--merge`. With `--merge`, keys
+absent from the payload keep their current value and the ledger table is preserved untouched.
+Always set `display_prefs_set: true` on ANY
+completed interview, even Quick-depth with just one answer, so a later bare `--fresh` gets the
+re-run framing instead of the first-run one. Then run `list` (or `scan`, if invoked via
+`scan --fresh`) using the just-saved preferences.
+
+### Runtime execution: the `--fresh` flow, step by step
+
+The steps below are what actually RUNS when a user types `list --fresh`. Each step names the
+helper call or the question; the ordering is load-bearing (framing must precede Q0, the write
+must precede the render, and nothing may prompt outside steps 2-4).
+
+**Step 1 — framing (no prompt).** `python3 scripts/display_prefs.py framing --dir <ledger-dir>`.
+Print the returned `lead_in` verbatim as one line. Do not paraphrase it — it is the only
+signal distinguishing "you haven't set this yet" from "here's what you're revising," and a
+re-run that reads like a first run makes the user re-answer blind.
+
+**Step 2 — Q0, the depth gate (one `AskUserQuestion`, cannot be skipped).** Offer exactly the
+three depths, Quick first (it is the common case, and the header/label limits mean the depth
+labels must stay short):
+
+| Option label | Description shown |
+|---|---|
+| `Quick` | 1 question — just a view preset |
+| `Standard` | 3-4 questions — view, grouping, sections, verbosity |
+| `Thorough` | Standard + staleness thresholds, archive nudge, multi-ledger default |
+
+If the user dismisses Q0 rather than answering, **abort the interview and render the list with
+existing settings** — a dismissed question is not an answer, and a read command must never be
+left half-configured. Say one line: "Interview cancelled — listing with current settings."
+
+**Step 3 — the depth-appropriate questions (one `AskUserQuestion`, batched).** Ask the chosen
+tier's questions **in a single call with multiple questions**, not one call per field: four
+sequential prompts for Standard would make the interview feel like an interrogation, and
+`AskUserQuestion` takes up to 4 questions per call for exactly this reason. Quick is 1 question;
+Standard is 4; Thorough is Standard's 4 followed by a SECOND call carrying its extra 3 (the
+4-question cap forces the split — do not silently drop the overflow).
+
+Every question in this step carries an explicit **"Keep current"** option (first position, and
+labelled with the current value when one exists, e.g. `Keep current (open)`). That is what makes
+"independently skippable" real rather than aspirational — a skip must be one visible click, not
+a dismissal the user has to guess is safe.
+
+**Step 4 — write (no prompt).** Convert the answers, dropping every "Keep current":
+
+```
+python3 scripts/display_prefs.py build-patch --view <v> [--group-by <g>] [...]
+python3 scripts/registry.py write --dir <ledger-dir> --json <payload> --merge
+```
+
+🛑 Take `build-patch`'s `global` object as-is and pass `--merge`. Never hand-assemble the
+payload and never omit the flag — see the merge warning below.
+
+**Step 5 — render (no prompt).** `python3 scripts/display_prefs.py resolve --dir <ledger-dir>`
+with any flags the ORIGINAL command also carried, then render `list` using the resolved
+settings. Confirm what was saved in one line — "Saved: view=open, group-by=target. Future
+`list` calls use this; `--fresh` to change." — so the user knows the setting persisted and how
+to revisit it, without a second prompt.
+
+**`scan --fresh`** runs the identical five steps and then renders `scan` instead of `list`.
+The interview is shared; only the final render differs.
+
+**Interaction with the other flags.** `--fresh` composes with everything: `list --fresh
+--target=THIS` interviews, saves, then renders THIS-only. A flag passed alongside `--fresh`
+applies to the render (step 5) but is NOT saved as a preference — saving happens only from
+interview answers, so a one-off filter can never silently become a permanent default.
+
+**Preferred implementation.** The deterministic halves — precedence, defaults, validation, and
+building a safe merge payload — are `scripts/display_prefs.py`; the interview's *judgment*
+(which questions, how worded, whether an answer makes sense) stays with the LLM, the same split
+`defer_tally.py` draws for the deferral gate:
+
+```
+python3 scripts/display_prefs.py framing --dir <ledger-dir>          # first-run vs re-run lead-in
+python3 scripts/display_prefs.py build-patch --view open [...]       # answers -> a --merge payload
+python3 scripts/display_prefs.py resolve --dir <ledger-dir> [flags]  # effective settings for this call
+```
+
+- `framing` returns `{first_run, current, lead_in}` — use `lead_in` verbatim before Q0.
+- `build-patch` emits `{global, requires_merge, write_command}` containing ONLY answered keys
+  plus `display_prefs_set`; feed its `global` to `registry.py write --merge`. A skipped question
+  is omitted, never written as null (an explicit null would CLEAR the prior value — the opposite
+  of skipping).
+- `resolve` applies `flag > registry > default` and reports a `sources` map naming which layer
+  each value came from, so a surprising render is inspectable rather than mysterious. Pass
+  `--term-width` to have `verbosity=auto` resolve to `full`/`compact`; omit it to get
+  `effective_width: null` and do your own detection.
+- **Fails safe by construction:** a missing README, an unparseable value, or a bogus enum
+  (`display_view: banana`) all fall back to the hardcoded default rather than raising — a read
+  command must never be taken down by a malformed tunable. A stray `display_*` key with no
+  `display_prefs_set: true` is treated as absent, so a half-written registry cannot silently
+  change how `list` renders.
+
+**Plain `list`/`scan` (no `--fresh`) — silent read, no prompt, ever.** If `display_prefs_set` is
+`true` in the registry, apply `display_view`/`display_group_by`/`display_sections`/
+`display_verbosity` (and, at Thorough, the staleness/archive-nudge/multi-ledger keys) as the
+call's defaults — exactly as if the user had passed the equivalent flags. An explicit flag on
+the call (`list --view=next`) always overrides the saved preference for that one call; the
+saved preference only fills in what wasn't explicitly passed. If `display_prefs_set` is absent
+(no interview has ever run), fall back to today's hardcoded defaults (`--view=all
+--group-by=target`, every section, auto-width) — a read command must never block or nag waiting
+for setup that was never done. This is the same "advisory, never blocking" discipline as the
+deferral gate's tally and the char-budget write-time offer elsewhere in this skill.
+
+**Scope: per-project, in this ledger's registry — not global.** `display_prefs_*` lives beside
+`policy_deferral`/`git_posture` in the SAME per-directory registry (`reference/registry.md` §
+The schema), not in a `~/.claude`-level file. A project with unusual needs (e.g. a ledger that
+unions several sibling ledgers by convention) can set its own defaults without affecting any
+other project's ledger. A sibling ledger (`TERRY-UNFORGET.md`, `MI-UNFORGET.md`) has its OWN
+registry row but shares the SAME `display_prefs_*` global keys as its parent (the global block
+is one per registry file, not per ledger-row) — running `--fresh` while pointed at a child
+ledger sets the shared project-wide preference, same as running it against the parent.
+
+**Algorithm fallback (Python unavailable):** ask Step 0, then the depth-appropriate questions
+above via plain text prompts (numbered choices), skipping any the user doesn't answer. Read the
+registry's Global table by hand (`reference/registry.md`'s own fallback), patch in the
+`display_*` keys the user answered plus `display_prefs_set: true`, and rewrite the whole
+`**Global**` table preserving every other key verbatim (do not drop unanswered/unknown keys).
 
 ### Terminal-aware rendering
 
@@ -644,7 +853,11 @@ Identify rows past their staleness threshold. Read-only. Never modifies the file
 | Status = Skipped | never stale |
 | Status = Fixed | never stale (but flag as ready-for-archive) |
 
-These thresholds can be customized in a config block at the top of UNFORGET.md.
+These thresholds are customizable via the registry's `stale_days_this` / `stale_days_next` /
+`stale_days_later` / `stale_days_someday` keys (`reference/registry.md` § The schema), settable
+through the Thorough tier of `/unforget list --fresh` (§ Display-preference interview) or by
+hand. A legacy `config` block at the top of UNFORGET.md is still honored if present, but the
+registry wins when both are set — see the migration note in `reference/registry.md`.
 
 ### Row-length (char-budget) lint (format v2+, maintenance §2c)
 
@@ -843,7 +1056,7 @@ To make cleanup discoverable without forcing it, `/unforget list` and `/unforget
 💡 N completed rows are sitting in the active tables — run /unforget archive to move them out.
 ```
 
-One line, non-blocking, informational — never a prompt or an action. Threshold is 5 by default; if UNFORGET.md has a `config` block at the top with `archive_nudge_threshold: N`, honor that instead (0 silences it). On `/unforget add`, skip the nudge if the add itself was slow — `add`'s 30-second speed promise wins; the nudge must never add latency or a question.
+One line, non-blocking, informational — never a prompt or an action. Threshold is 5 by default; the registry's `archive_nudge_threshold` key overrides it (`0` silences the nudge entirely), settable via the Thorough tier of `/unforget list --fresh` or by hand — see `reference/registry.md` § The schema. A legacy `config` block at the top of UNFORGET.md carrying `archive_nudge_threshold: N` is still honored if present, but the registry wins when both are set. On `/unforget add`, skip the nudge if the add itself was slow — `add`'s 30-second speed promise wins; the nudge must never add latency or a question.
 
 ---
 
@@ -854,11 +1067,12 @@ Print the installed skill's version, install path, format-version support, **ins
 ### Output format
 
 ```
-unforget v2.1.0
+unforget v2.6.0
 Install path: <detected at runtime>  (Claude Code plugin)
 Supported format-version: v1, v2
 Subcommands: init, add, edit, import, list, scan, branch, verify, archive, promote, --version
 Install integrity: ✓ all companion files reachable
+Version declarations: ✓ SKILL.md, plugin manifest, changelog all agree (2.6.0)
 Recall trigger: ✓ installed in CLAUDE.md
 ```
 
@@ -874,6 +1088,18 @@ Recall trigger: ✗ no Deferred Work Index block in this project's CLAUDE.md/AGE
 ```
 
 The version string is read from the SKILL.md frontmatter `version` field. The install path is detected at runtime: plugin installs report the plugin directory, manual v0.1 installs report `~/.claude/skills/unforget/`. Supported format-version comes from the spec (currently `v1` and `v2`, backward compatible; a future `v3` would list here too once it lands).
+
+### Version reconciliation
+
+The version is declared in **three** places: `SKILL.md`'s frontmatter, `.claude-plugin/plugin.json`, and the newest `### vN.N.N` changelog heading. Nothing used to compare them, so the plugin manifest sat **five releases stale** (2.1.0 while everything else read 2.6.0) with no check noticing — found 2026-08-13, the third instance of doc-vs-code drift in a single session (the others: the changelog describing `verify` checks the code didn't implement, and a test golden pinned to an old version).
+
+`--version` now reconciles all three and reports `versions_in_sync` + `declared_versions`. Rules:
+
+- **Only sources that actually declare a version vote.** A manual (v0.1) install with no plugin manifest is not drift — it simply has one fewer declaration. Same for an unparseable manifest: undeclared, never a crash.
+- **SKILL.md's frontmatter is canonical**, because that is what `read_version` — and therefore the `unforget vN.N.N` line above — already reports.
+- **Drift is ADVISORY, never a failure.** A stale manifest misreports what is installed; unlike a missing companion file it does not break the router, so it does not fail the command (exit stays 0). A missing companion still exits 1 and still outranks drift in the advisory line.
+
+The line reads `Version declarations: ✗ SKILL.md declares 2.6.0, but plugin_manifest=2.1.0` when they disagree — naming the offending source and both values, so the fix is obvious without hunting.
 
 ### Install integrity
 

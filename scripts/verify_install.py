@@ -18,6 +18,14 @@ Two concerns, one command, both feeding `/unforget --version`:
      invisible and the skill looks broken when it is working as designed. This
      check reports whether that trigger is installed for the given project.
 
+  3. Version reconciliation. The version is declared in three places (SKILL.md
+     frontmatter, .claude-plugin/plugin.json, the newest changelog heading) and
+     nothing used to compare them — so the plugin manifest sat FIVE releases
+     stale without any check noticing (measured 2026-08-13). Drift is ADVISORY,
+     not a failure: a wrong manifest version misreports what is installed, but
+     unlike a missing companion file it does not break the router. Reported in
+     `versions_in_sync` / `declared_versions` and surfaced in the advisory.
+
 Usage:
   python3 verify_install.py --skill-root <dir> [--project-root <dir>]
   python3 verify_install.py --help
@@ -31,6 +39,9 @@ Output (stdout, JSON):
   {
     "skill_root": "<input>",
     "version": "1.0.0"|null,
+    "versions_in_sync": true|false,
+    "declared_versions": {"skill_md": "2.6.0", "plugin_manifest": "2.6.0",
+                          "changelog": "2.6.0"},   # null == that source declares none
     "integrity_ok": true|false,
     "companion_files_present": ["reference/commands.md", ...],
     "companion_files_missing": [...],
@@ -41,7 +52,8 @@ Output (stdout, JSON):
   }
 
 Exit codes:
-  0  integrity OK (recall status is informational, never fails the command)
+  0  integrity OK (recall status AND version drift are informational, never fail
+     the command — see concern 3 above)
   1  integrity FAILED (one or more companion files missing)
   2  usage error / skill root not found
 """
@@ -103,6 +115,73 @@ def read_version(skill_root: Path) -> str | None:
     return match.group(1) if match else None
 
 
+# The version is declared in more than one place, and nothing used to reconcile
+# them. Measured 2026-08-13 on a real install: SKILL.md frontmatter said 2.6.0
+# and the changelog's newest entry said 2.6.0, but `.claude-plugin/plugin.json`
+# still said 2.1.0 -- FIVE releases stale, silently, because the only reader
+# (read_version, above) looks at the frontmatter alone. Same doc-vs-code drift
+# class as the changelog-ahead-of-code gap and the stale test golden, all three
+# found in one session. This check subjects the skill's OWN metadata to the
+# "measure, don't cite" rule it applies to everything else.
+CHANGELOG_RE = re.compile(r"^###\s+v([0-9]+\.[0-9]+\.[0-9]+)", re.MULTILINE)
+
+
+def read_declared_versions(skill_root: Path) -> dict:
+    """Every place a version is declared, keyed by source. Absent -> None.
+
+    A source that does not exist reports None rather than being omitted, so a
+    missing plugin manifest stays visible instead of quietly shrinking the set
+    of things being compared.
+    """
+    versions: dict[str, str | None] = {"skill_md": read_version(skill_root)}
+
+    manifest = skill_root / ".claude-plugin" / "plugin.json"
+    manifest_version = None
+    if manifest.exists():
+        try:
+            manifest_version = json.loads(
+                manifest.read_text(encoding="utf-8", errors="replace")
+            ).get("version")
+        except (ValueError, OSError):
+            manifest_version = None  # unparseable == undeclared, never a crash
+    versions["plugin_manifest"] = manifest_version
+
+    # Newest changelog heading in SKILL.md. Headings are newest-first, so the
+    # FIRST match is the current release.
+    skill_md = skill_root / "SKILL.md"
+    changelog_version = None
+    if skill_md.exists():
+        match = CHANGELOG_RE.search(skill_md.read_text(encoding="utf-8", errors="replace"))
+        changelog_version = match.group(1) if match else None
+    versions["changelog"] = changelog_version
+
+    return versions
+
+
+def check_version_sync(skill_root: Path) -> tuple[bool, dict, str | None]:
+    """Reconcile every declared version. Returns (in_sync, versions, complaint).
+
+    Only sources that actually declare a version participate: an absent manifest
+    or a changelog-less SKILL.md is not a mismatch, it is simply not a vote. A
+    disagreement among those that DO declare one is the finding. SKILL.md's
+    frontmatter is treated as canonical because it is what `read_version` (and
+    therefore `/unforget --version`) already reports.
+    """
+    versions = read_declared_versions(skill_root)
+    declared = {src: v for src, v in versions.items() if v}
+    if len(set(declared.values())) <= 1:
+        return True, versions, None
+
+    canonical = versions.get("skill_md")
+    offenders = [f"{src}={v}" for src, v in sorted(declared.items()) if v != canonical]
+    complaint = (
+        f"version drift: SKILL.md declares {canonical}, but {', '.join(offenders)}. "
+        "Bring every declaration to the same value — a stale manifest ships the wrong "
+        "version to anyone installing the plugin."
+    )
+    return False, versions, complaint
+
+
 def check_integrity(skill_root: Path) -> tuple[list[str], list[str]]:
     present, missing = [], []
     for rel in REQUIRED_COMPANIONS:
@@ -144,6 +223,7 @@ def main() -> int:
     version = read_version(skill_root)
     present, missing = check_integrity(skill_root)
     integrity_ok = not missing
+    versions_in_sync, declared_versions, version_complaint = check_version_sync(skill_root)
 
     if args.project_root is not None:
         recall_present, recall_source = check_recall(Path(args.project_root))
@@ -157,6 +237,11 @@ def main() -> int:
             f"({', '.join(missing)}); the router will fail when it delegates to a "
             "missing file — reinstall or repair the skill directory"
         )
+    elif not versions_in_sync:
+        # Ranked above the recall lines but below missing companions: drift
+        # misreports what is installed, while a missing companion breaks the
+        # router outright.
+        advisory = f"install intact, but {version_complaint}"
     elif recall_checked and not recall_present:
         advisory = (
             "install intact, but no Deferred Work Index block found in the "
@@ -171,6 +256,8 @@ def main() -> int:
     result = {
         "skill_root": str(skill_root),
         "version": version,
+        "versions_in_sync": versions_in_sync,
+        "declared_versions": declared_versions,
         "integrity_ok": integrity_ok,
         "companion_files_present": present,
         "companion_files_missing": missing,

@@ -65,6 +65,24 @@ and never touches the surrounding human prose:
 | `ratio_flag_threshold` | integer; deferral-gate defer/fix ratio flag (default 3) |
 | `stale_trivial_sessions` | integer; deferral-gate aging cross-check (default 2) |
 | `row_char_budget` | integer; row-length index budget per Finding/Status cell (default 400; `scan`/`verify`/`row_budget.py`) |
+| `display_view` | `all` \| `open` \| `done` \| `split` \| `next`; saved `list --view=` default (§ Display-preference interview) |
+| `display_group_by` | `target` \| `section` \| `none`; saved `list --group-by=` default |
+| `display_verbosity` | `auto` (default — keep terminal-width auto-detection) \| `full` \| `compact`; saved column-width preference. `full`/`compact` PIN the width, overriding auto-detect |
+| `display_sections` | `all`, or ONE of `paused` \| `spillover` \| `audit` \| `observed`; saved `--section=` default. Single-or-all only — `--section=` does not accept a list |
+| `display_prefs_set` | `true` \| `(unset)`; whether the display-preference interview has ever completed (distinct from the fields above being absent, which can also mean "asked, declined to set") |
+| `archive_nudge_threshold` | integer; completed-row count at which `list`/`add` append the archive nudge (default 5; `0` silences it). See `reference/commands.md` § The archive nudge |
+| `stale_days_this` | integer; days before an Open/In-Progress row is stale (default 30). See `reference/commands.md` § Staleness thresholds |
+| `stale_days_next` | integer; days before a Deferred 🔵 NEXT row is stale (default 90) |
+| `stale_days_later` | integer; days before a Deferred 🟡 LATER row is stale (default 180) |
+| `stale_days_someday` | integer; days before a Deferred ⚪ SOMEDAY row is stale (default 365) |
+
+**Migration note (2026-08-13).** `archive_nudge_threshold` and the four `stale_days_*` keys were
+previously specified as living in a `config` block at the top of UNFORGET.md. They now live
+here, in the registry, alongside every other tunable. The move was safe: **no reader was ever
+implemented for them** (the only `<!-- unforget-config: ... -->` marker any script parses is
+`memory-dir`, in `scan_surfaces.py`), and no ledger was found carrying them. Readers SHOULD
+still honor a legacy in-file config block if one exists, preferring the registry when both are
+present — cheap insurance for a ledger not surveyed here, not a long-term dual-store contract.
 
 **Per ledger** (one row each):
 
@@ -97,7 +115,8 @@ regenerate the cache after any README change.
 
 ```
 python3 scripts/registry.py read  --dir <ledger-dir>            # emit registry JSON (README canonical)
-python3 scripts/registry.py write --dir <ledger-dir> --json <f> # rewrite the block + regenerate the cache
+python3 scripts/registry.py write --dir <ledger-dir> --json <f> # REPLACE the block + regenerate the cache
+python3 scripts/registry.py write --dir <ledger-dir> --json <f> --merge  # PATCH: unmentioned keys survive
 python3 scripts/registry.py check --dir <ledger-dir>            # report README-vs-cache drift
 ```
 
@@ -107,6 +126,14 @@ python3 scripts/registry.py check --dir <ledger-dir>            # report README-
 - `write` takes a JSON `{global, ledgers}`, rewrites ONLY the marker block
   (human prose untouched), and regenerates the cache in normalized form so a
   fresh write is always in sync.
+- **`write --merge` is PATCH semantics and is REQUIRED for any partial write.** Keys present in
+  the payload win (an explicit null clears them); keys absent keep their current value; a
+  payload with no `ledgers` key leaves the ledger table untouched. Without `--merge`, `write`
+  REPLACES the block wholesale — a one-key payload therefore unsets every other global key **and
+  empties the Ledgers table**. Measured 2026-08-13 against a 9-key/3-ledger registry: a bare
+  `{"global": {"display_view": "open"}}` write left 9 nulls and **0 registered ledgers**. Any
+  caller writing fewer than all keys (the display-preference interview, a single policy change)
+  must pass `--merge`; full-state writers (`init`, `branch`) may use either.
 - `check` returns `cache_in_sync` (or `null` when there's no cache) and always
   reports `source_of_truth: "readme"`. Drift → exit 1 → regenerate the cache
   from the README.

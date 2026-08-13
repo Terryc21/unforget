@@ -13,21 +13,26 @@ Checks (§4a):
   4. unknown @status / @verified value
   5. done-unverified would be archived            (only relevant with --archiving; see note)
   6. THIS-target + not-proven still blocks release
-  7. table cell over the char budget              (bloat; Phase 7 owns the full rule)
+  7. table cell over the char budget              (bloat; error above --char-budget-hard,
+                                                   default 4x = 1600; Phase 7 owns the rule)
   8. stale verify recipe                          (a file-citing row lacking a recipe;
                                                    still-open OR still-done both count)
   9. registry drift                               (cache != README, or block absent)
  10. cell-count != the table's declared width     (an unescaped '|' shifting every column)
+ 11. detail-pointer                                (a "→ detail block **<ID>**" pointer with
+                                                   no matching bullet under a Detail heading)
 
 Findings are returned most-severe first. This command NEVER edits — fixes are the
 user's call (a future `verify --fix` proposes edits with approval).
 
 Usage:
-  python3 verify_ledger.py --file <UNFORGET.md> [--dir <ledger-dir>] [--char-budget N]
+  python3 verify_ledger.py --file <UNFORGET.md> [--dir <ledger-dir>] [--char-budget N] [--char-budget-hard N]
   python3 verify_ledger.py --help
 
   --dir enables the registry-drift check (the dir holding README.md/.unforget.json).
-  --char-budget overrides the per-cell character budget (default 400).
+  --char-budget overrides the soft per-cell character budget (default 400; over this: warn).
+  --char-budget-hard overrides the hard per-cell budget (default 4x --char-budget, i.e.
+    1600; over this: error, gates archive/promote). See reference/verify.md § 4e.
 
 Output (stdout, JSON):
   {
@@ -63,6 +68,15 @@ import parse_status  # noqa: E402
 import registry  # noqa: E402
 
 DEFAULT_CHAR_BUDGET = 400  # per-cell soft budget; Phase 7 formalizes/《configures》 this
+DEFAULT_CHAR_BUDGET_HARD_MULTIPLE = 4  # hard threshold = this × the soft budget (§4e)
+
+# A row over char-budget is supposed to leave a pointer to a Detail bullet. Matches
+# both phrasings row_budget.py/hand-edited rows use: "→ see detail block **A65**"
+# and the shorter "→ detail block **A65**". Case-sensitive on the ID (§4f).
+DETAIL_POINTER_RE = re.compile(r"detail block \*\*([A-Za-z0-9-]+)\*\*")
+# A Detail-section bullet: "- **A65** - ..." under a "### Detail - <section>" heading.
+DETAIL_HEADING_RE = re.compile(r"^###\s+Detail\s*-")
+DETAIL_BULLET_RE = re.compile(r"^-\s*\*\*([A-Za-z0-9-]+)\*\*\s*-")
 # A row that cites a file path in its Finding/detail but carries no
 # verify recipe is a stale-recipe risk. Detect a file-ish token.
 #
@@ -124,7 +138,9 @@ def _declared_width(line: str) -> int:
     return len(parse_status.data_cells(line))
 
 
-def check_rows(text: str, char_budget: int) -> list[dict]:
+def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None) -> list[dict]:
+    if char_budget_hard is None:
+        char_budget_hard = char_budget * DEFAULT_CHAR_BUDGET_HARD_MULTIPLE
     findings = []
     declared = 0  # width of the most recent header row; 0 = unknown
     for line in text.splitlines():
@@ -220,13 +236,25 @@ def check_rows(text: str, char_budget: int) -> list[dict]:
             })
 
         # Check 7: per-cell char budget (bloat). Flag the Status and Finding cells.
+        # Two severities (§4e): warn past the soft budget (400), error past the
+        # hard budget (4x soft, 1600) — a row that far over is functionally a
+        # detail block wearing a table cell, not "a bit long", and gates the
+        # same way a contradiction or unproven THIS-blocker does.
         for cell_name, cell_val in (("status", status_cell(line)), ("finding", finding_cell(line))):
-            if len(cell_val) > char_budget:
+            n = len(cell_val)
+            if n > char_budget_hard:
+                findings.append({
+                    "severity": "error",
+                    "check": "char-budget",
+                    "id": rid,
+                    "message": f"{cell_name} cell is {n} chars (hard budget {char_budget_hard}); functionally a detail block in a table cell — split before archive/promote",
+                })
+            elif n > char_budget:
                 findings.append({
                     "severity": "warn",
                     "check": "char-budget",
                     "id": rid,
-                    "message": f"{cell_name} cell is {len(cell_val)} chars (budget {char_budget}); move history to a detail block",
+                    "message": f"{cell_name} cell is {n} chars (budget {char_budget}); move history to a detail block",
                 })
 
         # Check 8: stale-recipe risk — a Finding that cites a file but the row
@@ -256,6 +284,56 @@ def check_rows(text: str, char_budget: int) -> list[dict]:
     return findings
 
 
+def check_detail_pointers(text: str) -> list[dict]:
+    """Check 11 (§4f): a "detail block **<ID>**" pointer with no matching bullet.
+
+    Runs unconditionally (no threshold to tune) whenever --file is given. Only
+    the pointer-with-no-bullet direction is a finding; a bullet with no pointer
+    is informational (see reference/verify.md § The detail-pointer check) and is
+    surfaced by the caller in the advisory text, not counted toward warn_count.
+    """
+    findings = []
+    bullet_ids: set[str] = set()
+    in_detail_section = False
+    for line in text.splitlines():
+        if DETAIL_HEADING_RE.match(line):
+            in_detail_section = True
+            continue
+        if line.startswith("## "):
+            in_detail_section = False
+            continue
+        if in_detail_section:
+            m = DETAIL_BULLET_RE.match(line.strip())
+            if m:
+                bullet_ids.add(m.group(1))
+
+    pointer_ids_by_row: list[tuple[str, str]] = []
+    for line in text.splitlines():
+        if not parse_status.ROW_ID_RE.match(line):
+            continue
+        parsed = parse_status.parse_row(line)
+        rid = parsed["id"] or "?"
+        for cell in (status_cell(line), finding_cell(line)):
+            for pid in DETAIL_POINTER_RE.findall(cell):
+                pointer_ids_by_row.append((rid, pid))
+
+    for rid, pid in pointer_ids_by_row:
+        if pid not in bullet_ids:
+            findings.append({
+                "severity": "warn",
+                "check": "detail-pointer",
+                "id": rid,
+                "message": (
+                    f"row points to 'detail block **{pid}**' but no matching "
+                    f"'- **{pid}** -' bullet exists under any '### Detail - <section>' "
+                    "heading — the split was promised but never happened, or the "
+                    "bullet was deleted out from under a live pointer"
+                ),
+            })
+
+    return findings, bullet_ids, {pid for _, pid in pointer_ids_by_row}
+
+
 def check_registry(dir_path: Path) -> list[dict]:
     findings = []
     result = registry.check_drift(dir_path)
@@ -280,7 +358,13 @@ def main() -> int:
     parser.add_argument("--file", required=True, help="Path to UNFORGET.md")
     parser.add_argument("--dir", help="Ledger dir (enables registry-drift check)")
     parser.add_argument("--char-budget", type=int, default=DEFAULT_CHAR_BUDGET)
+    parser.add_argument("--char-budget-hard", type=int, default=None,
+                         help="default: 4x --char-budget")
     args = parser.parse_args()
+
+    char_budget_hard = args.char_budget_hard
+    if char_budget_hard is None:
+        char_budget_hard = args.char_budget * DEFAULT_CHAR_BUDGET_HARD_MULTIPLE
 
     target = Path(args.file)
     if not target.exists():
@@ -288,8 +372,12 @@ def main() -> int:
         return 2
 
     text = target.read_text(encoding="utf-8", errors="replace")
-    findings = check_rows(text, args.char_budget)
+    findings = check_rows(text, args.char_budget, char_budget_hard)
     rows_checked = sum(1 for ln in text.splitlines() if parse_status.ROW_ID_RE.match(ln))
+
+    pointer_findings, bullet_ids, pointer_ids = check_detail_pointers(text)
+    findings += pointer_findings
+    orphan_bullets = bullet_ids - pointer_ids
 
     if args.dir:
         findings += check_registry(Path(args.dir))
@@ -299,6 +387,20 @@ def main() -> int:
     warn_count = sum(1 for f in findings if f["severity"] == "warn")
     gate_pass = error_count == 0
 
+    advisory = (
+        f"{error_count} error(s), {warn_count} warning(s); "
+        + ("gate PASSES" if gate_pass else "gate FAILS — archive/promote should refuse")
+    )
+    if orphan_bullets:
+        # Informational only (§4f): a Detail bullet with no pointer usually means
+        # the row was written with full detail from the start. Not a finding, not
+        # counted in warn_count — surfaced here so it's visible without being
+        # gate-relevant.
+        advisory += (
+            f" ({len(orphan_bullets)} detail bullet(s) with no pointing row: "
+            f"{', '.join(sorted(orphan_bullets))} — informational only)"
+        )
+
     result = {
         "file": str(target),
         "rows_checked": rows_checked,
@@ -306,10 +408,7 @@ def main() -> int:
         "error_count": error_count,
         "warn_count": warn_count,
         "gate_pass": gate_pass,
-        "advisory": (
-            f"{error_count} error(s), {warn_count} warning(s); "
-            + ("gate PASSES" if gate_pass else "gate FAILS — archive/promote should refuse")
-        ),
+        "advisory": advisory,
     }
     json.dump(result, sys.stdout)
     sys.stdout.write("\n")

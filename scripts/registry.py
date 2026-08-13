@@ -23,7 +23,11 @@ them.
 
 Usage:
   python3 registry.py read   --dir <ledger-dir>            # emit registry as JSON (README canonical)
-  python3 registry.py write  --dir <ledger-dir> --json <f> # write block from a JSON file (rewrites cache too)
+  python3 registry.py write  --dir <ledger-dir> --json <f> # REPLACE block from a JSON file (rewrites cache too)
+  python3 registry.py write  --dir <ledger-dir> --json <f> --merge
+                                                           # PATCH: keys absent from <f> keep their
+                                                           # current value; ledgers preserved if omitted.
+                                                           # Use for ANY partial write.
   python3 registry.py check  --dir <ledger-dir>            # report README-vs-cache drift
   python3 registry.py --help
 
@@ -70,6 +74,16 @@ GLOBAL_KEYS = [
     "ratio_flag_threshold",
     "stale_trivial_sessions",
     "row_char_budget",
+    "display_view",
+    "display_group_by",
+    "display_verbosity",
+    "display_sections",
+    "display_prefs_set",
+    "archive_nudge_threshold",
+    "stale_days_this",
+    "stale_days_next",
+    "stale_days_later",
+    "stale_days_someday",
 ]
 
 LEDGER_COLUMNS = ["name", "path", "role", "axis", "discipline", "parent", "death"]
@@ -184,6 +198,20 @@ def render_block(global_cfg: dict, ledgers: list[dict]) -> str:
     return "\n".join(lines)
 
 
+def merge_global(existing: dict, patch: dict) -> dict:
+    """Patch `existing` global config with `patch`, preserving unmentioned keys.
+
+    A key present in `patch` wins (including an explicit null, which clears it);
+    a key absent from `patch` keeps its existing value. This is what makes a
+    single-key write (e.g. just `display_view`) safe: without it, a caller who
+    passes only the key they care about silently drops git_posture,
+    policy_deferral, and every other unrelated setting.
+    """
+    merged = dict(existing)
+    merged.update(patch)
+    return merged
+
+
 def write_registry(dir_path: Path, global_cfg: dict, ledgers: list[dict]) -> dict:
     readme = dir_path / README_NAME
     if not readme.exists():
@@ -247,6 +275,10 @@ def main() -> int:
     parser.add_argument("action", choices=["read", "write", "check"])
     parser.add_argument("--dir", required=True, help="Ledger directory (holds README.md)")
     parser.add_argument("--json", help="For write: path to a JSON file {global, ledgers}")
+    parser.add_argument("--merge", action="store_true",
+                        help="For write: PATCH the existing block (keys absent from --json keep "
+                             "their current value) instead of replacing it wholesale. Use this "
+                             "for any partial write, e.g. saving display preferences.")
     args = parser.parse_args()
 
     dir_path = Path(args.dir)
@@ -279,7 +311,25 @@ def main() -> int:
         print(json.dumps({"error": f"json file not found: {src}"}), file=sys.stderr)
         return 2
     payload = json.loads(src.read_text(encoding="utf-8"))
-    result = write_registry(dir_path, payload.get("global", {}), payload.get("ledgers", []))
+    global_cfg = payload.get("global", {})
+    ledgers = payload.get("ledgers", [])
+
+    if args.merge:
+        # Patch semantics: read the CANONICAL README first, apply only the keys
+        # the caller named, keep everything else. Without this a single-key
+        # write (the display-preference interview's normal case) would render a
+        # block containing ONLY that key and destroy every other setting.
+        current = read_registry(dir_path)
+        if "error" in current:
+            print(json.dumps(current), file=sys.stderr)
+            return 2
+        global_cfg = merge_global(current.get("global", {}), global_cfg)
+        # A merge that omits `ledgers` must not wipe the ledger table either.
+        if "ledgers" not in payload:
+            ledgers = current.get("ledgers", [])
+
+    result = write_registry(dir_path, global_cfg, ledgers)
+    result["merged"] = bool(args.merge)
     json.dump(result, sys.stdout); sys.stdout.write("\n")
     return 0
 

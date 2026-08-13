@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.6.0
+version: 2.7.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -66,7 +66,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget add` | Capture a new deferral (defaults to Section 2 / Session spillover); 30s end-to-end | `reference/commands.md` |
 | `/unforget edit` | Refine a row's columns; closure recommendations on `--status=Fixed` | `reference/commands.md` |
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
-| `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers | `reference/commands.md` |
+| `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers, `--fresh` re-runs the display-preference interview | `reference/commands.md` |
 | `/unforget show` | Synthesized current-state read for ONE row (Finding/Impact/Fix, no history); `--full` appends the raw Detail block; markdown baseline, optional interactive card view where available | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
 | `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
@@ -84,6 +84,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only)
 - **You've picked one row to actually work on and want its current state, not its whole history** → `/unforget show <ID>` (add `--full` for the complete raw history)
 - **You want to find rows that have aged past their thresholds** → `/unforget scan`
+- **The user wants to change how `list`/`scan` display by default, or says "run fresh" / "ask me what I want to see"** → `/unforget list --fresh` (depth-gated interview, saved per-project; see `reference/commands.md` § Display-preference interview)
 - **Deferred work differs on actor (a different *human* acts on it) / lifespan (a sprint with its own discipline) / domain (a different repo or subject)** → `/unforget branch` (but default to a row or section — see `reference/branching.md`)
 - **Completed rows have piled up and you want them out of the active view** → `/unforget archive` (lightweight; use this between releases instead of `promote`)
 - **You're about to ship a release** → `/unforget promote`
@@ -109,7 +110,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
 | `reference/branching.md` | (format v2+) the branching model: the three axes (actor / lifespan / domain), the decision cascade, parent/child conventions, and the atomic `branch` command | Deciding whether work earns a child ledger; running `/unforget branch` |
 | `reference/skill-handoffs.md` | (format v2+) companion skill handoffs: the 5 functions, the global manifest, install-state detection by invocable name, frequency governance, the shipped-default disclosure | Firing a companion recommendation at a done/promote/verify transition |
-| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector, row-length check + lossless split, companion manifest + resolver). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
+| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector, row-length check + lossless split, companion manifest + resolver, display-preference resolver). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
 
@@ -169,6 +170,65 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.7.0 — `list --fresh` display preferences; a registry-wiping write bug; spec-vs-code reconciliation (2026-08-13) · minor
+
+Additive and backward compatible, but it closes a **data-loss bug** in `registry.py` and lands
+two `verify` checks the v2.3.0/v2.6.0 changelog entries already claimed were shipped. The
+through-line is the one this release exists to attack: **a value stated in one place and cited
+from another, with nothing reconciling them.** Four instances were found in a single session —
+the changelog describing checks the code lacked, a test golden pinned five versions back, a
+plugin manifest five releases stale, and a spec asserting a merge that did not exist.
+
+- **🛑 `registry.py write --merge` — fixes a registry-wiping partial write.** `write` had only
+  replace semantics, so a caller saving ONE key rendered a block in which every other global key
+  was `(unset)` **and the Ledgers table was empty**. Measured, not theorized: a
+  `{"global": {"display_view": "open"}}` write against a live 9-key/3-ledger registry left 9
+  nulls and **0 registered ledgers** — precisely the stranded-ledger failure the registry exists
+  to prevent, reachable by following the then-current spec prose literally. `--merge` applies
+  PATCH semantics (keys absent from the payload keep their value; a payload omitting `ledgers`
+  leaves the table untouched) and is now MANDATORY for any partial write. Full-state writers
+  (`init`, `branch`) may still use either.
+- **`verify` char-budget hard threshold (the v2.3.0 entry, now actually implemented).**
+  `--char-budget-hard` (default 4x soft = 1600) escalates an over-budget cell from `warn` to
+  **`error`**, gating `archive`/`promote`. The installed script had every over-budget row at
+  `warn` regardless of size, so the documented escalation never fired: a real ledger's 3,058-char
+  row (7.6x budget) passed the gate clean. `check_rows`'s new parameter defaults to 4x soft, so
+  existing 2-arg call sites keep working.
+- **`verify` `detail-pointer` check (the v2.6.0 entry, now actually implemented).** Flags a row
+  whose cell claims `→ detail block **<ID>**` with no matching bullet under any `### Detail -`
+  heading (`warn`). A Detail bullet with no pointing row is reported as informational advisory
+  text, NOT counted toward `warn_count`, per that entry's own spec.
+- **`/unforget list --fresh` — the display-preference interview.** Sets the saved default for
+  `--view`/`--group-by`/`--section`/verbosity so plain `list`/`scan` calls apply it silently. A
+  **depth gate** fires first (Quick = 1 question · Standard = 4 · Thorough = +thresholds), so the
+  interview's length is the user's choice rather than a fixed toll. `--fresh` ALWAYS
+  re-interviews — a deliberate exception to this skill's don't-nag discipline, since being asked
+  again is the entire point of typing it. Every question past the gate carries an explicit
+  "Keep current" option; a skipped answer is **omitted** from the write, never written as null
+  (a null would CLEAR the prior value — the opposite of skipping). New `scripts/display_prefs.py`
+  (`resolve`/`framing`/`build-patch`) owns the mechanics; question wording and judgment stay with
+  the LLM, the same split `defer_tally.py` draws. Precedence is fixed: **explicit flag > saved
+  preference > hardcoded default**, with a `sources` map naming which layer produced each value.
+  A flag passed alongside `--fresh` renders but is never saved, so a one-off filter cannot
+  silently become a permanent default.
+- **5 tunables migrated into the registry** (`archive_nudge_threshold`, `stale_days_this/next/
+  later/someday`). They were specified as living in "a config block at the top of UNFORGET.md" —
+  but **no reader for them was ever implemented** (the only `unforget-config:` marker any script
+  parses is `memory-dir`), and no ledger was found carrying them, so the migration moved no data
+  and broke no code path. A legacy in-file block is still honored, registry winning on conflict.
+- **`--version` reconciles its own version declarations.** SKILL.md frontmatter,
+  `.claude-plugin/plugin.json`, and the newest changelog heading are now compared; `--version`
+  reports `versions_in_sync` + `declared_versions`. The manifest had been stale at 2.1.0 while
+  everything else read 2.6.0. Only sources that actually declare a version vote (a manual install
+  with no manifest is not drift; an unparseable manifest degrades rather than crashing), and
+  drift is **advisory, exit 0** — it misreports what is installed but, unlike a missing companion
+  file, does not break the router.
+
+⚠️ **Known remaining gap:** the version check compares strings across declaration sites; it
+cannot catch a changelog entry that *describes behavior the code does not implement*. That was
+the shape of the two `verify` gaps above, and it needs semantic comparison rather than string
+equality. Unautomated on purpose — noted here rather than left implicit.
 
 ### v2.6.0 — `verify`: catch a detail-block pointer that leads nowhere (2026-08-13) · minor
 

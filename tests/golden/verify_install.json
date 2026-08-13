@@ -28,10 +28,16 @@
     "scripts/row_budget.py",
     "scripts/companions.py"
   ],
+  "declared_versions": {
+    "changelog": "2.7.0",
+    "plugin_manifest": "2.7.0",
+    "skill_md": "2.7.0"
+  },
   "integrity_ok": true,
   "recall_checked": false,
   "recall_trigger_present": null,
   "recall_trigger_source": null,
   "skill_root": "<REPO_ROOT>",
-  "version": "2.1.0"
+  "version": "2.7.0",
+  "versions_in_sync": true
 }
