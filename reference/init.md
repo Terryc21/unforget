@@ -26,6 +26,8 @@ The skill must NOT silently overwrite or merge into an existing UNFORGET.md. The
 
 Short questions before any scanning happens. The first three (path, cadence, recall) have always been asked; format v2 adds the **git-posture** question and upgrades the recall answer to a *skill-maintained* block. Keep it tight — more questions is friction that makes users skip `init`. The v2 answers are persisted to the **registry** (Phase 7 writes it) so they are never re-guessed (`reference/registry.md`).
 
+🛑 **Every question below is written for the implementer, naming internal values (`split`/`committed`/`ignored`, `maintained`/`manual`/`none`, preset names). Those are specification, NOT prompt copy** — see `SKILL.md § Asking the user anything` for the canonical rule: *ask about the OUTCOME in the user's words, never about the mechanism in the skill's words.* Each question carries an **Ask as:** line giving the wording that actually reaches the user. **This matters more here than anywhere else in the skill: `init` is the FIRST thing a new user ever runs**, and it is the one interview where every respondent is by definition new. A user who cannot answer these questions does not get a ledger at all.
+
 1. **File path / ledger home.** The default depends on what the project already has. Check the repo first:
    - If `Documentation/` exists with subdirectories: default `Documentation/Development/Deferred/UNFORGET.md` (matches projects with formal docs trees, like iOS/macOS apps)
    - If `docs/` exists: default `docs/UNFORGET.md` (matches conventional library / web projects)
@@ -40,6 +42,13 @@ Short questions before any scanning happens. The first three (path, cadence, rec
    - **Committed:** tracked in the repo — a team-shared backlog (the skill's README suggests this for multi-user).
    - **Ignored:** local-only working notes, never committed.
 
+   **Ask as:** *"Who should be able to see these notes?"* →
+   - "Just me, but the repo should still say where they are" (`split`) — "your notes stay off GitHub; a short tracked index says they exist and where, so you never lose track of them."
+   - "Everyone on the project" (`committed`) — "the notes go into the repo like any other file; use this if someone else works on this code."
+   - "Just me, nothing tracked at all" (`ignored`) — "nothing about the notes goes into the repo."
+
+   ⚠️ Never prompt with the words "git posture," "split," or "ignored" as bare labels — they name the mechanism, not the choice. The user is deciding **who sees their notes**; `.gitignore` is how that gets implemented, which is the skill's problem, not theirs. Say the recommended option is recommended, and say why in one clause.
+
    The chosen posture is **applied automatically** — the skill writes the `.gitignore` rules (ignore contents; un-ignore the index for Split) rather than leaving the user to hand-edit. Also add the ephemeral `.unforget-session.json` (the deferral-gate per-session tally) to `.gitignore` under every posture — it's churn, never a record.
 
 2. **Cadence preset.**
@@ -49,6 +58,16 @@ Short questions before any scanning happens. The first three (path, cadence, rec
    > - Continuous deployment (web app, service, internal tool) routes to **Continuous** preset (9 columns, Window column)
    > - Solo / side project / want minimal columns routes to **Lean** preset (6 columns)
    > - Custom: pick from a fixed pool of 12 columns
+
+   ✅ **The question itself is already right** — "How does this project ship?" names the user's situation, not the skill's presets. **Only the OPTIONS need translating:** lead each with the shipping pattern, and never with the preset name or a column count.
+
+   **Ask as:** *"How does this project ship?"* →
+   - "In versioned releases — an app, a library, anything with version numbers" (`Standard`)
+   - "In versioned releases, but keep the table narrow for a terminal" (`Compact`)
+   - "Continuously — a website, a service, an internal tool" (`Continuous`)
+   - "It's a solo or side project — keep it minimal" (`Lean`)
+
+   ⚠️ `Standard` / `Compact` / `Continuous` / `Lean` and their column counts are internal preset names: they tell a first-time user nothing about which fits their project, and "10 columns vs 9" is not a decision anyone can make before seeing a table. Drop the **Custom** option from the spoken list entirely — offering a 12-column pool to someone who has not yet seen one ledger row is a question they cannot answer; surface it only if they ask for more control.
 
 3. **Recall block — write AND maintain a pointer in the AI instructions file?** Different AI tools use different conventions:
    - Claude Code: `CLAUDE.md`
@@ -63,6 +82,13 @@ Short questions before any scanning happens. The first three (path, cadence, rec
    - **Maintained (recommended default, format v2):** the skill writes a **marker-delimited** Deferred Work Index block and thereafter UPDATES it on `import`/`promote`/`branch`/move — so it can't silently rot (the 2026-07-25 stale-pointer failure). The block records the git posture + ledger home and lists every registered ledger with its one-line purpose. Written by `scripts/recall_block.py` (see Phase 7).
    - **Manual:** the skill prints the block once for the user to paste and maintain themselves (the pre-v2 behavior; offered but not recommended — it's exactly what went stale).
    - **None:** no recall block. Warn plainly: future sessions won't auto-route deferred-work questions here unless the user points them at the ledger every time.
+
+   **Ask as:** *"Should future AI sessions know these notes exist?"* →
+   - "Yes, and keep it up to date automatically" (`maintained`) — "I'll add a few lines to `<filename>` and refresh them whenever your notes move or a new list is added."
+   - "Yes, but I'll maintain it myself" (`manual`) — "I'll print the lines once for you to paste. ⚠️ Say plainly that this is the option that has gone stale in practice."
+   - "No" (`none`) — "future sessions won't find these notes unless you point at them every time."
+
+   ⚠️ "Recall block," "marker-delimited," and "maintained/manual/none" are all mechanism. The user is deciding **whether a future session will find their notes without being told where to look** — that is the outcome, and it is the whole reason this question is the most important one in `init`.
 
    Framing per what's found:
    - **Exactly one instructions file found:** "I'll add a skill-maintained 'Deferred Work Index' block to `<filename>` so future AI sessions auto-recall your ledgers — and keep it current as ledgers change. **(recommended; default yes)**". Proceed on a bare Enter / "yes"; only step down to manual/none on an explicit choice.

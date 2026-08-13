@@ -469,11 +469,70 @@ again, distinct from a bare `list` (which must never prompt) and from re-reading
 disk (a separate, unrelated meaning of "fresh" — re-run against live state — that a bare
 `list`/`scan` already does on every call by not caching row content).
 
+---
+
+### 🛑 The governing rule for EVERY question in this interview
+
+**Ask about the OUTCOME in the user's words. Never about the mechanism in the skill's words.**
+
+📍 **This is the skill-wide rule, stated canonically in `SKILL.md § Asking the user anything`** —
+it governs `init`'s onboarding questions and every `branch`/`edit` prompt too, not just this
+interview. What follows is the long form with worked examples; if the two ever disagree,
+SKILL.md wins.
+
+This governs every question below — Q0, the Standard four, the Thorough three, and any question
+added later. The question lists in this section are written for the **implementer**, so they
+name config keys (`display_view`, `display_verbosity`, `archive_nudge_threshold`) and flag
+values (`all`/`open`/`done`/`split`/`next`). **Those names are specification, not prompt copy.**
+Translate every one before it reaches a user.
+
+Three sub-rules, each learned from a real failure:
+
+1. **Name what the user GETS, not what gets configured.** "Only unfinished work, everything, or
+   one 'do this next' pick" — never "a view preset." A user should never have to model this
+   skill's internals to answer this skill's own question. If an option can only be understood by
+   someone who has read this file, it is not written yet.
+2. **Ask about the result, not the effort.** The gate question is *"What do you want the Unforget
+   table to display?"* — NOT *"How much do you want to set?"* An effort-framed question makes the
+   user budget time before they know what they'd get, and forces every option to re-explain the
+   subject from scratch.
+3. **No interview bookkeeping in the prompt.** No question counts in labels or descriptions. A
+   count answers "how long is this," which competes with "what am I choosing" at the moment of
+   decision. Relative scope is already conveyed by each tier's description.
+
+**Origin (2026-08-13, one live `--fresh` session).** The interview was first rendered straight
+from this section's key names; the user's report: it gave "not much context as to how to
+answer." The repair took three passes — key names → outcomes, then effort-framing → outcome-
+framing, then removing the question counts that the first pass had *added*. Each pass fixed only
+what was pointed at, because there was no stated principle to apply. **This rule exists so the
+next question is written right the first time, rather than corrected after a user hits it.**
+
+⚠️ The sub-rules are the durable part; the specific wording below is one correct rendering of
+them, not the only one. Re-render freely for context (naming the project's actual sibling
+ledgers, say) — but never re-render back toward mechanism, effort, or counts.
+
 **Step 0 — the depth gate, every `--fresh` call, no exceptions:**
 
-> "How much do you want to set? **Quick** (1 question — just a view preset) · **Standard** (3-4
-> questions — view, grouping, sections, verbosity) · **Thorough** (Standard + staleness
-> thresholds, archive-nudge threshold, multi-ledger union default)."
+> "What do you want the Unforget table to display? **Quick** — pick what a plain `/unforget
+> list` shows: only unfinished work, everything, or a single 'do this next' pick ·
+> **Standard** — the above, plus how rows are sorted, which categories appear, and whether the
+> table renders full-width or condensed · **Thorough** — the above, plus how long an item sits
+> before it's flagged as going stale, when to be reminded to clear out finished items, and
+> whether to include this project's other ledgers."
+
+🛑 **Lead every option with what the user GETS. No question count anywhere in the prompt.**
+The tier names are this skill's vocabulary, not the user's: "just a view preset," "grouping,"
+"verbosity," "multi-ledger union default" all name internal config keys, so an option list built
+from them tells a first-time user only how many questions they're in for — never what they'd be
+choosing. That makes the depth gate unanswerable for exactly the person it most needs to serve.
+Translate to outcomes every time; never pass the key names through verbatim. (Origin
+2026-08-13: a live `--fresh` run rendered this line's own key-name shorthand into the prompt and
+the user reported it gave "not much context as to how to answer.")
+
+⚠️ **Q0 asks the user to commit to a depth before seeing any of its questions** — a structural
+property of the gate, not a wording bug. Because of that, **Quick is the right steer for anyone
+unfamiliar**: say so plainly when the situation warrants, and note that `--fresh` can be re-run
+any time to go deeper. Never imply the choice is irreversible.
 
 The chosen depth governs ONLY this run of the interview — it is not itself saved. Answer with
 `AskUserQuestion` (or the CLI equivalent); this is the one question `--fresh` cannot skip.
@@ -484,11 +543,24 @@ paired `display_group_by`, not asked separately):
 - "Everything" → `display_view=split`, `display_group_by=target`
 - "What's next" → `display_view=next`, `display_group_by=target`
 
-**Standard (adds, each independently skippable — see below):**
+**Standard (adds, each independently skippable — see below).** Each bullet gives the key and its
+values (spec), then **Ask as:** — the outcome-framed wording that actually reaches the user, per
+the governing rule above. Never prompt with the key name or the raw flag values.
+
 - View mode (`all`/`open`/`done`/`split`/`next`) — same five choices as `--view=`.
+  **Ask as:** *"Which rows should a plain list show?"* → "Only what's unfinished" (`open`) ·
+  "Everything, done and not-done together" (`all`) · "Everything, split into two tables"
+  (`split`) · "Only what's finished" (`done`) · "Skip the table — just tell me what to work on
+  next" (`next`).
 - Grouping (`target`/`section`/`none`) — same three choices as `--group-by=`.
+  **Ask as:** *"What order should rows appear in?"* → "Most urgent to ship first" (`target`) ·
+  "Grouped by where they came from — paused plans, session notes, audits, things you reported"
+  (`section`) · "One flat list, no headings" (`none`).
 - Default section scope (`display_sections`) — **`all` (every section) or ONE named section**
   (`paused` / `spillover` / `audit` / `observed`), matching what `--section=` actually accepts.
+  **Ask as:** *"Which kinds of work should show up?"* → "All of them" (`all`) · "Only paused
+  plans" (`paused`) · "Only things set aside mid-session" (`spillover`) · "Only audit findings"
+  (`audit`) · "Only things you reported yourself" (`observed`).
   ⚠️ Do NOT offer an arbitrary multi-section subset: every documented `--section=` usage is
   singular (`--section=audit`, "only Section 3"), so a saved subset would imply a filter
   capability the underlying flag does not have. If `--section=` is ever widened to accept a
@@ -497,25 +569,40 @@ paired `display_group_by`, not asked separately):
   the existing terminal-width auto-detection (§ Terminal-aware rendering: ≥120 cols → full
   10-column, <120 → compact 6-column projection); `full`/`compact` pin the width regardless of
   terminal size, the saved-default equivalent of the per-call `--wide`/`--compact` overrides.
+  **Ask as:** *"How wide should the table be?"* → "Fit it to my window automatically" (`auto`)
+  · "Always show every column, even if it wraps" (`full`) · "Always show the short version"
+  (`compact`).
   ⚠️ **`auto` must be the default and the skip-value.** Saving a pinned `full` permanently
   defeats the auto-fallback that exists *because* the 10-column table is unreadable under 120
   columns — a user who answers "full" on a wide monitor would otherwise get a wrapped mess on a
   laptop forever, with no signal why. Pinning is a deliberate power-user choice, never a
   side effect of answering a setup question.
 
-**Thorough (adds, also independently skippable):**
+**Thorough (adds, also independently skippable).** Same convention — key and values first
+(spec), then **Ask as:** for the wording that reaches the user.
 
 - Staleness thresholds — the four Target-tier day counts from § `/unforget scan`, saved as
   `stale_days_this` / `stale_days_next` / `stale_days_later` / `stale_days_someday`
   (defaults 30 / 90 / 180 / 365). Offer them as one grouped question, not four separate ones;
   skipping keeps every current value.
+  **Ask as:** *"How long should something sit before it gets flagged as going stale?"* — offer
+  the four tiers as one grouped choice in plain terms ("ship-blockers after 30 days, next-release
+  work after 90, later work after 180, someday-maybe after a year"), with "keep these" first.
+  Never prompt with the key names or the phrase "staleness threshold."
 - Archive-nudge threshold (`archive_nudge_threshold`, default 5; `0` silences the nudge) — see
   `/unforget archive` § The archive nudge.
+  **Ask as:** *"How many finished items should pile up before I remind you to clear them out?"*
+  — and when the ledger already exceeds the current value, say so, since the reminder will fire
+  immediately ("you have 21 finished items now, so this fires on your next list").
 - Multi-ledger union default — whether a plain `list` (no `--ledgers=`/`--all-ledgers` flag)
   should behave as if `--all-ledgers` were always passed. Default stays no (§ Multi-ledger
   scope's opt-in-only design is not overridden by this — the interview can only change what a
   BARE `list` defaults to, never make cross-ledger reads silently automatic without the user
   having chosen that here).
+  **Ask as:** *"Should a plain list also include this project's other ledgers?"* — and **name
+  them, with what each holds** ("Terry-only actions, and the multi-inventory sprint"), read from
+  the registry. "Multi-ledger union default" is meaningless to anyone who has not read
+  `reference/branching.md`; the ledgers' actual names and purposes are not.
 
 **Every question past Q0 is skippable — "keep current / use default" is always an explicit
 option, never buried.** A user who picked Standard or Thorough to get more control is not then
@@ -561,15 +648,33 @@ Print the returned `lead_in` verbatim as one line. Do not paraphrase it — it i
 signal distinguishing "you haven't set this yet" from "here's what you're revising," and a
 re-run that reads like a first run makes the user re-answer blind.
 
-**Step 2 — Q0, the depth gate (one `AskUserQuestion`, cannot be skipped).** Offer exactly the
-three depths, Quick first (it is the common case, and the header/label limits mean the depth
-labels must stay short):
+**Step 2 — Q0, the depth gate (one `AskUserQuestion`, cannot be skipped).** Ask it as
+**"What do you want the Unforget table to display?"** — the question names the OUTCOME the user
+is choosing, not the size of the interview. ("How much do you want to set?" asks the user to
+budget effort before they know what they'd get; every option then has to re-explain the subject
+from scratch.) Offer exactly the three depths, Quick first (it is the common case, and the
+header/label limits mean the depth labels must stay short):
 
 | Option label | Description shown |
 |---|---|
-| `Quick` | 1 question — just a view preset |
-| `Standard` | 3-4 questions — view, grouping, sections, verbosity |
-| `Thorough` | Standard + staleness thresholds, archive nudge, multi-ledger default |
+| `Quick` | Pick what a plain `/unforget list` shows: only unfinished work, everything, or one "do this next" pick. |
+| `Standard` | The above, plus how rows are sorted, which categories appear, and full-width vs condensed table. |
+| `Thorough` | The above, plus how long before an item is flagged as going stale, when to be reminded to clear out finished items, and whether to include this project's other ledgers. |
+
+🛑 **Labels are the bare tier name — `Quick`, `Standard`, `Thorough`. No question count in the
+label.** A count is interview bookkeeping, not a description of the outcome, and putting it in
+the label makes "how long is this" compete with "what am I choosing" at the exact moment the
+user is deciding. The descriptions already convey relative size by getting longer, and each
+tier's own question set names its scope. (Origin 2026-08-13, same live `--fresh` session as the
+outcome-first rule below: the counts were added in that fix and removed one turn later as noise
+once the descriptions were doing the work.)
+
+🛑 **These descriptions are outcome-first on purpose — do not "simplify" them back to key names.**
+`view preset` / `grouping` / `verbosity` / `multi-ledger default` are internal config keys; an
+option list written in those terms reads as jargon to anyone who has not read this file, leaving
+the question count as the only usable signal. State what the user gets, put the count in parens
+at the end. Substitute the ledger's real numbers where they help (e.g. name how many sibling
+ledgers "this project's other ledgers" actually means).
 
 If the user dismisses Q0 rather than answering, **abort the interview and render the list with
 existing settings** — a dismissed question is not an answer, and a read command must never be

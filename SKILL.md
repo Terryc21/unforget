@@ -1,6 +1,6 @@
 ---
 name: unforget
-version: 2.7.0
+version: 2.8.0
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -161,6 +161,28 @@ Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verif
 
 ---
 
+## 🛑 Asking the user anything: the governing rule
+
+**Ask about the OUTCOME in the user's words. Never about the mechanism in the skill's words.**
+
+This governs **every** question this skill puts to a user — the `--fresh` display interview, `init`'s onboarding questions, a `branch` confirmation, an `edit` prompt, and any question added later. It is not a `--fresh` rule that happens to generalize; it is a skill-wide rule that `--fresh` happened to expose.
+
+The reference files below are written for the **implementer**, so they name config keys (`display_view`, `git_posture`, `archive_nudge_threshold`) and flag values (`all`/`open`/`split`, `maintained`/`manual`/`none`). **Those names are specification, not prompt copy.** Translate every one before it reaches a user.
+
+1. **Name what the user GETS, not what gets configured.** "Only unfinished work, everything, or one 'do this next' pick" — never "a view preset." A user should never have to model this skill's internals to answer this skill's own question. If an option can only be understood by someone who has read the reference file, it is not written yet.
+2. **Ask about the result, not the effort.** *"What do you want the table to display?"* — never *"How much do you want to set?"* An effort-framed question makes the user budget time before knowing what they'd get, and forces every option to re-explain the subject from scratch.
+3. **No interview bookkeeping in the prompt.** No question counts in labels or descriptions. A count answers "how long is this," competing with "what am I choosing" at the moment of decision.
+
+**Origin (2026-08-13).** A live `--fresh` run rendered `reference/commands.md`'s key names straight into the prompt; the user's report was that it gave "not much context as to how to answer." The repair took three passes — key names → outcomes, then effort-framing → outcome-framing, then removing question counts the *second* pass had added — because each pass fixed only what was pointed at, with no stated principle to apply. This rule is here, in the index every session reads, so the next question is written right the first time rather than corrected after a user hits it.
+
+**Where the rule is applied today (v2.8.0):** `reference/commands.md § Display-preference interview` (all seven `--fresh` questions) and `reference/init.md` (git posture, cadence, recall — the three of its five that named mechanism; the file-path question was already outcome-framed and was deliberately left alone). Both files carry an `**Ask as:**` line per question giving the wording that reaches the user.
+
+⚠️ **`init` deserves the most care of any interview in this skill** — it is the only one where every respondent is new by definition. A confused user in `--fresh` already has a ledger and can decline; a confused user in `init` never gets one. Apply this rule hardest there.
+
+See `reference/commands.md § The governing rule for EVERY question in this interview` for the long form and worked examples.
+
+---
+
 ## Anti-patterns (summary)
 
 Things this skill deliberately does NOT do: custom column reordering · custom rating scales · per-row column visibility · renaming core columns · multiple files · auto-deferring on the user's behalf.
@@ -170,6 +192,53 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.8.0 — every user-facing question now asks about outcomes, not mechanism (2026-08-13) · minor
+
+Documentation and prompt-wording only — **no script, format, or behavior change.** A v1 or v2
+ledger is untouched; every command does exactly what it did in v2.7.0. What changed is what the
+skill *says* when it asks the user something, which is why this is minor rather than patch: it
+alters the interview a user actually sees.
+
+- **A new skill-wide governing rule** (`SKILL.md § Asking the user anything`): **ask about the
+  OUTCOME in the user's words, never about the mechanism in the skill's words.** It governs every
+  question this skill asks — `--fresh`, `init`, `branch` confirmations, `edit` prompts, and
+  anything added later. Placed in SKILL.md deliberately: the rule was first written inside
+  `reference/commands.md`, which is only loaded when working on `list`/`add`/`edit`, so a session
+  running `init` never read it. Three sub-rules: name what the user GETS (not what gets
+  configured); ask about the result, not the effort; no interview bookkeeping (question counts) in
+  the prompt.
+- **`reference/commands.md` — all seven `--fresh` questions** now carry an `**Ask as:**` line with
+  the wording that reaches the user, alongside the key names that remain as implementer spec. The
+  gate question changed from *"How much do you want to set?"* to **"What do you want the Unforget
+  table to display?"**, tier labels dropped their question counts, and `view preset` / `grouping` /
+  `verbosity` / `multi-ledger union default` were translated to plain outcomes.
+- **`reference/init.md` — three of five onboarding questions** given the same treatment: git
+  posture → *"Who should be able to see these notes?"*, cadence preset → options that lead with the
+  shipping pattern rather than the preset name and column count, recall block → *"Should future AI
+  sessions know these notes exist?"* The file-path question was already outcome-framed and was
+  deliberately left alone; the cadence question's *stem* was already right and is marked ✅ so a
+  future editor doesn't "fix" what works. Recommends dropping **Custom** from cadence's spoken
+  options — a 12-column pool is not a question a first-time user can answer before seeing one row.
+- **Why `init` gets the strongest wording:** it is the only interview in this skill where every
+  respondent is new by definition. A confused user in `--fresh` already has a ledger and can
+  decline; a confused user in `init` never gets one.
+
+**Origin (2026-08-13, one live session).** A `--fresh` run rendered `commands.md`'s key names
+straight into the prompt; the user reported it gave "not much context as to how to answer." The
+repair took three passes — key names → outcomes, then effort-framing → outcome-framing, then
+removing the question counts the *second* pass had added — because each pass fixed only what was
+pointed at, with no stated principle to apply. The rule exists so the next question is written
+right the first time.
+
+⚠️ **Deliberately NOT done: a sweep of other skills.** Two skills sampled from the same
+installation (`tutorial-creator`, `ui-enhancer-radar`) already follow this principle without ever
+having been told it — one even stores to an internal `USER_EXPERIENCE` key while never showing that
+name to the user. The failure appears specific to a skill whose *subject matter is its own
+configuration*, where leaking key names is the path of least resistance. A blanket rollout would
+have been solving a problem with two counterexamples and no supporting evidence. The real
+structural gap — **no mechanism propagates a convention across skills** — is noted here rather than
+papered over; `skill-reviewer` is the plausible home for such a check.
 
 ### v2.7.0 — `list --fresh` display preferences; a registry-wiping write bug; spec-vs-code reconciliation (2026-08-13) · minor
 
