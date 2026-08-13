@@ -7,13 +7,37 @@ the token, never the prose — a row can't quietly contradict itself, and a "don
 done until it's checked. This file also shows the optional **`1-Star Risk`** 11th column
 (most rows are `⚪ n/a`; the value is the risky few).
 
+## 1. Paused plans
+
+Plans that started, made some progress, and were intentionally paused.
+
+| #  | Target     | Finding                                              | Urg     | RFix    | RNo     | ROI          | Blast      | Effort | Status | 1-Star Risk |
+|----|------------|------------------------------------------------------|---------|---------|---------|--------------|------------|--------|--------|-------------|
+| P1 | 🟡 LATER   | Schema v3 migration paused (rollback path unclear)   | 🟢 MED  | 🟡 High | 🟢 Med  | 🟢 Good      | 🟢 ~7 fls  | Med    | `@status:blocked` rollback path unclear | `risk‹───────────›clear`<br>⚪ n/a |
+| P2 | 🔵 NEXT    | Test suite: 23 flaky tests, 4 root causes            | 🟡 HIGH | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟡 ~10 fls | Med    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
+| P3 | 🔴 THIS    | Wallet pass server signing not yet implemented       | 🟡 HIGH | 🟢 Med  | 🟡 High | 🟠 Excellent | 🟢 ~4 fls  | Med    | `@status:done-verified` `@verified:device` menu hidden, build 13 | `risk‹────★──────›clear`<br>🟡 Watch (mid) |
+| P4 | 🟡 LATER   | Search relevance overhaul (phases 1-4 done, 5-7 TBD) | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟡 ~8 fls  | Lrg    | `@status:in-progress` → history in detail block | `risk‹───────────›clear`<br>⚪ n/a |
+| P5 | ⚪ SOMEDAY | Third-party API access rejected 2026-03-10           | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | ⚪ 0 fls   | Triv   | `@status:withdrawn` using public OAuth tier instead | `risk‹───────────›clear`<br>⚪ n/a |
+| P6 | 🔵 NEXT    | Wallet pass: build server signing endpoint           | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟢 ~4 fls  | Med    | `@status:open` | `risk‹─────★─────›clear`<br>🟡 Watch (mid) |
+
+### Detail - Paused plans
+
+- **P1** - Migration to v3 schema crashed at app launch with "Duplicate version checksums detected." V2 and V3 reference same model types -> identical checksums. Blocked: three resolution options open (fork V2, custom stage, defer entirely), none picked. Plan: `~/.claude/plans/v3-migration.md`. Files: 5 models + AppSchema + migration plan.
+- **P2** - Plan with full root-cause grouping at `Documentation/Deferred/test-suite-failures.md`. Group A (race conditions) closed 2026-04-12. Re-run full suite first per Pickup Workflow.
+- **P3** - **CLOSED 2026-04-20: hid the menu entry until server signing lands. Spawns: P6.** `@verified:device` — confirmed on device that the Wallet menu no longer appears. Every item that showed the Wallet feature failed when the user completed the flow. Blocked on server `/api/wallet/sign-pass` + Apple Pass Type ID. Pre-submission decision: complete the worker endpoint OR hide the menu item (~30 min if hiding). Chose hiding for build 13; future endpoint work tracked at row P6. **1-Star Risk 🟡 Watch:** a half-built payment/wallet feature reaching a user is a classic one-star trigger; hiding it drops the exposure but the endpoint work (P6) is why it's not yet Clear.
+- **P4** - Bounded index row; full history here (this is the row-length-discipline split — the table cell stays a one-liner, the history lives in the block). Phases 1-4 shipped + deployed (commits `45f90604`, `38aacfca`). In progress: Phase 5 (Best Buy + PCGS sources). Pending: Phase 6 (manual fallbacks) and 26 audit findings (1 CRITICAL / 9 HIGH / 11 MEDIUM / 5 LOW from the 2026-04-01 audits). Plan: `~/.claude/plans/search-overhaul.md`.
+- **P5** - **WITHDRAWN 2026-05-01: not pursuing the third-party tier.** Reopen window closed 2026-05-15; the working alternative ships via the public OAuth tier, so this is superseded rather than deferred. External dependency (no project files affected).
+- **P6** - **Spawned-from: P3.** Server endpoint, Pass Type ID, and client wiring needed before the Wallet feature can re-enable. 4-phase plan in `Documentation/Deferred/wallet-pass-archive.md` (Apple Developer Portal, Worker endpoint, Client update, Testing). Currently hidden from UI by `Sources/ViewModels/WalletViewModel.swift:244` early-return. Restore by deleting that line. **1-Star Risk 🟡 Watch:** re-enabling a payment path is exactly where a signing bug becomes a one-star review; ship it only once the endpoint is device-verified.
+
+---
+
 ### Example row
 
 | P0 | 🔴 THIS | Example: short finding under 50 chars | 🟡 HIGH | 🟢 Med | 🟡 High | 🟠 Excellent | 🟢 ~3 fls | Med | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
 
 The Finding is a one-clause **index**; full context lives in the Detail block under `P0`.
 When a Finding or Status cell would outgrow ~400 chars, the history moves to the detail
-block (losslessly) and the row stays a bounded one-liner — see P4 below.
+block (losslessly) and the row stays a bounded one-liner — see P4 above.
 
 ### Column reference
 
@@ -70,30 +94,6 @@ with the band glyph + zone word on the next line so color is never the only cue:
 The **band** (🔴/🟡/🟢/⚪) is firm; the star's position within it is only a *lean*
 (`deep` / `mid` / `border`), never a percentage. Most rows are `⚪ n/a` — paused plans,
 internal spillover, and audit findings usually aren't user-facing risks.
-
----
-
-## 1. Paused plans
-
-Plans that started, made some progress, and were intentionally paused.
-
-| #  | Target     | Finding                                              | Urg     | RFix    | RNo     | ROI          | Blast      | Effort | Status | 1-Star Risk |
-|----|------------|------------------------------------------------------|---------|---------|---------|--------------|------------|--------|--------|-------------|
-| P1 | 🟡 LATER   | Schema v3 migration paused (rollback path unclear)   | 🟢 MED  | 🟡 High | 🟢 Med  | 🟢 Good      | 🟢 ~7 fls  | Med    | `@status:blocked` rollback path unclear | `risk‹───────────›clear`<br>⚪ n/a |
-| P2 | 🔵 NEXT    | Test suite: 23 flaky tests, 4 root causes            | 🟡 HIGH | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟡 ~10 fls | Med    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
-| P3 | 🔴 THIS    | Wallet pass server signing not yet implemented       | 🟡 HIGH | 🟢 Med  | 🟡 High | 🟠 Excellent | 🟢 ~4 fls  | Med    | `@status:done-verified` `@verified:device` menu hidden, build 13 | `risk‹────★──────›clear`<br>🟡 Watch (mid) |
-| P4 | 🟡 LATER   | Search relevance overhaul (phases 1-4 done, 5-7 TBD) | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟡 ~8 fls  | Lrg    | `@status:in-progress` → history in detail block | `risk‹───────────›clear`<br>⚪ n/a |
-| P5 | ⚪ SOMEDAY | Third-party API access rejected 2026-03-10           | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | ⚪ 0 fls   | Triv   | `@status:withdrawn` using public OAuth tier instead | `risk‹───────────›clear`<br>⚪ n/a |
-| P6 | 🔵 NEXT    | Wallet pass: build server signing endpoint           | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟢 ~4 fls  | Med    | `@status:open` | `risk‹─────★─────›clear`<br>🟡 Watch (mid) |
-
-### Detail - Paused plans
-
-- **P1** - Migration to v3 schema crashed at app launch with "Duplicate version checksums detected." V2 and V3 reference same model types -> identical checksums. Blocked: three resolution options open (fork V2, custom stage, defer entirely), none picked. Plan: `~/.claude/plans/v3-migration.md`. Files: 5 models + AppSchema + migration plan.
-- **P2** - Plan with full root-cause grouping at `Documentation/Deferred/test-suite-failures.md`. Group A (race conditions) closed 2026-04-12. Re-run full suite first per Pickup Workflow.
-- **P3** - **CLOSED 2026-04-20: hid the menu entry until server signing lands. Spawns: P6.** `@verified:device` — confirmed on device that the Wallet menu no longer appears. Every item that showed the Wallet feature failed when the user completed the flow. Blocked on server `/api/wallet/sign-pass` + Apple Pass Type ID. Pre-submission decision: complete the worker endpoint OR hide the menu item (~30 min if hiding). Chose hiding for build 13; future endpoint work tracked at row P6. **1-Star Risk 🟡 Watch:** a half-built payment/wallet feature reaching a user is a classic one-star trigger; hiding it drops the exposure but the endpoint work (P6) is why it's not yet Clear.
-- **P4** - Bounded index row; full history here (this is the row-length-discipline split — the table cell stays a one-liner, the history lives in the block). Phases 1-4 shipped + deployed (commits `45f90604`, `38aacfca`). In progress: Phase 5 (Best Buy + PCGS sources). Pending: Phase 6 (manual fallbacks) and 26 audit findings (1 CRITICAL / 9 HIGH / 11 MEDIUM / 5 LOW from the 2026-04-01 audits). Plan: `~/.claude/plans/search-overhaul.md`.
-- **P5** - **WITHDRAWN 2026-05-01: not pursuing the third-party tier.** Reopen window closed 2026-05-15; the working alternative ships via the public OAuth tier, so this is superseded rather than deferred. External dependency (no project files affected).
-- **P6** - **Spawned-from: P3.** Server endpoint, Pass Type ID, and client wiring needed before the Wallet feature can re-enable. 4-phase plan in `Documentation/Deferred/wallet-pass-archive.md` (Apple Developer Portal, Worker endpoint, Client update, Testing). Currently hidden from UI by `Sources/ViewModels/WalletViewModel.swift:244` early-return. Restore by deleting that line. **1-Star Risk 🟡 Watch:** re-enabling a payment path is exactly where a signing bug becomes a one-star review; ship it only once the endpoint is device-verified.
 
 ---
 
