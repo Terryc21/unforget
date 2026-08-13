@@ -303,6 +303,140 @@ computed one.
 Steps 1–2, 3–4, and 6–7 are independent and can ship separately. **6 depends on 1–2** — the
 proof runner is the recipe runner, same parser, same allowlist, same four states.
 
+---
+
+## Build notes
+
+Resolutions to the questions an implementer hits first. Every number below was measured
+across the three source ledgers (`UNFORGET.md`, `TERRY-UNFORGET.md`, `MI-UNFORGET.md`) on
+2026-08-13, not estimated.
+
+**Recipe corpus as it exists today — 111 backticked commands:**
+
+| First token | Count | Note |
+|---|---|---|
+| `grep` | 94 | 85% of the corpus |
+| `git` | 5 | all `remote get-url` |
+| `ls` | 4 | |
+| `find` | 2 | one is the bare word `find`, not a command |
+| `awk` | 1 | a range-scoped function body scan |
+| `security` | 1 | ⚠️ see Safety below |
+| prose false-positives | 2 | `convention`, `command -v gh` |
+
+Path style: **86 relative · 5 absolute.** Pipes: **1** (the row that broke its own table).
+
+### 1. Migration — do NOT report 111 `unrunnable` on first run
+
+A wall of noise on day one trains people to ignore the check, which is the failure the
+em-dash bug demonstrated (a check that can only false-positive gets tuned out).
+
+**Resolution:** `--run` is **opt-in per recipe**. A recipe without the `→ expect` clause is
+skipped silently and not counted as a finding. Only recipes that declare an expectation are
+executed. Adoption is then row-by-row, at the moment someone touches a row anyway.
+
+`verify --run --propose` is the one-time helper: it parses prose recipes of the existing
+shapes (`= N`, `≥ N`, `>= N`, `= 0`) and prints the v2.9 line it *would* write, without
+writing it. **Measured feasibility: 74 of 111** carry both a `grep -c` command and an
+explicit expected number, so one narrow pattern converts two-thirds; the remaining 37 stay
+prose until hand-edited.
+
+⚠️ Note the two counts differ and it matters: **94** recipes *start with* `grep`, but only
+**74** state a number a parser can extract. The other 20 are greps whose expectation lives in
+a sentence ("→ still uncached", "→ both gated"). Sizing this work off the 94 would overstate
+what automation can do by a quarter — the same overstatement class as A42's "~10 passes."
+
+### 2. Repo root — the registry does not know it
+
+Recipes cite paths relative to *something* the registry has never recorded. The ledger dir is
+known; the source tree is not.
+
+**Resolution:** add one optional global registry key, `source_root`, defaulting to the
+ledger dir's nearest ancestor containing `.git`. Resolution order for a recipe path:
+absolute → used as-is (and must pass the sandbox check below) · relative → resolved against
+`source_root`.
+
+Both styles already occur in the wild (86 vs 5), so **both must keep working** — rewriting
+5 absolute paths as part of this release would be scope creep with no benefit.
+
+### 3. Pipes — a documented no-pipe rule, not an escape
+
+Exactly one recipe in 111 contains a pipe, and it broke the row it was written in: the `\|`
+inside `grep -n 'A\|B'` was read by markdown as a column break, so the row parsed as 11 cells
+against a 10-column table and failed the gate. It was fixed by rewriting the command
+pipe-free, not by escaping it.
+
+**Resolution:** recipes are **pipe-free by rule**, which falls out of "no shell" anyway
+(§ Execution safety). A recipe containing `|` is `unrunnable` with a message naming the
+table-cell hazard and suggesting the rewrite. An HTML entity (`&#124;`) is deliberately NOT
+adopted: no ledger in the corpus uses one, and it would make the command non-copy-pasteable —
+trading a parse failure for a usability failure.
+
+Alternation is expressible without a pipe: `grep -n 'DETAIL_.*_RE = '` replaced
+`grep -n 'A\|B'` in the source incident and returned strictly more useful output.
+
+### 4. Safety — the corpus contains a live credential-printing command
+
+One existing recipe is `security find-generic-password -s github-pat -a $USER -w`. Per
+`security help find-generic-password`, `-w` is *"Display only the password on stdout"* — so
+this recipe's entire output **is a credential**. It is a legitimate manual check; it must
+never be executed by a runner or have its output captured into a report.
+
+Three rules follow, and they are not theoretical:
+
+- **`security` is not on the allowlist.** Neither is `git`, despite 5 uses — `git` is a
+  large surface with write subcommands, and `remote get-url` is not worth the exposure.
+  Both report `unrunnable`.
+- **Never echo recipe stdout verbatim.** Report only the extracted value compared against
+  the expectation (`expected 1, got 3`). A runner that printed output would have leaked the
+  PAT above.
+- **`$USER`, `$(…)`, backticks, `~` → `unrunnable`.** No variable expansion, which follows
+  from "no shell" but is worth stating because the corpus already contains one.
+
+### 5. Session-start integration
+
+`--run` belongs in the session-open flow, so a session learns which rows decayed *before*
+picking work rather than mid-fix. That is how the source session went wrong: four stale
+recipes were discovered one at a time, each after the row had already been selected.
+
+**Resolution:** not automatic. A skill that silently executes commands at session start is
+the wrong default for a shared, git-committed file. Instead `list` reports a one-line
+summary when any row carries a runnable recipe that has not been run this session —
+`3 rows have unverified premises · run: /unforget verify --run` — and the user decides.
+
+### 6. Test strategy — Part 3's rule applied to Part 3
+
+The bench is 328 lines (`tests/test_row_visibility.py` + `normalize.py`) against ~2,900 lines
+of touched spec and code. This release adds an execution surface, so the guards matter more
+than usual.
+
+Minimum bench, each written to **fail against the pre-change state** per this spec's own
+regression-guard rule:
+
+| Guard | Must fail before |
+|---|---|
+| A `[closed]`-matching recipe on an open row reports **FIXED** | today: no state at all |
+| A moved path reports **DECAYED**, not a passing 0-count | today: silent false pass |
+| An expectation mismatch reports **DRIFTED** with both values | today: nothing compares |
+| A piped recipe reports `unrunnable`, never executes | — |
+| `security`/`git`/`$USER` report `unrunnable` | — |
+| Recipe stdout never appears in report output | ⚠️ the PAT-leak guard |
+| A `blocked-by` cycle is an error | today: no relation exists |
+| A `blocked-by` naming a closed row is a warn | the A49 case |
+| `done-verified` with a failing `proof:` is refused | today: assertion only |
+
+Fixture ledgers must include an **em-dash** variant. The detail-pointer check was blind to
+em-dash ledgers for a full release because every fixture used ASCII hyphens — the same
+monoculture would hide the next parser bug.
+
+### 7. Open decisions — NOT resolved here
+
+- **Does `--run` ever gate `archive`/`promote`?** Spec says no for v2.9 (warn only). Revisit
+  after field data, same escalation caution as the char-budget hard threshold.
+- **Should `--propose` be able to write?** Currently print-only. Writing 94 auto-converted
+  recipes unattended is a large unattended edit to a file that is the single source of truth.
+
+---
+
 ## Version
 
 Minor → **v2.9.0**. Additive, backward compatible, no forced migration. Per this repo's
