@@ -135,6 +135,12 @@ def finding_cell(row: str) -> str:
 
 HEADER_CELL_RE = re.compile(r"^\|\s*#?\s*\|.*\bStatus\b.*\|\s*$")
 
+# A markdown delimiter row (|---|---|). It marks the line ABOVE it as a header,
+# which is how a table whose header has no Status column gets its width. Without
+# it, `declared` stays pinned to the PREVIOUS table's width and every row of the
+# second table is mis-flagged as a cell-count error.
+DELIM_ROW_RE = re.compile(r"^\|\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|\s*$")
+
 
 def _declared_width(line: str) -> int:
     """Column count declared by a table header row, or 0 if not a header."""
@@ -148,6 +154,7 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
         char_budget_hard = char_budget * DEFAULT_CHAR_BUDGET_HARD_MULTIPLE
     findings = []
     declared = 0  # width of the most recent header row; 0 = unknown
+    prev_line = ""  # previous line, so a delimiter row can read its header
     for line in text.splitlines():
         # Track the enclosing table's declared width. A ledger legitimately holds
         # several tables of DIFFERENT widths (Standard 10-col sections alongside a
@@ -155,10 +162,23 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
         width = _declared_width(line)
         if width:
             declared = width
+            prev_line = line
+            continue
+
+        # A delimiter row takes its width from the header above it. This is the
+        # only signal for a table whose header has no Status column (a 2-col
+        # boot-volume split beneath a Standard table, say); without it those rows
+        # are measured against the wrong table and every one reports an error.
+        if DELIM_ROW_RE.match(line):
+            if prev_line.lstrip().startswith("|"):
+                declared = len(parse_status.data_cells(prev_line))
+            prev_line = line
             continue
 
         if not parse_status.ROW_ID_RE.match(line):
+            prev_line = line
             continue
+        prev_line = line
         parsed = parse_status.parse_row(line)
         rid = parsed["id"] or "?"
 

@@ -74,6 +74,10 @@ LEDGER = """# t
 | # | Finding | Phase | Model | Status |
 |---|---|---|---|---|
 | MI-08 | narrower table must not false-positive | 3 | opus | `@status:open` |
+
+| # | Why |
+|---|---|
+| HC-01 | a header with NO Status column must still set the width |
 """
 
 print("\ncell-count check:")
@@ -87,7 +91,7 @@ with tempfile.TemporaryDirectory() as td:
     data = json.loads(out.stdout)
 
     # All four rows must be SEEN — including the suffixed and hyphenated ids.
-    check("rows_checked counts every id shape", data["rows_checked"], 4)
+    check("rows_checked counts every id shape", data["rows_checked"], 5)
 
     cc = [x for x in data["findings"] if x["check"] == "cell-count"]
     check("exactly one cell-count finding", len(cc), 1)
@@ -97,6 +101,13 @@ with tempfile.TemporaryDirectory() as td:
     # The 5-column sprint table must NOT be measured against the 10-column header.
     check("no false positive on the narrower table",
           [x["id"] for x in cc if x["id"] == "MI-08"], [])
+    # A header with no Status column is still a header. Before 2026-08-20 only a
+    # header matching HEADER_CELL_RE (which requires the literal word "Status")
+    # reset the width, so a 2-col table left `declared` pinned to the previous
+    # table's 10 and every row under it errored. Shipped as 9 false errors on a
+    # live AUDIT ledger, failing its gate.
+    check("no false positive on a Status-less header",
+          [x["id"] for x in cc if x["id"] == "HC-01"], [])
 
 # --- 4. contradiction matching: no false positives on ordinary prose ---------
 # Bare substring matching produced three FP classes in the field (2026-07-31).
