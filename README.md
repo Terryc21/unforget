@@ -150,6 +150,38 @@ work that crosses teams.
 - **It notices things going stale.** `/unforget scan` finds rows sitting far longer than their
   priority suggests.
 
+### The part nobody designed: it turns into case law
+
+This one wasn't planned, and it's the most interesting thing the format does.
+
+Three features got added for small, separate reasons: rows can link to each other (`[[A72]]`),
+each closed row keeps a detail block explaining *why* it was fixed that way, and those blocks
+record the dead ends — the hypotheses you tried and threw away. None of that was meant to build
+anything bigger.
+
+But past a certain number of closed rows, they cross a line together. A new bug stops being
+solved from scratch and starts being *argued against precedent*: "this is the same shape as that
+row we closed in June — make the fix look like that one." A wrong-but-plausible fix gets caught
+by a closed row that already says *don't do the obvious thing here, and here's why.* The ledger
+quietly became a place you compare a current problem against related problems you already solved.
+
+**Why git can't do this.** Grepping your commit history finds fixes that *shipped*. It cannot
+find the two things that actually save time on the next bug: the hypotheses you tried and
+abandoned (you don't commit a theory you disproved), and the reason a plausible fix is wrong.
+Those live in the closed rows, not the diff.
+
+Once a ledger is mature enough, it's worth naming that second use explicitly. A `PRECEDENTS.md`
+file — a one-line-per-entry index that *points at* the closed rows carrying reusable shapes and
+traps, without copying them — makes "what did we already learn about this?" a lookup instead of a
+memory. It references the rows; the rows stay the source of truth.
+
+🛑 **Only build the index on a mature ledger.** With three closed rows, an index manufactures
+false precedent from whatever you happened to fix *first* — superstition wearing a CANON label.
+The signals that say a ledger is ready: a real share of rows closed (not a handful), many rows
+cited by other rows, a reference shape that recurred across months rather than one early fix, and
+citations that point at *closed* work. Measure before you formalize. On a young ledger, skip it —
+the format is a to-do list first, and only earns the second use with age.
+
 ---
 
 ## Where it's solid, where it isn't
