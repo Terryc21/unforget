@@ -176,7 +176,8 @@ HDR = ("| # | Target | Finding | Urgency | Risk:Fix | Risk:No Fix | ROI | Blast 
 
 
 def _checks(row):
-    return verify_ledger.check_rows(HDR + row, 400)
+    findings, _blockers = verify_ledger.check_rows(HDR + row, 400)
+    return findings
 
 
 quoted = _checks(QUOTE)
@@ -203,6 +204,46 @@ contra = [f for f in _checks(BOTH) if f["check"] == "contradiction"]
 check("contradiction fires alongside the quote", len(contra), 1)
 check("contradiction message points at the quote, not the prose",
       "likely cause" in contra[0]["message"] if contra else False, True)
+
+# --- ship_ready / this_open (§6b) -----------------------------------------
+# The SHIP question is distinct from the ARCHIVE/PROMOTE gate. check_rows now
+# also returns `blockers` — EVERY 🔴 THIS row still blocking release,
+# regardless of status — so the caller can report this_open even for
+# honestly-`open` rows that keep gate_pass true. Guards the 2026-09-05 misread:
+# an open, device-reproduced ship-blocker read as "gate PASSES / ship ready".
+print("\nship_ready / this_open:")
+
+
+def _blockers(row):
+    _findings, blockers = verify_ledger.check_rows(HDR + row, 400)
+    return {b["id"] for b in blockers}
+
+
+OPEN_THIS = ("| B1 | THIS | a device-reproduced blocker, honestly open | HIGH "
+             "| Low | High | Good | 1 file | Small | `@status:open` · open |")
+check("an OPEN 🔴 THIS row is a ship blocker (in this_open)",
+      "B1" in _blockers(OPEN_THIS), True)
+check("...but an open blocker is only a WARN, so the archive gate still passes",
+      all(f["severity"] == "warn"
+          for f in _checks(OPEN_THIS) if f["check"] == "this-blocker"), True)
+
+UNVER_THIS = ("| B2 | THIS | code done, device proof owed | HIGH | Low | High "
+              "| Good | 1 file | Small | `@status:done-unverified` · owed |")
+check("a done-unverified 🔴 THIS row is a ship blocker",
+      "B2" in _blockers(UNVER_THIS), True)
+check("...and it IS an error (claims done without proof — blocks the gate too)",
+      any(f["severity"] == "error"
+          for f in _checks(UNVER_THIS) if f["check"] == "this-blocker"), True)
+
+CLEAN_THIS = ("| B3 | THIS | proven and closed | HIGH | Low | High | Good "
+              "| 1 file | Small | `@status:done-verified` `@verified:device` |")
+check("a clean done-verified 🔴 THIS row is NOT a ship blocker",
+      "B3" in _blockers(CLEAN_THIS), False)
+
+OPEN_NEXT = ("| B4 | NEXT | open but targeted at a later release | HIGH | Low "
+             "| High | Good | 1 file | Small | `@status:open` · open |")
+check("an open row targeted NEXT (not THIS) is NOT a ship blocker",
+      "B4" in _blockers(OPEN_NEXT), False)
 
 print()
 if FAILURES:

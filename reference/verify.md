@@ -36,6 +36,32 @@ contradictions, tiers, or any other finding. See `reference/commands.md` §
 **Errors fail the gate; warnings do not.** Warnings are hygiene the user should
 address but that don't block a ship decision.
 
+## Two different questions: `gate_pass` vs `ship_ready` (§6b)
+
+`verify` answers two questions that are easy to conflate and must not be:
+
+| Field | Question it answers | True when |
+|---|---|---|
+| **`gate_pass`** | *ARCHIVE / PROMOTE:* is the ledger internally consistent enough to move rows? | no error-severity finding exists |
+| **`ship_ready`** | *SHIP:* are all this-release blockers cleared? | `this_open` is empty |
+
+`this_open` lists **every 🔴 THIS row that still blocks release** — a row whose
+Target is THIS and that is not cleanly `done-verified`/`withdrawn` — *regardless
+of its `@status`*. A row that is honestly `@status:open` and 🔴 THIS is not a
+gate ERROR (nothing about it is inconsistent, so `gate_pass` stays true) but it
+absolutely blocks a ship, so it appears in `this_open` and drives `ship_ready`
+false.
+
+**The normal mid-release state is `gate_pass: true` with a non-empty
+`this_open`:** the ledger is tidy and archivable, AND a release is not yet
+cleared. Read `ship_ready`/`this_open` for "can I submit?", never `gate_pass`.
+
+*Origin (2026-09-05): a session read `gate_pass: true` on a ledger carrying an
+`@status:open`, device-reproduced 🔴 THIS ship-blocker and could have concluded
+"ready to submit". The measurement was correct; the field answered a different
+question than the one being asked. `ship_ready` exists so the ship question has
+its own answer instead of borrowing the archive gate's.*
+
 ## Behavior (§4b)
 
 - **On demand:** `/unforget verify` reports the finding list. Exit 1 when any

@@ -45,11 +45,20 @@ Output (stdout, JSON):
     ],
     "error_count": N,
     "warn_count": N,
-    "gate_pass": true|false,   # false when any error-severity finding exists
+    "gate_pass": true|false,   # ARCHIVE/PROMOTE question: false when any error-severity finding exists
+    "ship_ready": true|false,  # SHIP question: false when any 🔴 THIS row still blocks release
+    "this_open": ["<row id>", ...],  # the THIS rows behind a false ship_ready (empty when ship_ready)
     "advisory": "<one-line summary>"
   }
 
-Exit codes:
+`gate_pass` and `ship_ready` answer DIFFERENT questions (§6b). `gate_pass`
+gates archive/promote: is the ledger internally consistent? `ship_ready`
+gates a release: are all THIS-targeted blockers cleared? A row that is
+honestly `@status:open` and 🔴 THIS keeps `gate_pass` true (nothing is
+inconsistent) while making `ship_ready` false (a blocker is open). Read
+`ship_ready`/`this_open` for "can I submit?", never `gate_pass`.
+
+Exit codes (unchanged — they track gate_pass, the archive/promote gate):
   0  no error-severity findings (gate passes; warnings may still be present)
   1  at least one error-severity finding (gate FAILS; archive/promote should refuse)
   2  usage error / file not found
@@ -149,10 +158,23 @@ def _declared_width(line: str) -> int:
     return len(parse_status.data_cells(line))
 
 
-def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None) -> list[dict]:
+def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None):
+    """Return (findings, blockers).
+
+    `blockers` is the list of every 🔴 THIS row that still blocks release —
+    `blocks_release` true — regardless of its status, each as
+    {"id", "status"}. It is the raw material for the caller's `ship_ready` /
+    `this_open` (§6b): the SHIP question ("is a release cleared?"), which is
+    distinct from `gate_pass` (the ARCHIVE/PROMOTE question, "is the ledger
+    consistent?"). An honestly-`open` blocker is fine for the ledger's
+    integrity (so it does not fail `gate_pass`) yet absolutely blocks a ship
+    (so it MUST appear in `this_open`). Conflating the two is why an open,
+    device-reproduced ship-blocker read as "gate PASSES".
+    """
     if char_budget_hard is None:
         char_budget_hard = char_budget * DEFAULT_CHAR_BUDGET_HARD_MULTIPLE
     findings = []
+    blockers = []  # every blocks_release row, for the caller's ship_ready/this_open
     declared = 0  # width of the most recent header row; 0 = unknown
     prev_line = ""  # previous line, so a delimiter row can read its header
     for line in text.splitlines():
@@ -251,7 +273,11 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
 
         # Check 6: THIS-target + not proven → still blocks release (a warn, since
         # it is expected while work is open; error only if the row CLAIMS done).
+        # Regardless of severity, EVERY blocks_release row is collected for the
+        # caller's ship_ready/this_open — an honestly-open blocker is not a
+        # gate ERROR but is still a SHIP blocker (§6b).
         if parsed["blocks_release"]:
+            blockers.append({"id": rid, "status": parsed["status"]})
             sev = "error" if parsed["status"] in ("done-verified", "done-unverified") else "warn"
             findings.append({
                 "severity": sev,
@@ -306,7 +332,7 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
                     "message": "row cites a file path but has no verify recipe (still-open or still-done); premise may have decayed",
                 })
 
-    return findings
+    return findings, blockers
 
 
 def check_detail_pointers(text: str) -> list[dict]:
@@ -397,7 +423,7 @@ def main() -> int:
         return 2
 
     text = target.read_text(encoding="utf-8", errors="replace")
-    findings = check_rows(text, args.char_budget, char_budget_hard)
+    findings, blockers = check_rows(text, args.char_budget, char_budget_hard)
     rows_checked = sum(1 for ln in text.splitlines() if parse_status.ROW_ID_RE.match(ln))
 
     pointer_findings, bullet_ids, pointer_ids = check_detail_pointers(text)
@@ -412,9 +438,21 @@ def main() -> int:
     warn_count = sum(1 for f in findings if f["severity"] == "warn")
     gate_pass = error_count == 0
 
+    # §6b: the SHIP question, distinct from gate_pass (the ARCHIVE/PROMOTE
+    # question). this_open lists EVERY 🔴 THIS row still blocking release —
+    # including honestly-`open` ones that do not fail gate_pass. ship_ready is
+    # true only when that list is empty. A green gate_pass with a non-empty
+    # this_open is the normal, correct state mid-release: the ledger is
+    # consistent (archivable) AND a release is not yet cleared.
+    this_open = [b["id"] for b in blockers]
+    ship_ready = not this_open
+
     advisory = (
         f"{error_count} error(s), {warn_count} warning(s); "
         + ("gate PASSES" if gate_pass else "gate FAILS — archive/promote should refuse")
+        + "; ship "
+        + ("READY" if ship_ready
+           else f"BLOCKED — {len(this_open)} THIS row(s): {', '.join(this_open)}")
     )
     if orphan_bullets:
         # Informational only (§4f): a Detail bullet with no pointer usually means
@@ -433,6 +471,8 @@ def main() -> int:
         "error_count": error_count,
         "warn_count": warn_count,
         "gate_pass": gate_pass,
+        "ship_ready": ship_ready,
+        "this_open": this_open,
         "advisory": advisory,
     }
     json.dump(result, sys.stdout)

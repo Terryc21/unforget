@@ -171,7 +171,7 @@ for _hdr, _n in (
 import verify_ledger as _vl  # noqa: E402
 _ptr = _bc.build_pointer_row("U9", "⚪ SOMEDAY", "MI-SPRINT.md", "lifespan",
                              _bc.parent_header_cells("| # | Target | Finding | Urgency | Risk: Fix | Risk: No Fix | ROI | Blast Radius | Fix Effort | Status |"))
-_vf = _vl.check_rows(_ptr + "\n", 400)
+_vf, _ = _vl.check_rows(_ptr + "\n", 400)
 if any(f["check"] == "stale-recipe" for f in _vf):
     print("FAIL: verify flagged stale-recipe on a pointer row (false positive)"); ok = False
 
@@ -190,7 +190,7 @@ _closed_cases = [
 for _name, _tok, _exempt in _closed_cases:
     _row = ("| Z1 | — | Traced to Foo.swift:12 | ⚪ | ⚪ | ⚪ | ⚪ | ⚪ | None | "
             + _tok + " |\n")
-    _hit = any(f["check"] == "stale-recipe" for f in _vl.check_rows(_row, 400))
+    _hit = any(f["check"] == "stale-recipe" for f in _vl.check_rows(_row, 400)[0])
     if _exempt and _hit:
         print(f"FAIL: stale-recipe flagged a {_name} row (should be exempt)"); ok = False
     if not _exempt and not _hit:
