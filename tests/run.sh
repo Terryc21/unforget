@@ -234,6 +234,17 @@ if ! python3 "$TESTS_DIR/test_row_visibility.py"; then
   FAILED=1
 fi
 
+# --- forbidden-content guard (guard_scan.py) -----------------------------
+# Self-contained: builds its own guard config in a temp dir, asserts the four
+# load-bearing properties (no-op default, types-not-text, loud failure on a
+# malformed declaration, warn/block separation) as direct checks.
+echo
+echo "--- forbidden-content guard ---"
+if ! python3 "$TESTS_DIR/test_guard_scan.py"; then
+  echo "FAIL: forbidden-content guard regression"
+  FAILED=1
+fi
+
 if [[ "$FAILED" == 1 ]]; then
   echo
   echo "One or more tests failed."
