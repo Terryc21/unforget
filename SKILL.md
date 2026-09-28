@@ -107,10 +107,11 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance | Reading/writing a row's status; running `archive`/`list`/`edit` |
 | `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
+| `reference/forbidden-content.md` | (format v2+) the forbidden-content guard at `add`/`edit`: repo-declared types, `policy_redaction` (off/warn/block), the report-the-type-never-the-text rule, and loud failure on a malformed declaration | Running `/unforget add` or `edit` in a repo with a `.unforget-guard.json` |
 | `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
 | `reference/branching.md` | (format v2+) the branching model: the three axes (actor / lifespan / domain), the decision cascade, parent/child conventions, and the atomic `branch` command | Deciding whether work earns a child ledger; running `/unforget branch` |
 | `reference/skill-handoffs.md` | (format v2+) companion skill handoffs: the 5 functions, the global manifest, install-state detection by invocable name, frequency governance, the shipped-default disclosure | Firing a companion recommendation at a done/promote/verify transition |
-| `scripts/*.py` | Deterministic helpers (surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector, row-length check + lossless split, companion manifest + resolver, display-preference resolver). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
+| `scripts/*.py` | Deterministic helpers (forbidden-content guard, surface scan, fuzzy dedup, path encoding, format-version check, backup prune, status-token parse, registry read/write, integrity verify, deferral gate + tally, atomic branch creation, recall-block writer, import drift detector, row-length check + lossless split, companion manifest + resolver, display-preference resolver). JSON in / JSON out. Standard library only. See `scripts/README.md`. | Whenever the corresponding reference file delegates to a script |
 
 **Spec-substitution principle.** This SKILL.md is the index, not the spec. When implementing or modifying any subcommand, `Read` the linked reference file before acting. The reference files are authoritative.
 
@@ -192,6 +193,34 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### Unreleased — forbidden-content guard (proposal) · minor
+
+Additive and **inert by default**: with no `.unforget-guard.json`, or with
+`policy_redaction: off`, `add`/`edit` behave exactly as before. No format change,
+no new column, no change to any existing script.
+
+- **New `reference/forbidden-content.md` + `scripts/guard_scan.py`.** A repo may declare content
+  types its ledger must never contain (`forbidden_types` — name + regex) in a repo-local
+  `.unforget-guard.json`, and `add`/`edit` check candidate row text against them before the write.
+  Strictness is the registry global `policy_redaction` (`off` | `warn` | `block`, default `off`),
+  read the same way the deferral gate reads `policy_deferral`.
+- **The load-bearing rule: report the TYPE, never the matched text.** A guard that echoes what it
+  caught re-leaks it, and puts it into the agent's context where it can be summarized onward. The
+  advisory names `credential-fragment`, and the caller paraphrases.
+- **Loud failure, by design.** An unreadable, non-object, or invalid-regex declaration is a usage
+  error (exit 2), never a silent pass — a typo'd pattern that matches nothing is exactly the failure
+  a guard must not have.
+- **Not a scanner and not a redactor.** It checks the text it is handed on the write path; it never
+  reads the ledger, the repo, or git history, and never rewrites a row. Spec § "The honesty this
+  spec keeps" states these limits up front.
+- `tests/test_guard_scan.py` asserts the four load-bearing properties (no-op default,
+  types-not-text, loud failure, warn/block separation) against literal secret bytes; wired into
+  `tests/run.sh`.
+
+Two test failures in `tests/run.sh` are pre-existing on `main` and unrelated to this change:
+`verify_install diverged from golden` and a behavioral `A1.Target` cell assertion. Verified by
+stashing this branch and re-running the suite.
 
 ### v2.8.0 — every user-facing question now asks about outcomes, not mechanism (2026-08-13) · minor
 
