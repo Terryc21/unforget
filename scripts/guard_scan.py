@@ -117,18 +117,19 @@ def resolve_policy(config: dict, ledger_dir: Path | None) -> str:
     if policy in POLICIES:
         return policy
     if ledger_dir is not None and _registry is not None:
+        # NOTE: the registry entry point is read_registry(Path), NOT a
+        # read(dir=...) callable. Calling the wrong name raised AttributeError,
+        # which a broad except swallowed — so a repo's registry policy was
+        # silently ignored and the guard fell back to "off". Narrow the except
+        # to what a malformed registry can actually raise, so a future
+        # AttributeError fails loudly instead of disabling the check.
         try:
-            reg = _registry.read(dir=str(ledger_dir))
-            value = (reg.get("global") or {}).get("policy_redaction")
-            if value in POLICIES:
-                return value
-        except SystemExit as _se:
-            if getattr(_se, "code", 1) == 2:
-                raise
-        except Exception:
-            pass
-        except Exception:
-            pass
+            reg = _registry.read_registry(ledger_dir)
+        except (OSError, ValueError, KeyError):
+            return DEFAULT_POLICY
+        value = (reg.get("global") or {}).get("policy_redaction")
+        if value in POLICIES:
+            return value
     return DEFAULT_POLICY
 
 
@@ -174,11 +175,21 @@ def main() -> int:
 
     config = load_config(config_path)
     policy = args.policy or resolve_policy(config, ledger_dir)
+
+    # "off" is a TOTAL no-op: return before compiling, so a repo that is not
+    # using the guard can never be broken by a malformed declaration sitting
+    # in a file nobody reads. It also keeps the write path free when the
+    # feature is disabled.
+    if policy == "off":
+        print(json.dumps({"checked": False, "policy": policy, "clean": True,
+                          "types": [], "advisory": ""}, indent=2))
+        return 0
+
     compiled = compile_types(config)
 
-    # Nothing declared, or the repo turned it off → no-op, and we say so
-    # explicitly so a caller can distinguish "no match" from "not checked".
-    if not compiled or policy == "off":
+    # Nothing declared → no-op, reported explicitly so a caller can tell
+    # "no match" from "not checked".
+    if not compiled:
         print(json.dumps({"checked": False, "policy": policy, "clean": True,
                           "types": [], "advisory": ""}, indent=2))
         return 0

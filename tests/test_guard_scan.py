@@ -113,12 +113,18 @@ if r.returncode != 0 or d.get("checked") is not True or d.get("clean") is not Tr
     fail(f"clean row should be checked+clean+exit 0, got rc={r.returncode} {d}")
 
 # 3. malformed declarations are usage errors, not silent passes ------------
+# NB: each carries an explicit policy_redaction. Without one, policy defaults
+# to "off", and "off" is a total no-op that returns BEFORE compiling — which is
+# correct, but would mean these cases never reached the code under test.
 cases = {
-    "bad-regex": {"forbidden_types": [{"name": "b", "pattern": "([unclosed"}]},
+    "bad-regex": {"policy_redaction": "warn",
+                  "forbidden_types": [{"name": "b", "pattern": "([unclosed"}]},
     "not-json": "RAW NOT JSON",
     "not-object": "[1,2,3]",
-    "missing-pattern": {"forbidden_types": [{"name": "x"}]},
-    "entry-not-object": {"forbidden_types": ["just-a-string"]},
+    "missing-pattern": {"policy_redaction": "warn",
+                        "forbidden_types": [{"name": "x"}]},
+    "entry-not-object": {"policy_redaction": "warn",
+                         "forbidden_types": ["just-a-string"]},
 }
 for name, payload in cases.items():
     dpath = tmp / name
@@ -134,6 +140,35 @@ for name, payload in cases.items():
         fail(f"{name}: should report cleanly, not traceback")
     if SECRET in r.stderr:
         fail(f"{name}: usage error must not echo the candidate text")
+
+# 3b. policy=off is a TOTAL no-op — it returns before compiling, so a malformed
+#     declaration in a file nobody reads can never break a repo not using the
+#     guard. (Regression: an invalid regex used to raise even with policy off.)
+off_broken = write_guard(tmp / "off-broken",
+                         {**GUARD, "policy_redaction": "off",
+                          "forbidden_types": [{"name": "b", "pattern": "([unclosed"}]})
+r = run(off_broken, text=SECRET)
+if r.returncode != 0:
+    fail(f"policy=off with a broken declaration should be a silent no-op, got {r.returncode}")
+if json.loads(r.stdout).get("checked") is not False:
+    fail("policy=off with a broken declaration should report checked=false")
+
+# 3c. the registry global is actually READ. (Regression: guard called
+#     registry.read(), which does not exist; a broad except swallowed the
+#     AttributeError, so a repo's registry policy was silently ignored and
+#     the guard fell back to "off".)
+reg_dir = tmp / "registry"
+reg_dir.mkdir(parents=True, exist_ok=True)
+(reg_dir / "README.md").write_text(
+    "# Ledger\n\n<!-- unforget-registry:begin -->\n\n"
+    "### unforget registry\n\n"
+    "| key | value |\n|---|---|\n| policy_redaction | block |\n\n"
+    "<!-- unforget-registry:end -->\n")
+write_guard(reg_dir, {**GUARD, "policy_redaction": None})  # policy lives ONLY in the registry
+r = run(reg_dir, text=SECRET)
+d = json.loads(r.stdout)
+if r.returncode != 1 or d.get("policy") != "block":
+    fail(f"registry policy_redaction=block was not honoured: rc={r.returncode} {d}")
 
 # 4. warn vs block ----------------------------------------------------------
 rw = run(g, text=SECRET, policy="warn")
