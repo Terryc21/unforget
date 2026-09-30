@@ -7,6 +7,10 @@
     "reference/surfaces.md",
     "reference/promotion.md",
     "reference/commands.md",
+    "reference/html-report.md",
+    "reference/runtime.md",
+    "scripts/html_report.py",
+    "assets/html-report.html",
     "reference/status.md",
     "reference/registry.md",
     "reference/verify.md",
@@ -29,17 +33,17 @@
     "scripts/companions.py"
   ],
   "declared_versions": {
-    "changelog": "2.7.0",
-    "plugin_manifest": "2.7.0",
-    "readme_badge": "2.7.0",
-    "readme_maturity": "2.7.0",
-    "skill_md": "2.7.0"
+    "changelog": "2.9.0",
+    "plugin_manifest": "2.9.0",
+    "readme_badge": "2.9.0",
+    "readme_maturity": null,
+    "skill_md": "2.9.0"
   },
   "integrity_ok": true,
   "recall_checked": false,
   "recall_trigger_present": null,
   "recall_trigger_source": null,
   "skill_root": "<REPO_ROOT>",
-  "version": "2.7.0",
+  "version": "2.9.0",
   "versions_in_sync": true
 }

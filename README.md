@@ -1,6 +1,6 @@
 # unforget
 
-![Version](https://img.shields.io/github/v/tag/Terryc21/unforget?label=version&cacheSeconds=3600&v=2.8.0) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget?cacheSeconds=3600) ![Stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat&cacheSeconds=3600) ![Issues](https://img.shields.io/github/issues/Terryc21/unforget?cacheSeconds=3600) ![License](https://img.shields.io/github/license/Terryc21/unforget?cacheSeconds=3600) ![Claude Code Plugin](https://img.shields.io/badge/Claude%20Code-Plugin-blueviolet)
+![Version](https://img.shields.io/github/v/tag/Terryc21/unforget?label=version&cacheSeconds=3600&v=2.9.0) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget?cacheSeconds=3600) ![Stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat&cacheSeconds=3600) ![Issues](https://img.shields.io/github/issues/Terryc21/unforget?cacheSeconds=3600) ![License](https://img.shields.io/github/license/Terryc21/unforget?cacheSeconds=3600) ![Codex + Claude Code](https://img.shields.io/badge/Codex%20%2B%20Claude%20Code-Skill-blueviolet)
 
 > **One file. Four sections. Nothing slips.**
 
@@ -15,6 +15,22 @@ unforget puts them in one file, sorted by whether they block your next release.
 *4 min read · [every command](reference/commands.md) · [the format](reference/format.md)*
 
 ---
+
+## HTML ledger reports
+
+Use `$unforget report` in Codex or `/unforget report` in Claude Code
+(plugin: `/unforget:unforget report`) for a standalone table of unfinished work, ranked by release
+blockers, urgency and user impact. `/unforget report — show me options` offers
+unfinished work, release blockers or a custom report. You can specify ledgers,
+statuses, targets, urgency, columns and ranking in plain language. For example:
+
+> /unforget report — include all registered ledgers, show high-urgency NEXT work,
+> and rank smaller fixes first.
+
+Includes searchable and sortable rows, expandable original source details,
+light/dark mode and printing. Reports do not change ledger status. Missing ratings
+stay unrated; estimated user impact carries a reason. See the
+[full report reference](reference/html-report.md).
 
 ## What it makes
 
@@ -61,48 +77,87 @@ until it's proven.
 
 ---
 
-## Try it
+## Install for Codex or Claude Code
 
-Run these **one at a time**, waiting for the first to confirm before the second:
+Version 2.9.0 uses **one shared skill**, including the same HTML generator. Choose
+one installation method per host. Python 3.9+ runs the bundled helpers.
 
+### Codex
+
+In Codex, ask:
+
+> $skill-installer Install the unforget skill from https://github.com/Terryc21/unforget (repository root).
+
+Or clone it into the personal skills folder:
+
+```bash
+mkdir -p "$HOME/.agents/skills"
+git clone https://github.com/Terryc21/unforget.git "$HOME/.agents/skills/unforget"
 ```
+
+Then use `$unforget init` in your project. Restart Codex if the new skill does not
+appear. Update a manual clone with `git pull --ff-only` inside that clone.
+
+### Claude Code
+
+Run these **one at a time** in Claude Code:
+
+```text
 /plugin marketplace add Terryc21/unforget
 ```
 
-```
+```text
 /plugin install unforget@unforget
 ```
 
-Then, in a project:
+Then use `/unforget:unforget init`. A standalone skill uses `/unforget init`;
+the `/` menu shows the command exposed by your installation. Follow Claude Code's
+plugin update flow for marketplace installs.
 
-```
-/unforget init
-```
+### Use both tools from one checkout (macOS / Linux)
 
-Setup takes 5 to 15 minutes, once per project. It asks where to keep the file, looks through
-your project for things you've already deferred (TODO comments, plan files, audit reports,
-GitHub issues, notes), and shows you what it found before writing anything.
-
-The step that finds the most is the one where **it asks what's on your mind** — the things no
-search could have found.
-
-<details>
-<summary><strong>Why two separate commands?</strong></summary>
-
-Pasting both `/plugin` lines at once makes Claude Code read the second line as an argument to
-the first. Run them separately.
-</details>
-
-<details>
-<summary><strong>Installing by hand</strong></summary>
+For a new installation, clone once and link the same directory into both tools:
 
 ```bash
-mkdir -p ~/.claude/skills
-git clone https://github.com/Terryc21/unforget.git ~/.claude/skills/unforget
+mkdir -p "$HOME/.local/share" "$HOME/.agents/skills" "$HOME/.claude/skills"
+git clone https://github.com/Terryc21/unforget.git "$HOME/.local/share/unforget"
+ln -s "$HOME/.local/share/unforget" "$HOME/.agents/skills/unforget"
+ln -s "$HOME/.local/share/unforget" "$HOME/.claude/skills/unforget"
 ```
 
-Then use `/skill unforget` (with the prefix). Update later with `git pull` in that folder.
-</details>
+These commands assume neither destination exists. For an existing installation,
+first preserve any customizations and replace only the chosen unforget install;
+do not force links over an existing directory. If you already have a checkout,
+link its absolute path instead of cloning again. Avoid installing the marketplace
+copy in Claude Code as well.
+
+One update then updates both tools:
+
+```bash
+git -C "$HOME/.local/share/unforget" pull --ff-only
+```
+
+Start fresh sessions after updating. Use `$unforget --version` in Codex and the
+equivalent `--version` request through Claude's listed command to confirm the
+loaded version and resources. Version-pinned checkouts need an explicit checkout
+of the next release tag instead of a pull. Windows users can install a full copy
+in each personal skills directory or use a supported directory link.
+
+The examples elsewhere use `/unforget` as workflow shorthand. In Codex, substitute
+`$unforget`; for the Claude plugin, substitute `/unforget:unforget`. Both use your
+existing `UNFORGET.md`. New project recall pointers go in `AGENTS.md` for Codex and
+`CLAUDE.md` for Claude; both can point to the same ledger.
+
+Setup takes 5 to 15 minutes, once per project. It discovers existing deferred work
+and asks about what you still mean to do. Reuse the existing ledger when switching
+tools rather than running init again.
+
+This installation targets Codex and Claude Code. It does not install a custom GPT
+in ordinary ChatGPT. Native plugin distribution can be packaged from this same
+source later without maintaining a second implementation.
+
+Official installation conventions: [Codex skills](https://developers.openai.com/codex/skills/)
+and [Claude Code skills](https://code.claude.com/docs/en/skills).
 
 ---
 
@@ -146,7 +201,7 @@ work that crosses teams.
   your repo. Nothing to lock you in.
 - **It knows about shipping.** One column says when, and one moment each release moves everything
   forward.
-- **Your AI reads it without being asked.** Setup wires it into your CLAUDE.md.
+- **Your AI reads it without being asked.** Setup wires it into your AGENTS.md or CLAUDE.md.
 - **It notices things going stale.** `/unforget scan` finds rows sitting far longer than their
   priority suggests.
 

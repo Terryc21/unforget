@@ -1,18 +1,21 @@
 ---
 name: unforget
-version: 2.8.0
+metadata:
+  version: "2.9.0"
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
   nothing slips between releases. Activate when the user asks "what's deferred?",
   "what's the backlog?", "prioritize my plans," "show me what's blocking release,"
-  or wants to log something for later without losing it.
+  wants a scoped HTML ledger report, or wants to log something for later without losing it.
 license: Apache-2.0
 ---
 
 # unforget
 
-> Installed as a Claude Code plugin (current version: v1.0; plugin install available since v0.2). Manual install via `~/.claude/skills/unforget/` (invoked as `/skill unforget`) still works as a v0.1 fallback.
+> One shared skill for Codex and Claude Code. In Codex use `$unforget`; in Claude Code use `/unforget` (or `/unforget:unforget` for the plugin), followed by a subcommand.
+
+**Read `reference/runtime.md` when first using this skill in a session.** It maps the examples below to the current host's tools, project instructions and companion settings. `/unforget` in references is workflow shorthand; all subcommands also work as `$unforget <subcommand>` requests in Codex.
 
 > A way of not losing sight or track of what is deferred.
 
@@ -67,6 +70,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget edit` | Refine a row's columns; closure recommendations on `--status=Fixed` | `reference/commands.md` |
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
 | `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers, `--fresh` re-runs the display-preference interview | `reference/commands.md` |
+| `/unforget report` / `list --html` | Create a standalone HTML table with default unfinished scope or user-selected ledgers, filters, columns and ranking | `reference/html-report.md` |
 | `/unforget show` | Synthesized current-state read for ONE row (Finding/Impact/Fix, no history); `--full` appends the raw Detail block; markdown baseline, optional interactive card view where available | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
 | `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
@@ -81,6 +85,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **You want to capture one new item, fast** → `/unforget add "<finding>"`
 - **You want to update an existing row's columns** → `/unforget edit <ID>`
 - **A new audit / plan / memory file appeared since init** → `/unforget import`
+- **The user wants an HTML ledger table or custom ranked report** → `/unforget report` (read `reference/html-report.md`; default unfinished, current ledger, blockers → urgency → user impact).
 - **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only)
 - **You've picked one row to actually work on and want its current state, not its whole history** → `/unforget show <ID>` (add `--full` for the complete raw history)
 - **You want to find rows that have aged past their thresholds** → `/unforget scan`
@@ -104,6 +109,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/surfaces.md` | Six core surfaces, Surface 1b general doc scanning, redirect-pointer pre-check, memory-dir resolution, path encoding, meta-file pre-check, audit-tool format-aware parsing, cross-surface dedup, GitHub-issues four states, algorithm fallback | Running `init` or `import`, or auditing surface behavior |
 | `reference/promotion.md` | Promote ritual, dry-run mechanics, post-fix-sweep workflow, backups and recovery | Running `/unforget promote` or marking a row Fixed |
 | `reference/commands.md` | Per-subcommand specs for `add`, `edit`, `import`, `list`, `show`, `scan`, `archive`, `--version` (incl. `--version`'s install-integrity + recall-trigger checks) | Running any of those subcommands |
+| `reference/html-report.md` | HTML defaults, user choices, scope/provenance, generator and verification | Creating an HTML report or `list --html` |
 | `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance | Reading/writing a row's status; running `archive`/`list`/`edit` |
 | `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
@@ -143,7 +149,7 @@ This block is what makes the skill's recall trigger work. Without it, future AI 
 
 ## Compatibility notes
 
-- **Non-Claude-Code use:** UNFORGET.md is plain markdown. The format works fine in any editor, on GitHub, in Linear, etc. The slash commands require Claude Code, but the file itself is portable.
+- **Codex and Claude Code:** both load this same skill and run the same Python helpers. See `reference/runtime.md` for host conventions. UNFORGET.md remains plain markdown that other editors and assistants can read.
 - **Multi-user / team use:** UNFORGET.md commits to git like any other markdown. Concurrent edits use standard merge resolution. Status changes between Open / In Progress / Fixed should be done atomically per row to minimize merge churn.
 - **Other AI assistants:** The "Deferred Work Index" block in CLAUDE.md / AGENTS.md works for any AI that reads project instructions. Cursor, Copilot, Aider, etc. can all benefit from the recall trigger pattern.
 - **CI integration:** `/unforget scan` output is structured markdown. A simple GitHub Action can run the scan weekly and post the report to a Slack channel or open an issue. The `scripts/*.py` helpers are standalone and can be invoked from CI without Claude Code.
@@ -192,6 +198,22 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 ---
 
 ## Changelog
+
+### v2.9.0 — scoped HTML ledger reports (2026-09-29) · minor
+
+Adds `/unforget report` and `list --html`: unfinished-work defaults, optional
+ledger/status/target/urgency/section filters, custom columns and ordered ranking.
+Self-contained HTML includes search, browser filters, sorting/reset, source details,
+light/dark mode and printing. User-impact estimates require a stated basis; source
+status and release targets remain authoritative. Reports distinguish included
+blockers from all blockers in their input scope. Includes a Python standard-library
+generator, reusable template and 15 regression tests. Manifest versions and install
+integrity coverage now include the report resources.
+
+The same release also supports Codex and Claude Code from one source tree. Shared
+runtime guidance maps invocation, tool operations and settings paths; installation
+instructions cover either host or a single checkout linked into both. Version
+metadata uses the portable Agent Skills frontmatter format.
 
 ### v2.8.0 — every user-facing question now asks about outcomes, not mechanism (2026-08-13) · minor
 

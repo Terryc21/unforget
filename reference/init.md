@@ -71,7 +71,7 @@ Short questions before any scanning happens. The first three (path, cadence, rec
 
 3. **Recall block — write AND maintain a pointer in the AI instructions file?** Different AI tools use different conventions:
    - Claude Code: `CLAUDE.md`
-   - Anthropic Agent SDK / generic: `AGENTS.md`
+   - Codex / generic agents: `AGENTS.md`
    - Warp: `WARP.md`
    - Cursor: `.cursorrules` or `.cursor/rules/`
    - Aider: `.aider.conf.yml`
@@ -93,7 +93,7 @@ Short questions before any scanning happens. The first three (path, cadence, rec
    Framing per what's found:
    - **Exactly one instructions file found:** "I'll add a skill-maintained 'Deferred Work Index' block to `<filename>` so future AI sessions auto-recall your ledgers — and keep it current as ledgers change. **(recommended; default yes)**". Proceed on a bare Enter / "yes"; only step down to manual/none on an explicit choice.
    - **Multiple found:** list them, maintain the block in all by default, and let the user narrow.
-   - **None found:** "No AI instructions file found. Without one, unforget won't auto-recall. Create a `CLAUDE.md` with a maintained Deferred Work Index block? **(recommended; default yes)**".
+   - **None found:** "No AI instructions file found. Without one, unforget won't auto-recall. Create an instructions file (`AGENTS.md` in Codex; `CLAUDE.md` in Claude Code) with a maintained Deferred Work Index block? **(recommended; default yes)**".
 
    When the user declines, say so plainly and once: "Recall trigger not installed — deferred-work questions won't auto-route to unforget until you add the block (re-run `init`, or `/unforget --version` will report it missing)." Never impose over an explicit no; do make the consequence visible rather than silent. Don't hardcode filenames — detect what the project uses.
 

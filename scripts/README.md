@@ -66,3 +66,7 @@ All scripts support `--help`.
 ## Tests
 
 A self-test corpus (`tests/fixtures/`) is queued for a future v0.3 cycle (item #3 in `v0.3-feedback.md`). Until then, smoke tests are run manually against the real Stuffolio repo (`/Volumes/2 TB Drive/Coding/GitHubDeskTop/Stufflio`), which has 44 active deferred rows across the six surfaces.
+
+## HTML report
+
+`html_report.py` creates read-only, self-contained HTML from explicit ledger inputs, with filters, ordered ranking, optional editorial annotations, source hashes and browser controls. See [the report reference](../reference/html-report.md). Python 3.9+, standard library only. Run `python3 scripts/html_report.py --help`. Regression tests: `python3 -m unittest discover -s tests -p test_html_report.py`.

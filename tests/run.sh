@@ -234,6 +234,16 @@ if ! python3 "$TESTS_DIR/test_row_visibility.py"; then
   FAILED=1
 fi
 
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_html_report.py; then
+  echo "FAIL: HTML report regression tests"
+  FAILED=1
+fi
+
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_skill_version.py; then
+  echo "FAIL: portable skill version tests"
+  FAILED=1
+fi
+
 if [[ "$FAILED" == 1 ]]; then
   echo
   echo "One or more tests failed."

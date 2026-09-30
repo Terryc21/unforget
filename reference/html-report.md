@@ -1,0 +1,146 @@
+# HTML ledger reports
+
+Use `/unforget report` (or `/unforget list --html`) when the user wants a standalone,
+ranked HTML table of ledger work. Natural-language requests such as “make an HTML
+report of release blockers” invoke the same workflow. This is a presentation mode,
+not a new ledger or a change to the default chat `list` behavior.
+
+In Codex, invoke `$unforget report` or `$unforget list --html`. In Claude Code,
+use `/unforget report` (plugin: `/unforget:unforget report`). Both follow this same
+workflow and run the same generator. Resolve helpers from the loaded skill
+directory, not the project working directory. See `reference/runtime.md` for tool
+and path conventions; no host-specific preview tools are required.
+
+## Defaults and user choices
+
+An unqualified HTML request produces **unfinished work from the current canonical
+ledger**, sorted by **release blocker → urgency → user impact**, with source details,
+search, filters, sortable columns, light/dark mode and printing. Unfinished includes
+open, in-progress, blocked, done-unverified and ambiguous legacy states. Verified
+completion and withdrawn rows are excluded. Other ledgers require explicit scope,
+a clearly established project-wide request, or the user's chosen all-ledger option.
+
+Resolve choices in this order: explicit current request, accepted conversation
+choices, then these HTML defaults. Existing terminal-list preferences do not
+silently narrow an HTML report (e.g. a saved spillover-only filter). Do not rewrite
+preferences unless asked to save a default.
+
+If the user requests options or customization without specifying the outcome, ask:
+**“What should the HTML table show?”** Offer **Unfinished work (recommended)**,
+**Release blockers**, and **Custom scope and ranking**. With no preference provided,
+use the default; do not delay a clear request with an interview. For custom scope,
+ask only for missing choices that materially change the result, in the user's words:
+which ledgers/items, which work statuses or release targets, and what should rank
+first. Examples: “only my device checks,” “all ledgers, high urgency,” “small fixes
+first,” “include completed work,” or “privacy items ranked by user impact.” Honor
+natural-language criteria even when they are not dedicated script flags: resolve
+and inspect the exact matching rows, then use a supported filter or an explicit
+`--id` selection. Explain judgment-based matches; do not silently replace the query.
+
+Optional controls include ledgers, sections, status, target, urgency, search text,
+ordered sort criteria, visible columns, title and output path. Exact status filters
+supersede the broader view. Choices apply to this report only. `--sort` specifies
+precedence, not an opaque weighted score; state the order in the report.
+
+## Build the snapshot
+
+1. Resolve actual ledger files through the README registry (canonical over the
+   cache) and the established project scope. Read source files now; do not use a
+   prior report's checkboxes or counts as current evidence. Preserve format-version
+   handling. A future/missing format is a disclosed best-effort read, never a write.
+2. Include canonical rows once, keyed by **ledger + ID**. A view is not another
+   source of truth. Attach verification procedures to their canonical defect rows;
+   standalone owed checks may remain separate if they own distinct obligations.
+   Reconcile transferred rows, rollups and view/source conflicts before selecting
+   inputs; record unresolved discrepancies instead of silently closing them.
+   The helper accepts explicit files and does not automatically resolve these
+   project-specific relationships. Do not feed a view plus its canonical ledger
+   just to make the report larger. If a supplementary file mixes duplicates and
+   genuine obligations, use reviewed `--id` / `--exclude-id` selections and
+   explain exclusions with `--note`; the original path and line remain intact.
+3. For release-readiness reports, run the project's current verifier and any
+   documented view-drift check. Use **ship_ready / this_open**, not **gate_pass**
+   alone. Explain missing coverage and integrity errors. A report filter must not
+   turn a subset into a project-wide all-clear. No ASC, live service or device claim
+   follows from reading a ledger. Do not invent submission deadlines or promote
+   later-target items to blockers because they sound urgent.
+4. Preserve original urgency, status, target, confidence and ratings. Normalize
+   words, not emoji colors. Missing values are **Unrated**, not zero/None/probable.
+   User-impact ratings may be sourced or estimated: if estimated, give a brief
+   per-row basis. Severe = loss/privacy/core journey blocked; High = material task
+   disruption; Moderate = meaningful friction; Low = limited reach/polish;
+   Indirect = internal work. Leave uncertain impact Unrated. `blocked` is a work
+   dependency; only an unresolved THIS commitment is a release blocker.
+5. Run `scripts/html_report.py`. It reads Markdown tables by header, recognizes
+   Standard/Compact/Lean and phase-ledger shapes, and rejects malformed row widths
+   or duplicate IDs instead of silently omitting them. Read its warnings. Legacy
+   “Fixed” alone is a completion claim; owed/partial narration keeps it unfinished.
+   Ambiguous legacy states remain visible for reconciliation. Legacy semantics can
+   differ by project: inspect them before relying on the automatic bucket.
+6. Save to the requested path; otherwise use the workspace's normal deliverables
+   directory (for example, `outputs/`). Avoid replacing an existing report
+   unless requested; `--force` is for authorized refreshes. HTML is a derived
+   snapshot and never a second authoritative backlog.
+7. Check counts and blocker IDs against the selected sources; open the HTML and
+   exercise search, blocker/status filters, sorting/reset and expanded details.
+   Inspect desktop and narrow layouts when a browser is available. Otherwise
+   disclose that visual verification was unavailable. Link the final HTML and
+   report the included rows/blockers and any material coverage limit.
+
+## Helper usage
+
+Paths below are examples. Resolve the helper relative to this skill directory.
+
+```sh
+python3 scripts/html_report.py --file /project/Documentation/Ledgers/UNFORGET.md \
+  --output /workspace/outputs/ledger-report.html --title 'Project unfinished work'
+
+python3 scripts/html_report.py --file /project/Documentation/Ledgers/UNFORGET.md \
+  --file /project/Documentation/Ledgers/SITE-UNFORGET.md --blockers-only \
+  --output /workspace/outputs/release-blockers.html
+
+python3 scripts/html_report.py --file /project/Documentation/Ledgers/UNFORGET.md \
+  --target NEXT --urgency high --sort effort,ux,urgency \
+  --columns rank,id,blocker,finding,urgency,ux,status,effort \
+  --output /workspace/outputs/next-small-fixes.html
+```
+
+`--view unfinished|all|completed`; repeatable `--status`, `--target`, `--urgency`,
+`--ledger`, `--section`; `--query` searches the row's source/presentation text.
+`--id` and `--exclude-id` accept repeated IDs or `filename.md::ID` keys for reviewed
+custom subsets; qualify IDs when ledgers reuse them. Filters combine with AND; repeated values within a field use OR. `--section`
+uses case-insensitive substring matching. Sort keys: `blocker,urgency,ux,target,
+effort,id,ledger,status`. Keep `id` and `finding` columns to retain source access.
+Each supplied file must have a distinct filename. `--scope-note` describes scope;
+repeatable `--note` records gate results, limitations and reconciliation decisions.
+These notes are data, not executable HTML. Run `--help` for exact supported values.
+
+The output distinguishes **blockers included** from **blockers in input files
+before filters**. Neither is automatically the whole-project gate. It preserves
+raw cells under row details, path/line citations, generation time and source hashes.
+It has no external assets, scripts or network calls and no completion checkboxes
+that could be confused with real ledger status.
+
+### Optional presentation annotations
+
+Use `--annotations /workspace/work/report-notes.json` for concise titles, actors,
+next actions and user-impact estimates. Keys are `filename.md::ID`:
+
+```json
+{
+  "UNFORGET.md::A230": {
+    "title": "Verify restored items survive relaunch",
+    "ux": "severe",
+    "ux_basis": "Source describes a restored item being purged at launch.",
+    "owner": "Device verification",
+    "next": "Run the documented restore and relaunch acceptance check.",
+    "notes": ["Related verification procedure is recorded in V-07."]
+  }
+}
+```
+
+Allowed impact values: severe, high, moderate, low, indirect, unrated. An estimate
+requires `ux_basis`. Annotations cannot alter status, target or blocker membership.
+Do not copy Stuffolio's IDs, release assumptions, source paths or ratings into
+another project's report. The bundled asset is the reusable visual model; a user's
+provided HTML can guide style without supplying current ledger facts.

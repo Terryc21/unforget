@@ -9,9 +9,8 @@
 #      (this drift is why the marketplace listing once fell 6 versions behind)
 #
 # Note: this plugin uses the flat single-skill layout (one SKILL.md at repo
-# root, no skills/ subdir). plugin.json intentionally has NO "skills" array —
-# it was removed in a118d34 as an invalid field. If v0.3+ moves to a nested
-# skills/ layout, restore a skills-array drift check (radar-suite style).
+# root, no skills/ subdir). Claude Code supports this layout with no "skills"
+# field. Codex loads the same root SKILL.md as a standalone skill.
 #
 # Run manually or add as a pre-commit / CI check.
 #
@@ -57,7 +56,15 @@ if [ "$SKILL_NAME" != "unforget" ]; then
 fi
 
 # 4. version agreement across the three sources (catches the marketplace-listing drift)
-SKILL_VER=$(awk '/^---$/{count++; next} count==1 && /^version:/{print $2; exit}' "$SKILL_FILE")
+SKILL_VER=$(python3 - "$REPO_ROOT" <<'PY'
+import sys
+from pathlib import Path
+root = Path(sys.argv[1])
+sys.path.insert(0, str(root / "scripts"))
+from verify_install import read_version
+print(read_version(root) or "")
+PY
+)
 PLUGIN_VER=$(python3 -c "import json; print(json.load(open('$MANIFEST'))['version'])")
 MARKET_VER=$(python3 -c "import json; print(json.load(open('$MARKETPLACE'))['plugins'][0]['version'])")
 if [ "$SKILL_VER" != "$PLUGIN_VER" ] || [ "$SKILL_VER" != "$MARKET_VER" ]; then

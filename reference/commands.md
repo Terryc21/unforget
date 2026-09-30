@@ -7,6 +7,7 @@ Subcommands here:
 - `/unforget edit` — refine a row's columns
 - `/unforget import` — re-run the surface survey after init
 - `/unforget list` — show current state, filterable
+- `/unforget report` / `list --html` — standalone scoped HTML; see [html-report.md](html-report.md)
 - `/unforget scan` — identify rows past their staleness threshold
 - `/unforget branch` — atomically create a child ledger (operational summary here; full model in `reference/branching.md`)
 - `/unforget archive` — move completed rows out of the active tables (lightweight; distinct from the release-time `promote` in `reference/promotion.md`)
@@ -250,6 +251,8 @@ Same as `/unforget init` Phases 2 to 4 and Phase 7 (see `reference/init.md` and 
 ---
 
 ## /unforget list
+
+For standalone HTML output (`list --html` or `report`), read [html-report.md](html-report.md). Its unfinished-work defaults are separate from chat-list preferences; explicit criteria win.
 
 Show current state. Default view is sorted by Target (🔴 THIS first), then Urgency (CRITICAL first).
 
@@ -1192,7 +1195,7 @@ Recall trigger: ✗ no Deferred Work Index block in this project's CLAUDE.md/AGE
                   → deferred-work questions will NOT auto-route here; run /unforget init to add it
 ```
 
-The version string is read from the SKILL.md frontmatter `version` field. The install path is detected at runtime: plugin installs report the plugin directory, manual v0.1 installs report `~/.claude/skills/unforget/`. Supported format-version comes from the spec (currently `v1` and `v2`, backward compatible; a future `v3` would list here too once it lands).
+The version string is read from SKILL.md frontmatter `metadata.version` (legacy top-level `version` remains readable). Detect the actual loaded skill directory at runtime for either host, including plugin installs and symlinked checkouts; do not assume a Claude-only path. Supported format-version comes from the spec (currently `v1` and `v2`, backward compatible; a future `v3` would list here too once it lands).
 
 ### Version reconciliation
 

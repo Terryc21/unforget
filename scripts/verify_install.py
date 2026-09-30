@@ -82,6 +82,10 @@ REQUIRED_COMPANIONS = [
     "reference/surfaces.md",
     "reference/promotion.md",
     "reference/commands.md",
+    "reference/html-report.md",
+    "reference/runtime.md",
+    "scripts/html_report.py",
+    "assets/html-report.html",
     # format v2 reference specs
     "reference/status.md",
     "reference/registry.md",
@@ -107,7 +111,8 @@ REQUIRED_COMPANIONS = [
     "scripts/companions.py",
 ]
 
-VERSION_RE = re.compile(r"^version:\s*([0-9]+\.[0-9]+\.[0-9]+)", re.MULTILINE)
+VERSION_RE = re.compile(r"^version:[ \t]*[\"']?([0-9]+\.[0-9]+\.[0-9]+)(?=[\"' \t\r\n]|$)", re.MULTILINE)
+METADATA_RE = re.compile(r"^metadata:[ \t]*\n((?:[ \t]+[^\n]*\n|\n)*)", re.MULTILINE)
 
 # The recall trigger is a "Deferred Work Index" section pointing at UNFORGET.md.
 # We match on both cues so a lightly reworded block still counts.
@@ -119,7 +124,23 @@ def read_version(skill_root: Path) -> str | None:
     skill_md = skill_root / "SKILL.md"
     if not skill_md.exists():
         return None
-    match = VERSION_RE.search(skill_md.read_text(encoding="utf-8", errors="replace"))
+    text = skill_md.read_text(encoding="utf-8", errors="replace")
+    frontmatter = re.match(r"\A---\r?\n(.*?)\r?\n---(?:\r?\n|$)", text, re.DOTALL)
+    if not frontmatter:
+        return None
+    header = frontmatter.group(1) + "\n"
+    metadata = METADATA_RE.search(header)
+    if metadata:
+        # Only direct metadata children, not nested unrelated version fields.
+        lines = metadata.group(1).splitlines()
+        widths = [len(line) - len(line.lstrip()) for line in lines if line.strip()]
+        indent = min(widths) if widths else 0
+        children = "\n".join(line[indent:] for line in lines)
+        match = VERSION_RE.search(children)
+        if match:
+            return match.group(1)
+    # Read older releases with the original top-level version key as well.
+    match = VERSION_RE.search(header)
     return match.group(1) if match else None
 
 
