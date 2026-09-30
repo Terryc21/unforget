@@ -4,9 +4,9 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 
 **Design constraints (all scripts):**
 
-1. **Python standard library only.** No `pip install` required. Imports are limited to `json`, `sys`, `os`, `re`, `pathlib`, `argparse`, `typing` (and equivalents). The format-v2 scripts (`parse_status.py`, `registry.py`, `verify_ledger.py`, `defer_tally.py`) use `X | None` type-union syntax and require **Python 3.10+**; the older v1 helpers run on 3.9+.
+1. **Python standard library only.** No `pip install` required. Imports are limited to `json`, `sys`, `os`, `re`, `pathlib`, `argparse`, `typing` (and equivalents). Helpers support **Python 3.9+** with postponed annotations, including the format-v2 scripts.
 2. **JSON in / JSON out.** Each script reads a path or stdin and writes structured JSON to stdout. The LLM parses the JSON; it does not re-derive the algorithm.
-3. **Pure where possible.** No global state, no side effects beyond what each CLI advertises. `prune_backups.py` deletes files; the rest are read-only.
+3. **Pure where possible.** No global state, no side effects beyond what each CLI advertises. `prune_backups.py` deletes backups; registry/recall/branch/tally helpers write their documented artifacts, and row_budget writes only with `--apply`. Read/verify/scan modes are read-only.
 4. **Algorithm fallback in prose.** When Python is unavailable, each `reference/*.md` file that delegates to a script keeps an "Algorithm fallback" paragraph. The fallback is functional but slower and non-deterministic.
 
 ## Scripts
@@ -70,3 +70,11 @@ A self-test corpus (`tests/fixtures/`) is queued for a future v0.3 cycle (item #
 ## HTML report
 
 `html_report.py` creates read-only, self-contained HTML from explicit ledger inputs, with filters, ordered ranking, optional editorial annotations, source hashes and browser controls. See [the report reference](../reference/html-report.md). Python 3.9+, standard library only. Run `python3 scripts/html_report.py --help`. Regression tests: `python3 -m unittest discover -s tests -p test_html_report.py`.
+
+### Shared integrity contracts (v2.9.1)
+
+`managed_block.py` validates marker pairs for registry and recall writes.
+`parse_status.py` owns header-aware closure, code-sufficiency and legacy completion decisions.
+`display_prefs.py` persists boolean ledger scope through build-patch/merge/resolve.
+`recipe.py` executes only the opt-in count subset documented in `reference/verify.md`.
+Historical releases live in root `CHANGELOG.md`; version reconciliation reads it first.

@@ -175,7 +175,7 @@ def make_headline(finding: str, budget: int, override: str | None) -> str:
     return f"{head} → see detail block **{{id}}**"
 
 
-def build_index_row(orig_row: str, rid: str, headline: str) -> str:
+def build_index_row(orig_row: str, rid: str, headline: str, headers=None) -> str:
     """Replace the Finding cell with the bounded headline; keep every other cell.
 
     The Status cell KEEPS its @status token (the machine-readable status must stay in
@@ -193,17 +193,24 @@ def build_index_row(orig_row: str, rid: str, headline: str) -> str:
     # shift a positional index onto the wrong cell (the exact status_cell bug this
     # mirrors). Finding is the current over-long finding; Status is the cell carrying
     # the @status token.
-    orig_finding = finding_cell(orig_row)
-    orig_status = status_cell(orig_row)
-    status_re = re.compile(r"@status:")
+    orig_finding = parse_status.named_cell(orig_row, headers, "finding", finding_cell)
+    orig_status = parse_status.named_cell(orig_row, headers, "status", status_cell)
     finding_idx = status_idx = None
     for i in range(1, len(parts) - 1):
         cell = parts[i].strip()
-        if status_idx is None and status_re.search(cell):
+        if cell == orig_status:
             status_idx = i
         if finding_idx is None and orig_finding and cell == orig_finding:
             finding_idx = i
+    if headers:
+        finding_idx = headers.index("finding") + 1 if "finding" in headers else finding_idx
+        status_idx = headers.index("status") + 1 if "status" in headers else status_idx
     if finding_idx is not None:
+        compact = parse_status.COMPACT_FINDING_RE.match(orig_finding)
+        if compact:
+            # The commitment is independent of a supplied/automatic headline.
+            headline = re.sub(r"^\**\s*" + re.escape(compact[1]) + r"\s*·\s*", "", headline)
+            headline = f"**{compact[1]} · {headline}**"
         parts[finding_idx] = f" {headline.replace('{id}', rid)} "
     # Trim Status narration to just the token + a one-line current status.
     if status_idx is not None:
@@ -263,8 +270,9 @@ def split_row(text: str, rid: str, budget: int, headline: str | None) -> dict:
         result["refusal"] = f"row {rid} not found"
         return result
     idx, row = found
-    finding = finding_cell(row)
-    status_val = status_cell(row)
+    headers = next(h for line, h in parse_status.row_contexts(text) if line == row)
+    finding = parse_status.named_cell(row, headers, "finding", finding_cell)
+    status_val = parse_status.named_cell(row, headers, "status", status_cell)
     if len(finding) <= budget and len(status_val) <= budget:
         result["refusal"] = (f"row {rid} is within budget "
                              f"(finding {len(finding)}, status {len(status_val)} ≤ {budget}); "
@@ -274,10 +282,21 @@ def split_row(text: str, rid: str, budget: int, headline: str | None) -> dict:
     lines = text.splitlines()
     section = section_of(lines, idx)
     head = make_headline(finding, budget, headline)
-    new_row = build_index_row(row, rid, head)
+    new_row = build_index_row(row, rid, head, headers)
     bullet = build_detail_bullet(rid, finding, status_val)
 
-    lossless = losslessness(finding, status_val, bullet, new_row)
+    note = parse_status.code_note(status_val)
+    if note:
+        bullet += "\n\n  Code-is-sufficient: " + note
+    detail = parse_status.detail_blocks(text).get(rid, "")
+    before = parse_status.parse_row(row, headers, detail)
+    after = parse_status.parse_row(new_row, headers, detail + "\n" + bullet)
+    fields = ("id", "target", "status", "verified", "code_sufficiency", "completed", "archivable", "blocks_release", "issues")
+    semantic_match = all(before[k] == after[k] for k in fields)
+    if "|" in head or "\n" in head or "\r" in head:
+        semantic_match = False
+    result["semantics_preserved"] = semantic_match
+    lossless = losslessness(finding, status_val, bullet, new_row) and semantic_match
     result.update({
         "lossless": lossless,
         "new_row": new_row,
@@ -285,7 +304,7 @@ def split_row(text: str, rid: str, budget: int, headline: str | None) -> dict:
         "detail_section": f"### Detail - {section}",
     })
     if not lossless:
-        result["refusal"] = ("split would not preserve the full original cell text in the "
+        result["refusal"] = ("split would not preserve semantic fields and full original cell text in the "
                              "detail bullet — refusing (the budget moves history, never deletes it)")
         return result
     result["advisory"] = (f"row {rid}: index row bounded to a headline; full content moved to "
@@ -297,6 +316,10 @@ def apply_split(path: Path, text: str, rid: str, plan: dict) -> bool:
     """Write the split: replace the row in place, append the bullet under the
     matching '### Detail - <section>' block (create it if absent). Idempotent enough
     for a one-shot apply; the caller has already validated losslessness."""
+    if plan.get("refusal") or not plan.get("lossless") or not plan.get("semantics_preserved"):
+        return False
+    if path.read_text(encoding="utf-8") != text:
+        return False
     lines = text.splitlines()
     found = find_row(text, rid)
     if not found:

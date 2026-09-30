@@ -1,0 +1,619 @@
+# Changelog
+
+### v2.9.1 — integrity and workflow hardening (patch candidate, 2026-09-30)
+
+- Refuse malformed registry/recall markers before writes; keep branch rollback intact.
+- Restrict opt-in recipes to read-only grep/rg count searches; failed commands never imply closure.
+- Contain memory pins and symlinks; isolate scanner tests from account memory.
+- Share header-aware closure decisions across verification, row splits and HTML. Code-only
+  closure needs an item-local `Code-is-sufficient: <justification>` declaration.
+- Preserve Compact targets and semantic fields during splits; keep invalid verified claims
+  visible and blocking. Normalize effort abbreviations in generated and browser sorting.
+- Save explicit all-ledger preferences, preserving false/skipped answers and scope overrides.
+- Diagnose missing/malformed/unreadable maintained recall; repair existing projects via import.
+- Fix behavioral harness paths containing spaces and future-format fixtures; verify every runtime helper.
+- Move historical release notes here and reconcile package declarations for v2.9.1.
+- Preserve Status during Target-only/rating-only edits; remove conflicting implicit-migration guidance.
+
+Existing ledgers are not rewritten. Unsupported closure claims now remain unfinished until
+real evidence is supplied or the status is returned to done-unverified. Unsupported recipes
+report UNRUNNABLE; there is no unsafe execution bypass. This entry prepares a release;
+it does not publish or move the existing v2.9.0 tag.
+
+### v2.9.0 — scoped HTML ledger reports (2026-09-29) · minor
+
+Adds `/unforget report` and `list --html`: unfinished-work defaults, optional
+ledger/status/target/urgency/section filters, custom columns and ordered ranking.
+Self-contained HTML includes search, browser filters, sorting/reset, source details,
+light/dark mode and printing. User-impact estimates require a stated basis; source
+status and release targets remain authoritative. Reports distinguish included
+blockers from all blockers in their input scope. Includes a Python standard-library
+generator, reusable template and 15 regression tests. Manifest versions and install
+integrity coverage now include the report resources.
+
+The same release also supports Codex and Claude Code from one source tree. Shared
+runtime guidance maps invocation, tool operations and settings paths; installation
+instructions cover either host or a single checkout linked into both. Version
+metadata uses the portable Agent Skills frontmatter format.
+
+### v2.8.0 — every user-facing question now asks about outcomes, not mechanism (2026-08-13) · minor
+
+Documentation and prompt-wording only — **no script, format, or behavior change.** A v1 or v2
+ledger is untouched; every command does exactly what it did in v2.7.0. What changed is what the
+skill *says* when it asks the user something, which is why this is minor rather than patch: it
+alters the interview a user actually sees.
+
+- **A new skill-wide governing rule** (`SKILL.md § Asking the user anything`): **ask about the
+  OUTCOME in the user's words, never about the mechanism in the skill's words.** It governs every
+  question this skill asks — `--fresh`, `init`, `branch` confirmations, `edit` prompts, and
+  anything added later. Placed in SKILL.md deliberately: the rule was first written inside
+  `reference/commands.md`, which is only loaded when working on `list`/`add`/`edit`, so a session
+  running `init` never read it. Three sub-rules: name what the user GETS (not what gets
+  configured); ask about the result, not the effort; no interview bookkeeping (question counts) in
+  the prompt.
+- **`reference/commands.md` — all seven `--fresh` questions** now carry an `**Ask as:**` line with
+  the wording that reaches the user, alongside the key names that remain as implementer spec. The
+  gate question changed from *"How much do you want to set?"* to **"What do you want the Unforget
+  table to display?"**, tier labels dropped their question counts, and `view preset` / `grouping` /
+  `verbosity` / `multi-ledger union default` were translated to plain outcomes.
+- **`reference/init.md` — three of five onboarding questions** given the same treatment: git
+  posture → *"Who should be able to see these notes?"*, cadence preset → options that lead with the
+  shipping pattern rather than the preset name and column count, recall block → *"Should future AI
+  sessions know these notes exist?"* The file-path question was already outcome-framed and was
+  deliberately left alone; the cadence question's *stem* was already right and is marked ✅ so a
+  future editor doesn't "fix" what works. Recommends dropping **Custom** from cadence's spoken
+  options — a 12-column pool is not a question a first-time user can answer before seeing one row.
+- **Why `init` gets the strongest wording:** it is the only interview in this skill where every
+  respondent is new by definition. A confused user in `--fresh` already has a ledger and can
+  decline; a confused user in `init` never gets one.
+
+**Origin (2026-08-13, one live session).** A `--fresh` run rendered `commands.md`'s key names
+straight into the prompt; the user reported it gave "not much context as to how to answer." The
+repair took three passes — key names → outcomes, then effort-framing → outcome-framing, then
+removing the question counts the *second* pass had added — because each pass fixed only what was
+pointed at, with no stated principle to apply. The rule exists so the next question is written
+right the first time.
+
+⚠️ **Deliberately NOT done: a sweep of other skills.** Two skills sampled from the same
+installation (`tutorial-creator`, `ui-enhancer-radar`) already follow this principle without ever
+having been told it — one even stores to an internal `USER_EXPERIENCE` key while never showing that
+name to the user. The failure appears specific to a skill whose *subject matter is its own
+configuration*, where leaking key names is the path of least resistance. A blanket rollout would
+have been solving a problem with two counterexamples and no supporting evidence. The real
+structural gap — **no mechanism propagates a convention across skills** — is noted here rather than
+papered over; `skill-reviewer` is the plausible home for such a check.
+
+### v2.7.0 — `list --fresh` display preferences; a registry-wiping write bug; spec-vs-code reconciliation (2026-08-13) · minor
+
+Additive and backward compatible, but it closes a **data-loss bug** in `registry.py` and lands
+two `verify` checks the v2.3.0/v2.6.0 changelog entries already claimed were shipped. The
+through-line is the one this release exists to attack: **a value stated in one place and cited
+from another, with nothing reconciling them.** Four instances were found in a single session —
+the changelog describing checks the code lacked, a test golden pinned five versions back, a
+plugin manifest five releases stale, and a spec asserting a merge that did not exist.
+
+- **🛑 `registry.py write --merge` — fixes a registry-wiping partial write.** `write` had only
+  replace semantics, so a caller saving ONE key rendered a block in which every other global key
+  was `(unset)` **and the Ledgers table was empty**. Measured, not theorized: a
+  `{"global": {"display_view": "open"}}` write against a live 9-key/3-ledger registry left 9
+  nulls and **0 registered ledgers** — precisely the stranded-ledger failure the registry exists
+  to prevent, reachable by following the then-current spec prose literally. `--merge` applies
+  PATCH semantics (keys absent from the payload keep their value; a payload omitting `ledgers`
+  leaves the table untouched) and is now MANDATORY for any partial write. Full-state writers
+  (`init`, `branch`) may still use either.
+- **`verify` char-budget hard threshold (the v2.3.0 entry, now actually implemented).**
+  `--char-budget-hard` (default 4x soft = 1600) escalates an over-budget cell from `warn` to
+  **`error`**, gating `archive`/`promote`. The installed script had every over-budget row at
+  `warn` regardless of size, so the documented escalation never fired: a real ledger's 3,058-char
+  row (7.6x budget) passed the gate clean. `check_rows`'s new parameter defaults to 4x soft, so
+  existing 2-arg call sites keep working.
+- **`verify` `detail-pointer` check (the v2.6.0 entry, now actually implemented).** Flags a row
+  whose cell claims `→ detail block **<ID>**` with no matching bullet under any `### Detail -`
+  heading (`warn`). A Detail bullet with no pointing row is reported as informational advisory
+  text, NOT counted toward `warn_count`, per that entry's own spec.
+- **`/unforget list --fresh` — the display-preference interview.** Sets the saved default for
+  `--view`/`--group-by`/`--section`/verbosity so plain `list`/`scan` calls apply it silently. A
+  **depth gate** fires first (Quick = 1 question · Standard = 4 · Thorough = +thresholds), so the
+  interview's length is the user's choice rather than a fixed toll. `--fresh` ALWAYS
+  re-interviews — a deliberate exception to this skill's don't-nag discipline, since being asked
+  again is the entire point of typing it. Every question past the gate carries an explicit
+  "Keep current" option; a skipped answer is **omitted** from the write, never written as null
+  (a null would CLEAR the prior value — the opposite of skipping). New `scripts/display_prefs.py`
+  (`resolve`/`framing`/`build-patch`) owns the mechanics; question wording and judgment stay with
+  the LLM, the same split `defer_tally.py` draws. Precedence is fixed: **explicit flag > saved
+  preference > hardcoded default**, with a `sources` map naming which layer produced each value.
+  A flag passed alongside `--fresh` renders but is never saved, so a one-off filter cannot
+  silently become a permanent default.
+- **5 tunables migrated into the registry** (`archive_nudge_threshold`, `stale_days_this/next/
+  later/someday`). They were specified as living in "a config block at the top of UNFORGET.md" —
+  but **no reader for them was ever implemented** (the only `unforget-config:` marker any script
+  parses is `memory-dir`), and no ledger was found carrying them, so the migration moved no data
+  and broke no code path. A legacy in-file block is still honored, registry winning on conflict.
+- **`--version` reconciles its own version declarations — all FIVE of them.** SKILL.md
+  frontmatter, `.claude-plugin/plugin.json`, the newest changelog heading, the README's
+  shields.io badge cache-buster, and the README's `**Maturity:**` bullet are now compared;
+  `--version` reports `versions_in_sync` + `declared_versions`. The manifest had been stale at
+  2.1.0 while everything else read 2.6.0. Only sources that actually declare a version vote (a
+  manual install with no manifest is not drift; an unparseable manifest or a README lacking both
+  markers degrades rather than crashing), and drift is **advisory, exit 0** — it misreports what
+  is installed but, unlike a missing companion file, does not break the router. The README
+  patterns are anchored to the badge URL and the literal `**Maturity:**` bullet, so prose
+  mentioning `v1.0.3` or "upgrading from 2.4.0" is not mistaken for a declaration.
+  ⚠️ The first cut of this check covered only three sites; bumping to 2.7.0 still needed a
+  hand-grep of the README to catch the other two — a check that covers *most* declaration sites
+  leaves the release manual, which is the failure it was built to prevent.
+
+⚠️ **Known remaining gap:** the version check compares strings across declaration sites; it
+cannot catch a changelog entry that *describes behavior the code does not implement*. That was
+the shape of the two `verify` gaps above, and it needs semantic comparison rather than string
+equality. Unautomated on purpose — noted here rather than left implicit.
+
+### v2.6.0 — `verify`: catch a detail-block pointer that leads nowhere (2026-08-13) · minor
+
+New check, `warn` severity, no new flag. Additive: existing `verify` behavior for every other
+check is unchanged.
+
+- **`detail-pointer`** flags a row whose Finding or Status cell contains `detail block
+  **<ID>**` (either the canonical `→ see detail block` phrasing `row_budget.py` writes, or the
+  shorter `→ detail block` form) when no matching `- **<ID>** -` bullet exists under any
+  `### Detail - <section>` heading in the file. The inverse (a bullet with no pointer) is
+  reported informationally, not counted as a finding — usually just a row written with full
+  detail from the start.
+- **Origin:** found on the same real row this whole v2.2-2.5 arc traces back to. Stuffolio's
+  A65 row read `→ detail block **A65**`, but no `**A65**` bullet existed anywhere in the file's
+  Detail sections — the row's entire 3,707-character history was still sitting in the table
+  cell, the exact shape the char-budget check exists to catch, except the pointer made the row
+  LOOK already-split when it wasn't. Nothing before this checked that a stated pointer actually
+  resolves.
+- **Now load-bearing for `/unforget show`, not just cosmetic.** `show`'s Fix field reads the
+  LAST dated entry in a row's Detail bullet as its source of truth (v2.5.0, above). A dangling
+  pointer means `show` silently degrades to "no detail history on file," quietly losing the
+  richest part of its own output with no signal that anything was missing. This check is what
+  makes that failure visible instead of silent.
+- **`warn`, not `error` — deliberately, unlike char-budget's hard-threshold escalation.** A
+  dangling pointer doesn't itself prove the row's rating columns or `@status` token are wrong;
+  gating `archive`/`promote` on it would need real field data first, the same caution that kept
+  the char-budget hard threshold at 4x rather than 1x.
+- **No auto-fix.** Unlike char-budget overflow (which `verify --fix` splits fresh), a dangling
+  pointer's right remedy depends on WHY it's dangling — deleted content, a moved section, a
+  typo'd ID — which a mechanical fixer can't distinguish. `verify` reports it; a human decides.
+- Full spec: `reference/verify.md` § The `detail-pointer` check (§4f).
+
+### v2.5.0 — `/unforget show`: one-row synthesis instead of the full history dump (2026-08-13) · minor
+
+New subcommand. Read-only, additive, no change to on-disk format or any existing command.
+
+- **`/unforget show <ID>`** renders three fields for ONE row: Finding (current-state, not
+  history), Impact (why it matters left as-is), Fix (what closes it, or the specific
+  verification step still owed for a `done-unverified` row). Deterministic extraction, not a
+  per-call model summary: Finding/Impact come from the row's own table cells; Fix comes from
+  the LAST dated entry in the Detail block, which the row-length discipline's §2b append rule
+  already guarantees is the current state (history is appended, the cell's status is REPLACED
+  to latest) — `show` leans on that existing invariant rather than adding new logic to find
+  "what's current." No caching; recomputed fresh every call, same anti-staleness principle as
+  the char-budget and view-mode work above.
+- **`--full`** prints the synthesis, then the complete raw Detail-block history verbatim below
+  it — the escape hatch for when the full accreted narrative (a reversal, a postmortem) is
+  actually wanted. Nothing is ever hidden from the file, only from the DEFAULT view; same
+  non-negotiable as the row-length split's "moves history, never deletes it" rule, applied one
+  level up.
+- **Markdown is the baseline everywhere**, per this skill's own stated portability goal ("works
+  fine in any editor, on GitHub, in Linear... other AI assistants" — § Compatibility notes).
+  Nothing about the default `show` output depends on any rendering capability beyond stdout.
+  **Carries its own Algorithm fallback** (`reference/commands.md` § `/unforget show` §
+  Algorithm fallback), same as every other non-trivial command in this file — table/string
+  extraction only, no ranking or cross-row logic, so the fallback is a close mirror of the
+  preferred path rather than a simplified approximation.
+- **Interactive card presentation is optional and environment-gated, never a silent swap.**
+  Where a richer surface exists (e.g. Claude's Artifact/widget rendering), `show` may OFFER a
+  click-through card view of the same three fields — explicitly opt-in, generated from the same
+  deterministic extraction (no separate logic, no separate drift risk), and it degrades to
+  nothing (not to an error) anywhere that capability is absent.
+- **Deliberately does not touch `list`'s rating table.** Comparing rows (Urgency/ROI/Risk
+  across many) and reading one row deeply are different tasks — the interactive view carries no
+  rating columns and is not meant to answer "what's next" (that stays `list`/`--view=next`'s
+  job). Extending this pattern to a multi-row interactive `list` is a real design question
+  flagged as explicitly out of scope for this version, not assumed as a natural follow-on.
+- **Origin:** a live demo built from Stuffolio's own open rows, prompted by "these summaries
+  take up a lot of vertical space — what if selecting a row is when a brief description
+  displays, instead of the list itself." The follow-up question ("would we lose the 11-column
+  table?") is what drew the comparison-vs-reading distinction this design rests on: no, because
+  they were never the same job.
+- Full spec: `reference/commands.md` § `/unforget show` (including § Interactive presentation).
+
+### v2.4.0 — `list --ledgers=` / `--all-ledgers`: opt-in cross-ledger reads (2026-08-13) · minor
+
+Additive, backward compatible: `/unforget list` with no scope flag is single-ledger, unchanged.
+
+- **`--ledgers=<names>` / `--all-ledgers`** union rows from sibling ledgers already declared in
+  the registry (`role`/`axis`/`parent`/`death` per `reference/registry.md`) — no new registry
+  field, and no globbing for stray `*UNFORGET*.md` files. A name not present in the registry is
+  an error, not a silent skip.
+- **Default stays opt-in, by design decision, not just default caution.** The alternative
+  (auto-union every discovered ledger file, narrow with a flag) was considered and rejected: it
+  would make `branch`'s side effect silently change tomorrow's `list` output with no flag
+  touched, and it would surface files the registry exists specifically to avoid losing track of
+  or confusing with real ledgers.
+- **Three safety levels, not one blanket "combine":** reading (`--view=all/open/done/split`) is
+  a safe, unconditional union — output gains a Ledger column whenever more than one ledger is in
+  scope. Ranking (`--view=next --all-ledgers`) is axis-aware: an `axis:actor` sibling
+  (a different human's work, e.g. a project's TERRY-only ledger) or an `axis:lifespan` sibling
+  (has a `death` condition — meant to disappear) is never presented as an undifferentiated top
+  pick; the source ledger is always named, and an actor-scoped top result gets an explicit
+  best-non-actor-scoped alternative alongside it. Writes (`archive`/`edit`/`promote`) are
+  entirely out of scope for these flags — they keep operating on the one ledger they're pointed
+  at, same as today.
+- **Origin:** a follow-up to the `--view=`/`--group-by=` work above, prompted by "would a user
+  choose or combine which ledgers to work from?" The axis-aware ranking rule specifically
+  guards against the failure a blind cross-ledger `--view=next` would invite: surfacing a row
+  scoped to a different actor or a dying sprint ledger as if it were a permanent, generally
+  actionable "next," which would misrepresent exactly the separation `branch`'s three axes
+  (`reference/branching.md` §2) were designed to preserve.
+- **Algorithm fallback** for `--ledgers=`/`--all-ledgers` is covered in the SAME fallback
+  paragraph as `--view=`/`--group-by=` (see v2.2.0 entry below) — one combined recipe for all
+  three `list` extensions, not a separate one per flag.
+- Full spec: `reference/commands.md` § Multi-ledger scope (under `/unforget list`).
+
+### v2.3.0 — char-budget hard error + write-time budget offer at `edit` (2026-08-13) · minor
+
+- **`char-budget` escalates to `error` past a hard threshold** (default 4x the soft budget,
+  1600 chars; new `--char-budget-hard` flag). Previously `char-budget` was `warn` at every
+  size, so a row could sit at any length indefinitely without ever blocking `archive`/`promote`.
+  **Origin:** a real ledger (Stuffolio, 2026-08-13) carried a row at 3,707 chars — 9x the 400
+  soft budget — through repeated ship cycles; its accreted "RESOLVED" / "still owed" / "prior
+  arc" history (never migrated to the detail block that already existed for it) directly caused
+  a session to misread the row's current status. The lossless split (`verify --fix`,
+  `scripts/row_budget.py`) already existed and already worked; what was missing was a severity
+  that made using it mandatory before shipping, not optional. Applies to v1 (tokenless) ledgers
+  too — the failure this catches doesn't depend on `@status` tokens being present. Full spec:
+  `reference/verify.md` § Char-budget severity escalation.
+- **`/unforget edit` now offers the split at write time**, not just reactively at the next
+  `scan`/`verify` — checked once per status-changing edit, right after the change is applied,
+  only when the edit CROSSES the soft-budget threshold (not re-offered on every subsequent edit
+  to a row already over budget). Advisory, same shape as the existing companion-skill handoff:
+  easy to decline, never blocks the edit itself. Catches the bloat where it's actually created
+  (one status change at a time) instead of only where it's later discovered. Full spec:
+  `reference/commands.md` § Budget check at write time (under `/unforget edit`).
+
+### v2.2.0 — `list --view=` / `--group-by=`: named row-selection modes, orthogonal grouping (2026-08-13) · minor
+
+Additive, backward compatible: new opt-in flags, no change to the default `list` output or the
+on-disk file format.
+
+- **`--view=<all|open|done|split|next>`** picks which rows show. `all` is today's unchanged
+  default (one table, everything). `open`/`done` are named equivalents of filtering to just the
+  Open or Completed bucket — the common-case spelling for "what's left" / "what shipped."
+  `split` renders both as two headed tables in one output (with counts, so the reader doesn't
+  count rows by hand). `next` skips the table entirely and returns one recommended row plus a
+  one-line reason, ranked by a composite of ship-risk (Target × Urgency × Risk:No-Fix),
+  closest-to-done (a `done-unverified` row needing only a verification step outranks one needing
+  new code, all else equal), and ROI — the dominant factor is named in the reason so the pick is
+  inspectable, not a black box, and ties break toward lower Fix Effort.
+- **`--group-by=<target|section|none>`** is the orthogonal axis: controls how the rows `--view`
+  selected are grouped/sorted, never which rows are included. `target` (default, unchanged) is
+  today's 🔴 THIS → 🔵 NEXT → 🟡 LATER → ⚪ SOMEDAY grouping. `section` groups by Paused
+  Plans / Session Spillover / Audit Findings / User-Reported instead — combined with
+  `--view=split` this produces one Open/Completed pair per section. `none` is a flat
+  Urgency-sorted list for piping elsewhere.
+- **Status classification** (all `--view` modes) is via `parse_status.py`'s existing
+  `archivable` field — `open`/`in-progress`/`blocked`/**`done-unverified`** count as Open,
+  `done-verified`/`withdrawn` count as Completed. **`done-unverified` staying in Open, not
+  Completed, is the load-bearing rule across every mode** — code-written-but-not-proven is
+  still open work by this skill's own status tiering, and `--view=next` explicitly flags when
+  the top pick is a verification step rather than new code so it doesn't read as "start from
+  scratch." Legacy tokenless rows use the same loose word-status mapping `--status` already
+  applies; unclassifiable rows land in an **Unparsed** heading (`split` mode) rather than being
+  silently dropped into either bucket.
+- **Origin:** a live 61-row ledger, read start-to-finish by an agent asked for "what's open,"
+  under-reported by 18 rows on the first pass, then separately misread a row's *current* status
+  from its own history narration (a row that had gone open → fixed → regressed → fixed again
+  read as still-open from the prose alone, even though its token was `done-verified`).
+  Re-deriving "open vs. done" by eye from one merged, sorted-by-Target table is exactly the
+  failure mode `@status` tokens exist to prevent (see `reference/status.md`). The two-axis
+  design (rather than a single `--split` flag, the first cut of this feature) came from a
+  follow-up ask: separate "which rows" from "how grouped" so open-only, done-only, combined, and
+  a future grouping request don't each need their own bespoke flag.
+- **Composes with existing filters** (`--target=`, `--section=`, `--stale`, `--age=`); a
+  `--view=<mode>` combined with a bucket-picking `--status=<value>` is redundant, so `--status=`
+  wins if both are passed.
+- **Carries an Algorithm fallback** (`reference/commands.md` § `/unforget list` § Algorithm
+  fallback) — every existing command spec in this file has one and these flags initially didn't;
+  added so a Python-unavailable environment (or a human without this skill loaded) has a written
+  recipe for `--view`/`--group-by`'s logic, not just the base filters `list` already covered.
+- **Storage untouched by design.** UNFORGET.md stays one file, one table per section — see
+  `reference/commands.md` § View modes for why splitting the file itself would work against this
+  skill's "single source of truth" premise.
+- Full spec: `reference/commands.md` § View modes and § Grouping (under `/unforget list`).
+
+### v2.1.0 — quoted status tokens no longer hijack a row's status (2026-08-11) · minor
+
+Bug fix, backward compatible, but a **behavior** change in the parser — hence minor, not patch.
+
+- **`parse_status.status_cell` now scans last-cell-BACKWARD.** It scanned first-forward for
+  the first cell carrying an `@status:` token, and Finding precedes Status. A row that quoted
+  a token illustratively — rows documenting the format do this, and so does any row citing a
+  sibling row's state — had the QUOTED token silently become its status for `list`, `archive`,
+  and the release gate. Found on a live ledger 2026-08-11: an `open` row citing a closed
+  sibling parsed as `done-verified` and failed the gate. Backward scanning returns the real
+  Status cell in every layout the format allows, including with the optional `1-Star Risk`
+  column appended (it carries no token). Regression-tested both directions.
+- **New `quoted-status-token` warning (warn, not error).** The parser fix keeps the tool
+  correct, but a quoted token still corrupts the `grep -c` reading that ledger docs commonly
+  prescribe for humans. Fires at write time and names the offending token.
+- **Contradiction messages now point at the quote.** When a row both contradicts and quotes a
+  token, the bare "token says X but narration says Y" sent authors to edit their prose — the
+  innocent half. It now names the quote as the likely cause.
+- **`FILE_CITE_RE` no longer matches ordinary prose.** `[\w./-]+\.\w{1,5}` counted `e.g`,
+  `i.e`, and decimals like `0.50` as file citations, inflating `stale-recipe` warnings and
+  training users to ignore the check. Now requires a path separator or a known source/doc
+  extension. Measured on a 3-ledger installation: 33 → 27 warnings on the worst file.
+
+### v2.0.3 — contradiction false positives (2026-07-31) · patch
+
+Bug fix only, backward compatible. The §1b contradiction check matched its phrase list
+as bare substrings, which fired on ordinary prose. Three classes found in the field:
+
+- **`"still open"` matched a VERB phrase.** "viewers can still open + view detail" — a
+  sentence about a UI affordance — was read as "this row is still open," contradicting its
+  own `done` token. Now distinguishes the adjective (clause-final: "the issue is still
+  open") from the verb (takes an object or conjunction: "still open the sheet", "still
+  open + view"). Only the adjective contradicts.
+- **`"blocker"` matched its own negation.** "not a blocker" was read as "is a blocker."
+  Negation-aware now (`not` / `never` / `no longer` / `isn't` / `wasn't` within two words).
+- **`"unverified"` matched the row's own `@status:done-unverified` token.** The narration
+  is stripped of `@status:`/`@verified:` tokens before scanning, so a token can no longer
+  be read as prose about itself.
+
+Matching is also word-bounded now, so a phrase inside a longer word no longer fires.
+
+**Why this mattered.** A false contradiction sets `archivable` to False, so the row is held
+out of `archive` indefinitely while a human is sent to reconcile a real sentence against a
+conflict that never existed. On the source installation it produced a phantom 5th error over
+a ledger whose true error count was 4.
+
+8 regression cases added to `tests/test_row_visibility.py` (4 false-positive shapes, 4 real
+contradictions that must still fire), verified to fail against the old matcher.
+
+### v2.0.2 — release-gate false negative (2026-07-31) · patch
+
+Bug fixes only, backward compatible. A first-ever `verify` run against a mature
+three-ledger installation found that the row-id pattern was matching too little, and that
+rows it missed were invisible to **every** check in the lint:
+
+- **`ROW_ID_RE` accepted at most one leading letter and no suffix.** Real ids skipped in the
+  field: `A48a`/`A48b` (a finding split into sub-rows), `MI-08` (a hyphen-prefixed sibling
+  ledger), `**S12**` (bold-wrapped). Consequence: two 🔴 THIS ship-blockers were excluded
+  from the release gate, which reported **2 blockers over a ledger holding 4** — and
+  reported it as a clean number. An entire sibling ledger reported `rows_checked: 0` while
+  appearing healthy. Widened to an optional 1-3 letter prefix (optional hyphen), digits,
+  optional letter suffix, optional bold. Strictly wider: every previously-matching row still
+  matches, bare-numeric ids still work, headers and separators still correctly do not.
+
+- **New check 10, `cell-count`.** Flags a row whose cell count differs from its table's
+  declared header width. The cause is nearly always an unescaped `|` in cell prose (a
+  `grep 'a\|b'` recipe, a regex alternation), which silently shifts every positional column
+  read past it — a status token can land in a rating cell. Error severity. Width is tracked
+  per-table, so a 10-column section and a 5-column sprint table coexist without false
+  positives.
+
+- **Regression bench.** `tests/test_row_visibility.py` (23 assertions) covers the id grammar
+  positively and negatively plus the cell-count check, builds its own fixture, and is wired
+  into `tests/run.sh`. The shared fixture project exercised none of these id shapes, which is
+  precisely why the bug survived to production.
+
+### v2.0.1 — column-layout robustness (2026-07-26) · patch
+Bug fixes only, no new features, backward compatible. A refreshed example that finally
+exercised the format's own optional/variable columns surfaced a family of positional
+table-cell reads that broke when the column layout wasn't the Standard 10:
+
+- **Status was read by position, not content.** `parse_status.status_cell` (and its copies
+  in `verify_ledger`/`row_budget`) took the *last* table cell as Status — so an appended
+  `1-Star Risk` column made the risk strip get read as the status, silently breaking
+  `list`/`archive`/`verify` (zero tokens found). Now the Status cell is located by the cell
+  carrying the `@status` token; the three copies are consolidated into one.
+- **Finding was read as a fixed index.** `finding_cell` used `cells[2]`, which is *Urgency*
+  under the **Compact** preset (that preset drops the Target column). Now a single
+  preset-aware locator (detects the Compact `**🔴 THIS · …**` badge) that both call sites
+  delegate to. `target_is_this` hardened the same way.
+- **The `verify --fix` / `row_budget split` path** (`build_index_row`) read Finding/Status
+  by fixed index; now by content, so a split of a 1-Star-column row preserves the risk
+  strip and bounds the real Status.
+- **`branch` wrote a fixed 10-column pointer row.** Now `build_pointer_row` derives the
+  column set from the parent's actual header and places content by column name, so a
+  Lean/Compact/Continuous/1-Star parent gets a correctly-shaped pointer row.
+
+All found via `/bug-echo` on the first fix; each fix reproduced before and after, with
+regression guards added to the test suite (proven to fail if the fix regresses). The
+refreshed `examples/UNFORGET.md` now shows format v2 (real `@status` tokens, a
+`done-unverified` owed row, a lossless split) plus the optional `1-Star Risk` column.
+
+### v2.0.0 — the format-v2 milestone (2026-07-26) · **the eight-phase design build, complete**
+**A milestone, NOT a breaking change.** The major bump marks scope, not incompatibility: every v1
+ledger keeps working untouched, no migration is forced, and the skill reads and writes both v1 and
+v2. What earns the `2.0.0` is that this is a categorically more capable tool than v1.0 — eight
+phases (shipped incrementally as v1.1.0 through v1.6.0, now tagged together as v2.0.0) added the
+whole format-v2 layer: **structured `@status`/`@verified`
+tokens** (a row can't contradict itself; a "done" isn't done until it's verified), a **registry**
+(where every ledger lives + git posture + policies), the **`verify` integrity lint** (gates
+archive/promote), the **deferral gate** (trivial tripwire + why-not-now + session accounting), the
+**`branch` command** (atomic child ledgers), **onboarding wiring** (a maintained CLAUDE.md recall
+block + drift reconciliation), **row-length discipline** (bounded index rows + lossless splits), and
+**companion skill handoffs** (below). Backward compatible throughout; a v1 (tokenless) ledger is
+never blocked by any v2 check.
+
+The final phase, companion skill handoffs: unforget recommends OTHER skills at earned ledger
+transitions — function-based, not skill+URL hardcoded through trigger points, so a companion link
+rots in ONE place (the manifest), never twelve.
+
+- **Five fixed functions** (`reference/skill-handoffs.md`): `post-fix-sibling-scan`,
+  `ship-risk-scoring`, `audit-reverify`, `forward-bug-hunt`, `verify-against-reality`. Each fires
+  at a specific ledger transition and names the earned reason — never a generic "you might like
+  these skills" footer.
+- **One global manifest** (`~/.claude/unforget-companions.md`, `scripts/companions.py`): function →
+  skill → invoke → url, the ONLY place a companion URL is written. Projects inherit it. Ships a
+  default mapping the author's skills, **disclosed at init** (overridable in one place; unforget
+  works with no manifest at all).
+- **Install-state detection by INVOCABLE NAME, never a dir find** (the one-star-risk lesson —
+  `one-star-risk` is invocable but has no dir of that name). Three states: installed → run the
+  command, no URL; not-installed → one soft pointer with the manifest URL; unset → say so, invent
+  no URL. `verify` gains a rot check for entries neither installed nor reachable.
+- **Governance:** at most once/function/session; a **trivial close fires nothing**; advisory,
+  never blocking, and never a way to *defer* the scan (a handoff means do-it-now-while-context-is-hot).
+- **Reconciled** the pre-existing inline `/radar-suite`+`/bug-echo` closure block (which hardcoded
+  two URLs and detected installs by directory name) into this function/manifest system across
+  `edit`, `promote`, `deferral-gate`, and `verify`.
+
+With Phase 8 the **v1.1 design build is complete** — all eight phases (status tokens, registry,
+verify lint, deferral gate, branching, onboarding, row-length, companion handoffs) shipped.
+Backward compatible throughout: every feature degrades cleanly on a v1 ledger.
+
+### v1.5.0 — row-length discipline (2026-07-26) · format v2
+Phase 7 of the v1.1 design build: the **row-length rule** that keeps a ledger Readable. A row is a
+one-line INDEX; history/context/verification narration belongs in a detail block, not fused into an
+ever-growing Finding or Status cell. The 2026-07-25 failure was a ~155KB ledger with multi-KB rows
+whose Reads truncated and *misled* the reader — a bounded index prevents exactly that.
+
+- **The two-part row** (`reference/format.md` § Row-length discipline). The table row carries a
+  compact index (a one-line finding summary + the `@status`/`@verified` tokens + a one-line
+  status); the unbounded content lives in a `### Detail - <section>` bullet. History is **appended**
+  to the block, never grown in the cell.
+- **`scripts/row_budget.py`.** `check` flags Finding/Status cells over the budget (default 400,
+  registry-configurable via `row_char_budget`). `split` turns an over-budget row into a bounded
+  index + a detail-block bullet holding the **full original content verbatim** — and returns
+  `lossless:true` only when every character is provably preserved, **refusing** otherwise. The hard
+  rule: the budget MOVES history to the block, it NEVER deletes it.
+- **Wired:** `scan` gains the char-budget lint; **`verify --fix`** offers the split for char-budget
+  findings *only*, per row, with approval (the one integrity finding safe to auto-resolve because
+  it's mechanical and lossless-verifiable). `verify` with no flags stays read-only exactly as before.
+
+Backward compatible: the rule flags legacy over-long rows but never blocks on them; a split is
+always offered, never forced, and only ever moves content — a legacy ledger keeps working untouched.
+
+### v1.4.0 — onboarding, registry wiring, and the maintained recall block (2026-07-26) · format v2
+Phase 6 of the v1.1 design build: `init`/`import` now write and reconcile the two persisted
+surfaces the whole system depends on — the **registry** and the **maintained recall block** — so
+nothing the skill relies on lives only in memory (the through-line of the onboarding design). This
+is the fix for the 2026-07-25 split-brain (ledgers stranded in a parallel tree) and stale-pointer
+(a CLAUDE.md index that described an old layout) failures.
+
+- **Onboarding questions** (`reference/init.md`). `init` adds the **git-posture** question (split /
+  committed / ignored — split recommended, and the skill writes the `.gitignore` rules itself,
+  incl. ignoring the ephemeral `.unforget-session.json` and `.unforget.json` cache), and upgrades
+  the recall question to **maintained / manual / none**. It writes the registry + the two policy
+  defaults (Policy 1 deferral, Policy 2 multi-axis) at the end.
+- **The maintained recall block** (`reference/init.md`, `scripts/recall_block.py`). A
+  marker-delimited Deferred Work Index in CLAUDE.md/AGENTS.md, rebuilt from the registry by
+  init/import/branch so it can't rot — rewriting only between its markers, never the user's
+  content. `branch` now updates it as a **fourth atomic artifact** (rolls back with the other three
+  on any write failure).
+- **`import` drift detection** (`scripts/import_drift.py`). Reconciles the registry against reality
+  — **registered-but-missing** (error), **found-but-unregistered** (the stranded-parallel-tree
+  check), **posture-mismatch**, and **stale-recall**. Read-only; reports, you fix.
+- **Migration for already-messy projects** (`reference/init.md` § Phase 6b, `reference/surfaces.md`
+  § non-standard locations). `init` ASKS for out-of-repo ledger locations (rather than a disk-wide
+  scan), proposes consolidation, and **verifies byte-identical before removing any original** — the
+  one-way-door discipline for not losing a ledger during a move.
+
+Backward compatible: all of it is v2; a v1 ledger keeps working, and a project with no registry
+just gets the pre-v2 behavior (branch stays reachable via the parent pointer, no recall
+maintenance).
+
+### v1.3.0 — branching + the `branch` command (2026-07-26) · format v2
+Phase 5 of the v1.1 design build: the **branching model** and an atomic `/unforget branch`
+command. The default is still NOT to branch — most deferred work is a row or a section. A new
+ledger is justified only when work differs from the parent on one of three axes.
+
+- **The three axes** (`reference/branching.md` §2): **actor** (a different *human* acts on it —
+  earns a file even at identical discipline, that's what a `TERRY-UNFORGET` is; a machine/
+  automation actor does NOT — that's a Target value or tag), **lifespan** (a sprint — earns a
+  ledger only when paired with a *different discipline* like a cap/eviction, not a plain
+  time-box), and **domain** (a different repo/subject). Plus the decision cascade (§3) and the two
+  placement policies (§2.5).
+- **The atomic `branch` command** (§8, `scripts/branch_create.py`). Creating a child does three
+  things **together, or none** — scaffold the child header (axis, discipline, parent back-pointer,
+  death condition if lifespan), write the parent's single pointer row (never a copy of child
+  rows), and register the child. A failure on any one rolls the others back — no half-branched
+  state. That structural atomicity makes the 2026-07-25 split-brain (a child the parent/registry
+  lost track of) impossible. Guards refuse rather than half-create: a duplicate name, a lifespan
+  child with no death condition, or an unconfirmed non-human actor.
+- **Auto-suggest on a repeated pattern** (§6). `add`/`import` *offer* a branch — never branch
+  unilaterally — only when the cascade lands on "new ledger" for ≥2 related items, naming the
+  pattern seen. One item never triggers it. This is how an emerging track gets noticed instead of
+  silently accumulating.
+
+Backward compatible: `branch` writes v2 children and reads the registry; on a project with no
+registry, register the parent first. The recall block still points at the canonical index; a
+child is reachable via the parent's pointer row (the marker-delimited recall-block writer that
+would add a per-child pointer line is Phase 6).
+
+### v1.2.0 — deferral gate (2026-07-26) · format v2
+Phase 4 of the v1.1 design build: the **deferral gate**, which fires at `/unforget add` — the
+moment work is about to become a deferred row. It targets *deferral-laundering*: a row looks
+identical whether it was deferred for a good reason or because deferring was frictionless and
+self-flattering. The gate makes deferral cost something and leave an auditable record.
+
+- **Trivial tripwire** (`reference/deferral-gate.md` §2). A would-be row that is Fix Effort =
+  Trivial AND Blast Radius = ⚪ 1 file is redirected to **do it now** — scope doesn't gate it
+  (out-of-scope trivial → do it and log a one-line report). A trivial-but-**destructive** change
+  (deletion, force-push, prod deploy) is the exception: it routes to needs-approval, never
+  auto-done. Trivial ≠ safe.
+- **"Why not now?" allow-list** (§3). Everything that clears the tripwire must name one of four
+  deferral reasons — `user-decision`, `scaffolding`, `scope`, `external-block` — recorded in the
+  row as `Deferred because: <tag>` so a later reader (or `scan`/`verify`) can check whether it
+  held up. No valid reason → do-now is the default, not a row.
+- **Session defer/fix accounting** (§4, the load-bearing backstop). A per-session tally surfaces on
+  `list` and at session end — `2 fixed inline · 7 deferred (reasons: …)`. A defer-heavy ratio
+  (default ≥ 3× fixed) raises a gentle, **advisory-never-blocking** flag. The linguistic gate can
+  be gamed per row; a ratio can't — this half is why the gate is honest, not decorative.
+- **`scan` trivial-staleness cross-check** (§4d). A Trivial row that has survived ≥N sessions
+  un-done is flagged as a near-certain "should've just done it" — how the pattern is learned over
+  time, not just caught in the moment.
+- New `scripts/defer_tally.py` (tripwire routing + tally math; writes the ephemeral, git-ignored
+  `.unforget-session.json`) and `reference/deferral-gate.md`. Thresholds (`ratio_flag_threshold`,
+  `stale_trivial_sessions`) and strictness (`policy_deferral`, default `aggressive`) are read from
+  the registry. Backward compatible: the gate helps on a v1 ledger and never blocks the write path.
+
+### v1.1.0 — status tokens, registry, verify lint (2026-07-26) · format v2
+The first implemented slice of the v1.1 design (Phases 1–3 of the build plan). Introduces
+**format `v2`** (the skill reads/writes both v1 and v2; v1 ledgers keep working untouched).
+Every feature traces to a real failure seen while running the skill on a large, long-lived
+ledger — not a hypothetical.
+
+- **Structured status tokens** (`reference/status.md`, `scripts/parse_status.py`). A row's status
+  is now a machine-readable `@status:` token (`open` / `in-progress` / `done-verified` /
+  `done-unverified` / `blocked` / `withdrawn`) that tools read instead of parsing prose — so a row
+  can no longer contradict itself. `done-unverified` is a first-class "done-but-owed" state.
+- **Verification tier** (`@verified:` = `code` / `device` / `user` / `session-claimed`).
+  `done-verified` requires `device` or `user` (or `code` with a note); **`session-claimed` can
+  never back `done-verified`** — a claim is not a verification.
+- **Registry** (`reference/registry.md`, `scripts/registry.py`). A re-read source of truth for
+  where ledgers live and the persisted git-posture / policy settings, in a marker-delimited block
+  in the ledger `README.md` (canonical) with an optional `.unforget.json` cache. If the two
+  disagree, the README wins.
+- **`verify` / doctor lint** (`reference/verify.md`, `scripts/verify_ledger.py`). A new read-only
+  subcommand that catches contradictions, unproven/`session-claimed` "done", unknown status
+  values, cell bloat, stale verify-still-open recipes, and registry drift. It **gates
+  `archive`/`promote`**: an error-severity finding blocks a ship or relocation decision.
+
+**Archive & release invariants:** `archive` now moves only a *clean* `done-verified` (valid tier,
+no contradiction) or `withdrawn`, and holds `done-unverified`. A 🔴 THIS row counts as a release
+blocker unless it is cleanly `done-verified` or `withdrawn`.
+
+**Backward compatibility:** a v1 (tokenless) ledger produces no errors — the v2-only features
+simply don't apply until the file is upgraded to v2. No big-bang reformat; rows gain tokens as
+they're touched.
+
+### The v1.1 design build is complete
+All eight phases have shipped: status tokens (P1), registry (P2), verify lint (P3), deferral gate
+(P4), branching (P5), onboarding/recall wiring (P6), row-length discipline (P7), and companion
+skill handoffs (P8). The five `DESIGN-*.md` documents that specified this build are now fully
+implemented. Future work is v1.2+ (see the deferred list in earlier design notes).
+
+### v1.0.4 — docs (2026-07-26)
+Documentation only, no behavior change: recorded the v1.1 design pass as a changelog entry and a
+forward-looking README section. Patch bump so existing installs picked up the updated docs.
+
+### v1.0.3 and earlier
+Shipping skill: init / add / edit / import / list / scan / archive / promote / `--version`, the
+10-column rating format, the format-version contract, and the `scripts/*.py` deterministic
+helpers. This is the implemented baseline the v1.1 design builds on.

@@ -262,6 +262,9 @@ def run(args) -> dict:
 
     # name already registered? (§8 guard)
     reg = registry.read_registry(dir_path)
+    if "error" in reg:
+        result["refusal"] = reg["error"]
+        return result
     existing = {(l.get("name") or "").lower() for l in reg.get("ledgers", [])}
     if name_stem.lower() in existing or child_name.lower() in existing:
         result["refusal"] = f"{name_stem!r} is already a registered ledger; no duplicate ledgers"
@@ -316,6 +319,13 @@ def run(args) -> dict:
     recall_file = reg_global.get("recall_file")
     recall_maintained = (reg_global.get("recall_block") or "").strip().lower() == "maintained"
     if recall_maintained and recall_file:
+        rf = Path(recall_file)
+        recall_file = str(rf if rf.is_absolute() else dir_path / rf)
+        try:
+            recall_block.extract_block(Path(recall_file).read_text(encoding="utf-8") if Path(recall_file).exists() else "")
+        except (ValueError, OSError) as exc:
+            result["refusal"] = str(exc)
+            return result
         result["artifacts"] = result["artifacts"] + ["recall block"]
 
     if args.dry_run:
@@ -343,6 +353,8 @@ def run(args) -> dict:
     recall_backup = None
     recall_existed = False
     registry_attempted = False   # did we reach (and thus possibly mutate) the README?
+    cache_path = dir_path / registry.CACHE_NAME
+    cache_backup = cache_path.read_bytes() if cache_path.exists() else None
     recall_attempted = False     # did we reach (and thus possibly mutate) the recall file?
     try:
         child_path.write_text(child_content, encoding="utf-8")
@@ -372,7 +384,7 @@ def run(args) -> dict:
             recall_attempted = True
             rf.write_text(new_text, encoding="utf-8")
             result["recall_updated"] = True
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         # roll back EVERY artifact we ACTUALLY reached — no half-branched state, and
         # never touch a file we didn't write (a failure before the recall step must
         # leave the recall file exactly as it was, not delete it).
@@ -387,6 +399,14 @@ def run(args) -> dict:
         if registry_attempted and registry_backup is not None:
             try:
                 (dir_path / "README.md").write_text(registry_backup, encoding="utf-8")
+            except OSError:
+                pass
+        if registry_attempted:
+            try:
+                if cache_backup is None:
+                    cache_path.unlink(missing_ok=True)
+                else:
+                    cache_path.write_bytes(cache_backup)
             except OSError:
                 pass
         if recall_attempted and recall_file:

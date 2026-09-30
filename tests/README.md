@@ -111,3 +111,12 @@ brittle-couple the bench to SKILL.md prose. Diffing the helper's JSON
 exercises every algorithm a regression could break — surface heuristics,
 filename patterns, regexes, exclusions — without depending on prose
 that's allowed to change.
+
+## ASC integrity regressions (v2.9.1)
+
+`test_review_regressions.py` covers managed writes/rollback, closure and splitting,
+recipe execution, memory containment, scope/recall workflows, packaging and format
+controls. Fixtures use disposable directories and injected memory roots; no real
+account memory or user-ledger recipes are executed. `tests/run.sh` includes these
+checks. Behavioral result files remain separately reported live-model evidence;
+checker selftests and synthetic results do not count as host invocation.

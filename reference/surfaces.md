@@ -183,3 +183,13 @@ The fallback procedure:
 5. **Run cross-surface dedup** by comparing Finding headlines pairwise; merge candidates with substantial token overlap (~70% Jaccard similarity on tokenized headlines).
 
 The fallback is safe to use for one-off init runs on small projects but should not be relied on for repeat imports — the non-determinism compounds across sessions.
+
+### Memory containment
+
+`memory-dir` is one encoded directory name, never a path. Preserve the encoder's
+legitimate punctuation and Unicode (for example a dotted project name).
+Absolute names, traversal and either path separator are invalid pins. Resolve directories
+and files before reading and require containment under the Claude projects memory root;
+reject symlink escapes. Invalid pins are reported, never called correct. Legitimate
+cwd/ancestor lookup remains available. `scan_surfaces.py --memory-root <directory>` injects
+an alternate projects root for isolated tests without changing HOME or CODEX_HOME.

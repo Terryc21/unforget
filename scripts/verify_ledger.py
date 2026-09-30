@@ -175,6 +175,7 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
         char_budget_hard = char_budget * DEFAULT_CHAR_BUDGET_HARD_MULTIPLE
     findings = []
     blockers = []  # every blocks_release row, for the caller's ship_ready/this_open
+    evaluations = iter(parse_status.parse_file(text))
     declared = 0  # width of the most recent header row; 0 = unknown
     prev_line = ""  # previous line, so a delimiter row can read its header
     for line in text.splitlines():
@@ -201,7 +202,7 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
             prev_line = line
             continue
         prev_line = line
-        parsed = parse_status.parse_row(line)
+        parsed = next(evaluations)
         rid = parsed["id"] or "?"
 
         # Check 10 (U5): cell count != the enclosing table's declared width.
@@ -321,7 +322,7 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
         # those are exactly the premises that CAN decay.
         fcell = finding_cell(line)
         is_pointer = "this row is a pointer" in line.lower() or "→ see " in status_cell(line).lower()
-        is_closed = parse_status.parse_row(line).get("archivable", False)
+        is_closed = parsed.get("completed", False)
         if not is_pointer and not is_closed and FILE_CITE_RE.search(fcell):
             whole = line.lower()
             if not any(m in whole for m in RECIPE_MARKERS):
@@ -362,8 +363,7 @@ def check_detail_pointers(text: str) -> list[dict]:
     for line in text.splitlines():
         if not parse_status.ROW_ID_RE.match(line):
             continue
-        parsed = parse_status.parse_row(line)
-        rid = parsed["id"] or "?"
+        rid = parse_status.ROW_ID_RE.match(line)[1]
         for cell in (status_cell(line), finding_cell(line)):
             for pid in DETAIL_POINTER_RE.findall(cell):
                 pointer_ids_by_row.append((rid, pid))

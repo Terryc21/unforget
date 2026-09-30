@@ -113,7 +113,7 @@ META_DOC_PHRASES = (
     "pointer to",
 )
 MEMORY_DIR_PIN_RE = re.compile(
-    r"<!--\s*unforget-config:\s*memory-dir=([^\s>]+)\s*-->"
+    r"<!--\s*unforget-config:\s*memory-dir=(.*?)\s*-->"
 )
 PIN_HEADER_LINES_TO_SCAN = 30
 
@@ -382,11 +382,11 @@ def read_memory_dir_pin(unforget_md: Path | None) -> str | None:
     for line in text.splitlines()[:PIN_HEADER_LINES_TO_SCAN]:
         match = MEMORY_DIR_PIN_RE.search(line)
         if match:
-            return match.group(1)
+            return match.group(1).strip()
     return None
 
 
-def scan_memory_files(root: Path, unforget_md: Path | None = None) -> dict:
+def scan_memory_files(root: Path, unforget_md: Path | None = None, memory_root: Path | None = None) -> dict:
     """Find Claude Code memory dir.
 
     Resolution order (per reference/surfaces.md § Memory-dir config pin):
@@ -400,7 +400,10 @@ def scan_memory_files(root: Path, unforget_md: Path | None = None) -> dict:
     candidates = []
     notes = []
     pin_action: dict = {"action": "none", "reason": ""}
-    home = Path.home()
+    memory_root = memory_root if memory_root is not None else Path.home() / ".claude" / "projects"
+    memory_root = memory_root.resolve()
+    def contained(path):
+        return path.resolve().is_relative_to(memory_root)
     abs_root = root.resolve()
     cwd_encoded = re.sub(r"[/\s]", "-", str(abs_root))
 
@@ -409,9 +412,16 @@ def scan_memory_files(root: Path, unforget_md: Path | None = None) -> dict:
 
     # 1. Try the pin first
     pinned = read_memory_dir_pin(unforget_md)
+    if pinned and (pinned in (".", "..") or re.search(r"[/\\\s\x00-\x1f]", pinned)
+                   or re.match(r"^[A-Za-z]:", pinned)):
+        return {"candidates": [], "notes": ["invalid memory-dir pin: expected one encoded directory name"],
+                "pin_action": {"action": "invalid", "reason": "pin is not a directory name"}}
     if pinned:
-        pinned_dir = home / ".claude" / "projects" / pinned / "memory"
-        if pinned_dir.is_dir():
+        pinned_dir = memory_root / pinned / "memory"
+        if not contained(pinned_dir):
+            return {"candidates": [], "notes": ["memory-dir pin escapes memory root"],
+                    "pin_action": {"action": "invalid", "reason": "symlink escape"}}
+        if contained(pinned_dir) and pinned_dir.is_dir():
             paths_to_scan.append((pinned_dir, "pinned"))
             resolved_encoded = pinned
             notes.append(f"used memory-dir pin: {pinned}")
@@ -420,8 +430,8 @@ def scan_memory_files(root: Path, unforget_md: Path | None = None) -> dict:
 
     # 2. Try cwd-encoded path (if pin missing or pin failed)
     if not paths_to_scan:
-        primary = home / ".claude" / "projects" / cwd_encoded / "memory"
-        if primary.is_dir():
+        primary = memory_root / cwd_encoded / "memory"
+        if contained(primary) and primary.is_dir():
             paths_to_scan.append((primary, "cwd-encoded"))
             resolved_encoded = cwd_encoded
             notes.append(f"primary memory dir: {primary}")
@@ -436,8 +446,8 @@ def scan_memory_files(root: Path, unforget_md: Path | None = None) -> dict:
             if cur == cur.parent:
                 break
             ancestor_encoded = re.sub(r"[/\s]", "-", str(cur))
-            ancestor_dir = home / ".claude" / "projects" / ancestor_encoded / "memory"
-            if ancestor_dir.is_dir():
+            ancestor_dir = memory_root / ancestor_encoded / "memory"
+            if contained(ancestor_dir) and ancestor_dir.is_dir():
                 paths_to_scan.append((ancestor_dir, "ancestor"))
                 resolved_encoded = ancestor_encoded
                 notes.append(f"ancestor memory dir: {ancestor_dir}")
@@ -447,6 +457,9 @@ def scan_memory_files(root: Path, unforget_md: Path | None = None) -> dict:
     for memdir, _source in paths_to_scan:
         for p in memdir.glob("*.md"):
             if not MEMORY_FILENAME_RE.match(p.name):
+                continue
+            if not contained(p) or not p.is_file():
+                notes.append(f"refused escaping or non-regular memory file: {p.name}")
                 continue
             text = read_text(p, max_bytes=50_000)
             meta_hits = [phrase for phrase in META_DOC_PHRASES if phrase.lower() in text.lower()]
@@ -500,6 +513,7 @@ def main() -> int:
         default=None,
         help="Path to UNFORGET.md (read memory-dir pin from its header)",
     )
+    parser.add_argument("--memory-root", type=Path, help="Override the Claude projects memory root (isolated scans/tests)")
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -516,7 +530,7 @@ def main() -> int:
         "plan_files": scan_plan_files(root),
         "code_comments": scan_code_comments(root, args.include_comments),
         "github_issues": scan_github_issues(root),
-        "memory_files": scan_memory_files(root, unforget_md),
+        "memory_files": scan_memory_files(root, unforget_md, args.memory_root),
     }
 
     total_candidates = 0

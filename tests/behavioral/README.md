@@ -76,7 +76,8 @@ One assertion per line; blank lines and `#` comments ignored.
 | `03-edit-target` | `edit --target=THIS` changes only that cell | `cell A1 Target THIS` + neighbors untouched |
 | `04-edit-status-fixed` | `edit --status=Fixed` prepends a CLOSED pointer | `detail_order S1` |
 | `05-promote-blocked-by-open-this` | `promote` won't silently ship an open 🔴 THIS | names the blocker (assert on reported output) |
-| `06-format-version-refusal` | a `v2` file refuses writes | `unchanged_from input.md` |
+| `06-format-version-refusal` | a future `v3` file refuses writes | `unchanged_from input.md` |
+| `07-supported-v2` | a supported v2 target edit proceeds | `cell A1 Target THIS` |
 
 ## Adding a case
 
@@ -86,3 +87,12 @@ One assertion per line; blank lines and `#` comments ignored.
 3. If your case has a clean deterministic answer, add an `expected.md` for the
    human reader.
 4. Run `--selftest` if you touched the checker, then run your case.
+
+### Supported and future formats
+
+Case 06 now declares unsupported **v3** (supported formats are v1 and v2). Its checker
+requires byte-identical input after refusal. `test_review_regressions.py` includes the v2
+control and v3 helper check. Deterministic helper/checker tests are not live model runs;
+missing `result.md` files are explicitly skipped. Path-with-spaces canaries prove existing
+failing results are counted exactly once. Surface scanning uses an injected empty memory
+root and never consults account memory during this harness.

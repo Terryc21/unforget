@@ -69,7 +69,8 @@ run_diff() {
   fi
 }
 
-run_diff scan_surfaces        --root "$FIXTURE" --include-comments
+mkdir -p "$TMP/memory"
+run_diff scan_surfaces        --root "$FIXTURE" --include-comments --memory-root "$TMP/memory"
 run_diff check_format_version "$FIXTURE/Documentation/Development/UNFORGET.md"
 run_diff encode_project_path  "/Volumes/2 TB Drive/Coding/GitHub/unforget-test"
 run_diff dedup_findings       --candidates "$TESTS_DIR/fixtures/dedup-input.json"
@@ -241,6 +242,11 @@ fi
 
 if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_skill_version.py; then
   echo "FAIL: portable skill version tests"
+  FAILED=1
+fi
+
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_review_regressions.py; then
+  echo "FAIL: ASC implementation regressions"
   FAILED=1
 fi
 

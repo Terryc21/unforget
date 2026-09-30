@@ -1,6 +1,6 @@
 # unforget
 
-![Version](https://img.shields.io/github/v/tag/Terryc21/unforget?label=version&cacheSeconds=3600&v=2.9.0) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget?cacheSeconds=3600) ![Stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat&cacheSeconds=3600) ![Issues](https://img.shields.io/github/issues/Terryc21/unforget?cacheSeconds=3600) ![License](https://img.shields.io/github/license/Terryc21/unforget?cacheSeconds=3600) ![Codex + Claude Code](https://img.shields.io/badge/Codex%20%2B%20Claude%20Code-Skill-blueviolet)
+![Version](https://img.shields.io/github/v/tag/Terryc21/unforget?label=version&cacheSeconds=3600&v=2.9.1) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget?cacheSeconds=3600) ![Stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat&cacheSeconds=3600) ![Issues](https://img.shields.io/github/issues/Terryc21/unforget?cacheSeconds=3600) ![License](https://img.shields.io/github/license/Terryc21/unforget?cacheSeconds=3600) ![Codex + Claude Code](https://img.shields.io/badge/Codex%20%2B%20Claude%20Code-Skill-blueviolet)
 
 > **One file. Four sections. Nothing slips.**
 
@@ -85,7 +85,7 @@ until it's proven.
 
 ## Install for Codex or Claude Code
 
-Version 2.9.0 uses **one shared skill**, including the same HTML generator. Choose
+Version 2.9.1 uses **one shared skill**, including the same HTML generator. Choose
 one installation method per host. Python 3.9+ runs the bundled helpers.
 
 ### Codex
@@ -294,7 +294,8 @@ table survived — a misplaced `|` breaks a table quietly.
 | **[Release ritual](reference/promotion.md)** | What `promote` checks before letting you ship |
 | **[Splitting the file](reference/branching.md)** | When a sprint or someone else's list earns its own |
 | **[Recovery](docs/RECOVERY.md)** | Repairing a broken file |
-| **[SKILL.md](SKILL.md)** | The instructions Claude follows, and the full changelog |
+| **[CHANGELOG.md](CHANGELOG.md)** | Current and historical release notes |
+| **[SKILL.md](SKILL.md)** | Shared Codex / Claude Code skill instructions |
 
 **Reading the file outside Claude.** Ten columns is wide. GitHub and GitLab render it fine, as do
 VS Code's preview, Obsidian, Typora, Bear, MacDown, iA Writer, and Marked 2. If a table looks

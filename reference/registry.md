@@ -143,3 +143,19 @@ python3 scripts/registry.py check --dir <ledger-dir>            # report README-
 `README.md`. Parse the `**Global**` `| key | value |` table into config and the
 `**Ledgers**` table into rows. Treat empty/`—` as null. On any README-vs-cache
 disagreement, trust the README and rewrite the cache.
+
+### Saved ledger scope and safe managed blocks
+
+`display_all_ledgers` is an explicit boolean, true or false. Unset defaults to the current
+ledger. `display_prefs.py build-patch --all-ledgers` saves true; `--current-ledger` saves
+false. A skipped question emits no key. Always apply interview patches with `write --merge`.
+Explicit named-ledger or current-ledger requests override the saved value. Resolve with
+`--current-ledger-name <canonical filename>` and present the returned `selected_ledgers`
+and `scope` so users know which files are included.
+
+Registry and recall blocks require exactly one ordered marker pair, or no markers for an
+append. Missing, reversed, duplicate or nested pairs refuse before writing. Repair malformed
+markers deliberately; the helper will not guess where human content ends. Recall writes
+preflight the instruction file before persisting home settings or updating the cache.
+Relative `recall_file` paths resolve from the ledger directory; use absolute paths when
+onboarding has already resolved a project instruction file elsewhere.

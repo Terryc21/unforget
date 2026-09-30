@@ -90,11 +90,11 @@ is the honest meaning of the state.
 
 ## Archive & release invariants (§1c)
 
-- `archive` moves **only** `done-verified` and `withdrawn`. **`done-unverified`
+- `archive` moves **only clean** `done-verified` and `withdrawn` (valid evidence, no contradiction). **`done-unverified`
   is HELD BACK** — it still owes a check; archiving it would bury an open
   obligation.
 - A `🔴 THIS` (current-release) row still counts as a release blocker unless its
-  token is `done-verified` or `withdrawn`. A `done-unverified` THIS row is STILL
+  closure is cleanly `done-verified` or `withdrawn` (or a clear legacy completion). A `done-unverified` THIS row is STILL
   a blocker — it is not proven.
 
 ## Backward compatibility (legacy rows)
@@ -102,8 +102,10 @@ is the honest meaning of the state.
 Rows written before format v2 have no token. They are NOT errors: a tokenless
 row is reported `token_present: false` and passes through `list`/`scan`/`archive`
 as-is (a legacy row is never auto-archived, since it is not `done-verified`).
-The verify pass flags tokenless rows as "upgrade when touched," but nothing
-blocks on them. New and edited rows get a token.
+Tokenless legacy rows do not block solely because the token is absent. New v2
+rows and explicit Status edits get a token. Edits to Target, ratings, or other
+cells preserve Status byte-for-byte unless the user explicitly requests a format
+migration. A migration must still satisfy the verification-evidence rules.
 
 ## How commands use this
 
@@ -132,4 +134,21 @@ Validate: `status` is in the enum; if `done-verified`, a `@verified` of `device`
 or `user` (or `code` with a note) is present and it is not `session-claimed`;
 and no contradiction phrase ("re-opened", "still broken", "still owed",
 "unverified", "blocker") appears in the narration of a `done-verified`/
-`withdrawn` row. `archivable` = status is `done-verified` or `withdrawn`.
+`withdrawn` row. `archivable` requires clean closure; invalid claims cannot archive. Code-only closure requires the declaration below.
+
+## Code-only closure declaration (v2.9.1)
+
+A `done-verified` + `@verified:code` row requires `Code-is-sufficient: <nonempty justification>`
+in its Status narration, or on a dedicated line inside that exact ID's bullet under a
+`### Detail` heading. Explain why code evidence settles this item (for example a pure
+function covered by deterministic tests). A bare token, "tests passed", empty declaration,
+another item's declaration, or session-claimed tier does not qualify. Contradictory Status
+narration or a contradictory declaration still prevents closure. Historical detail prose
+is not treated as current status; keep current obligations in Status.
+
+The shared evaluator reports `completed`, `archivable`, `blocks_release`, and integrity
+issues; HTML consumes the same decision after extracting columns by header. Invalid
+verified claims remain unfinished without changing the ledger. Supply real evidence or
+return the row to `done-unverified`. A clean legacy completion (Fixed/Closed/Done/Withdrawn
+at the start, without negation or open/owed/mixed narration) may count as completed for
+release/reporting, but tokenless rows are never automatically archived.

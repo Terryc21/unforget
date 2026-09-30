@@ -37,11 +37,11 @@ cases() { find "$HERE" -mindepth 1 -maxdepth 1 -type d | sort; }
 
 case "$MODE" in
   --list)
-    for c in $(cases); do
+    while IFS= read -r c; do
       echo "== $(basename "$c") =="
       cat "$c/command.txt"
       echo
-    done
+    done < <(cases)
     ;;
 
   --selftest)
@@ -65,7 +65,7 @@ case "$MODE" in
 
   --check|"")
     fails=0; ran=0; skipped=0
-    for c in $(cases); do
+    while IFS= read -r c; do
       if [[ -f "$c/result.md" ]]; then
         ran=$((ran+1))
         echo "== $(basename "$c") =="
@@ -75,7 +75,7 @@ case "$MODE" in
         skipped=$((skipped+1))
         echo "SKIP $(basename "$c") — no result.md (not run yet)"
       fi
-    done
+    done < <(cases)
     echo
     echo "Behavioral: $ran run, $skipped skipped, $fails failed."
     [[ $fails -eq 0 ]] && exit 0 || exit 1

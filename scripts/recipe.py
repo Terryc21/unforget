@@ -72,21 +72,9 @@ RECIPE_RE = re.compile(
 
 ROW_ID_RE = re.compile(r"^\|\s*\*{0,2}([A-Za-z]{0,3}-?\d+[a-z]?)\*{0,2}\s*\|")
 
-# Allowlist. Everything else reports `unrunnable` rather than executing.
-#
-# `security` and `git` are deliberately ABSENT. One recipe in the source corpus is
-# `security find-generic-password -s github-pat -a $USER -w`, and per that tool's own
-# usage text `-w` means "Display only the password on stdout" -- the entire output is
-# a credential. `git` is a large surface with write subcommands and is not worth the
-# exposure for the five read-only uses found.
-ALLOWED_COMMANDS = frozenset({
-    "grep", "rg", "ls", "test", "find", "awk", "sed", "wc", "head", "tail", "python3",
-})
-
-# Shell metacharacters. Their presence makes a recipe unrunnable rather than being
-# escaped: no shell is ever spawned, and a `|` inside a markdown table cell splits
-# the row anyway (it broke a real row in the source ledger).
-SHELL_CHARS = ("|", ";", "&&", "||", ">", "<", "`", "$(", "$", "~", "*", "?", "\n")
+# Only count searches: grep/rg -c [-i] [-F|-E] [-e] PATTERN [--] FILE...
+# No shell, recursive search, preprocessors, config, or executable wrappers.
+SHELL_CHARS = ("|", ";", "&", ">", "<", "`", "$", "\n", "\r")
 
 TIMEOUT_SECONDS = 5
 
@@ -121,22 +109,43 @@ def parse_recipes(text: str) -> list[dict]:
     return out
 
 
+def command_args(command: str) -> tuple[list[str], list[str]]:
+    if any(ch in command for ch in SHELL_CHARS):
+        raise ValueError("shell syntax is unsupported")
+    argv = shlex.split(command)
+    if not argv or argv[0] not in ("grep", "rg"):
+        raise ValueError("only grep/rg count searches are supported")
+    tool = argv.pop(0)
+    opts = []
+    while argv and argv[0].startswith("-") and argv[0] not in ("-e", "--"):
+        opt = argv.pop(0)
+        if opt not in ("-c", "--count", "-i", "-F", "-E") or (tool == "rg" and opt == "-E"):
+            raise ValueError("unsupported search option: " + opt)
+        opts.append(opt)
+    if not any(o in ("-c", "--count") for o in opts):
+        raise ValueError("a count option (-c) is required")
+    if argv and argv[0] in ("-e", "--"):
+        argv.pop(0)
+    if len(argv) < 2:
+        raise ValueError("a pattern and explicit regular files are required")
+    pattern, *files = argv
+    if files and files[0] == "--":
+        files = files[1:]
+    if not files:
+        raise ValueError("explicit regular files are required")
+    for name in files:
+        if name.startswith(("-", "/", "~")) or ".." in Path(name).parts or "\\" in name:
+            raise ValueError("files must be in-root relative paths, not options or traversal")
+    # Force numeric-only output; patterns cannot become filenames or options.
+    prefix = [tool, "--no-config"] if tool == "rg" else [tool]
+    return prefix + opts + ["-h" if tool == "grep" else "--no-filename", "-e", pattern, "--"], files
+
+
 def screen(command: str) -> str | None:
-    """Return a refusal reason, or None if the command may run."""
-    for ch in SHELL_CHARS:
-        if ch in command:
-            return f"contains shell metacharacter {ch!r} (no shell is spawned; rewrite it without one)"
     try:
-        argv = shlex.split(command)
+        command_args(command)
     except ValueError as exc:
-        return f"unparseable: {exc}"
-    if not argv:
-        return "empty command"
-    if argv[0] not in ALLOWED_COMMANDS:
-        return f"{argv[0]!r} is not on the allowlist"
-    for token in argv[1:]:
-        if token.startswith("/"):
-            return "absolute path (recipes must be repo-relative)"
+        return str(exc)
     return None
 
 
@@ -160,47 +169,33 @@ def run_recipe(recipe: dict, root: Path) -> dict:
         result.update(outcome=Outcome.UNRUNNABLE, detail=refusal, actual=None)
         return result
 
-    argv = shlex.split(recipe["command"])
-    try:
-        proc = subprocess.run(
-            argv, cwd=root, capture_output=True, text=True,
-            timeout=TIMEOUT_SECONDS, shell=False,
-        )
-    except FileNotFoundError:
-        result.update(outcome=Outcome.DECAYED, detail=f"{argv[0]!r} not found", actual=None)
-        return result
-    except subprocess.TimeoutExpired:
-        result.update(outcome=Outcome.DECAYED, detail=f"timed out after {TIMEOUT_SECONDS}s", actual=None)
-        return result
-
-    stdout = proc.stdout.strip()
-
-    # A missing target is DECAYED, never a passing zero. This is the false-pass the
-    # runner exists to catch: a grep on a moved path prints nothing and exits
-    # non-zero, which reads identically to "the defect is gone".
-    stderr_low = proc.stderr.lower()
-    if "no such file" in stderr_low or "not found" in stderr_low:
-        result.update(
-            outcome=Outcome.DECAYED,
-            detail="target path does not exist -- the recipe can no longer observe what it checks",
-            actual=None,
-        )
-        return result
-
-    # grep -c prints one count per file when given several; sum them.
-    numbers = re.findall(r"^(?:.*:)?(\d+)$", stdout, re.M)
-    if numbers:
-        actual = sum(int(n) for n in numbers)
-    elif stdout == "":
-        # Exit 1 with no output is grep's "no matches": a real zero.
-        actual = 0
-    else:
-        result.update(
-            outcome=Outcome.DECAYED,
-            detail=f"output is not a count: {stdout[:60]!r}",
-            actual=None,
-        )
-        return result
+    prefix, files = command_args(recipe["command"])
+    root = root.resolve()
+    paths = []
+    for name in files:
+        path = (root / name).resolve()
+        if not path.is_relative_to(root):
+            result.update(outcome=Outcome.UNRUNNABLE, detail="file escapes recipe root", actual=None)
+            return result
+        if not path.is_file():
+            result.update(outcome=Outcome.DECAYED, detail="target is not a regular file", actual=None)
+            return result
+        paths.append(path)
+    actual = 0
+    # One process per file makes grep/rg's zero-match and multi-file counts unambiguous.
+    for path in paths:
+        try:
+            proc = subprocess.run(prefix + [str(path)], cwd=root, capture_output=True,
+                                  text=True, timeout=TIMEOUT_SECONDS, shell=False)
+        except (OSError, subprocess.SubprocessError) as exc:
+            result.update(outcome=Outcome.DECAYED, detail=str(exc), actual=None)
+            return result
+        output = proc.stdout.strip()
+        no_match = proc.returncode == 1 and output in ("", "0")
+        if proc.stderr or (not no_match and (proc.returncode != 0 or not re.fullmatch(r"[0-9]+", output))):
+            result.update(outcome=Outcome.DECAYED, detail="search failed or returned malformed count", actual=None)
+            return result
+        actual += int(output or "0")
 
     result["actual"] = actual
     matches = compare(actual, recipe["op"], recipe["expected"])

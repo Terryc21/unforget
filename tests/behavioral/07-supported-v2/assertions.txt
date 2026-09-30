@@ -1,8 +1,5 @@
-# A1 Target changes LATER -> THIS; nothing else about A1 changes
 cell A1 Target THIS
-cell A1 Urgency HIGH
 cell A1 Status Open
-# other rows untouched
 cell S1 Target NEXT
 # Target-only edits preserve every other A1 cell, including legacy Status.
 regex ^\|\ A1\ \|\ 🔴\ THIS\ \|\ N\+1\ query\ on\ list\ screen\ \|\ 🟡\ HIGH\ \|\ 🟢\ Medium\ \|\ 🟡\ High\ \|\ 🟠\ Excellent\ \|\ 🟢\ 2\-5\ files\ \|\ Medium\ \|\ Open\ \|$

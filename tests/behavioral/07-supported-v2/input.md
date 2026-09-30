@@ -1,4 +1,4 @@
-<!-- unforget-format: v3 -->
+<!-- unforget-format: v2 -->
 
 # UNFORGET — behavioral fixture
 

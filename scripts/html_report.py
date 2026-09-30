@@ -12,6 +12,9 @@ import html
 import json
 import re
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import parse_status
 
 CLOSED = {'done-verified', 'withdrawn', 'legacy-complete'}
 STATES = {'open', 'in-progress', 'blocked', 'done-unverified', 'done-verified', 'withdrawn'}
@@ -46,6 +49,7 @@ def read_ledger(path):
     marker = re.search(r'<!--\s*unforget-format:\s*v(\d+)\s*-->', text)
     if not marker or int(marker[1]) not in (1, 2):
         warnings.append(f'{path.name}: missing or unsupported format marker; read-only best-effort snapshot.')
+    details = parse_status.detail_blocks(text)
     for n, line in enumerate(lines, 1):
         if line.startswith('#'):
             section = line.lstrip('# ').strip()
@@ -65,27 +69,12 @@ def read_ledger(path):
             raise ValueError(f'{path}:{n}: duplicate ID {ident}; reconcile before exporting.')
         seen.add(ident)
         status_text = data['status']
-        tokens = re.findall(r'@status:\s*([a-z-]+)', status_text)
-        if len(tokens) > 1:
-            raise ValueError(f'{path}:{n}: multiple status tokens in {ident}.')
-        status = tokens[0] if tokens else 'unknown'
-        if tokens and status not in STATES:
-            status = 'unknown'
-            warnings.append(f'{path.name}:{n}: {ident} has an invalid status token; retained as unknown.')
-        if not tokens:
-            # Owed/partial evidence takes precedence over a legacy completion word.
-            if re.search(r'owed|unverified|partial|mostly.fixed|not run|skipped|re.open', status_text, re.I):
-                status = 'done-unverified' if re.search(r'fixed|passed|done', status_text, re.I) else 'unknown'
-            elif re.search(r'\b(fixed|closed|done|passed|withdrawn)\b', status_text, re.I):
-                status = 'legacy-complete'
-            elif re.search(r'\bin[ -]progress\b', status_text, re.I):
-                status = 'in-progress'
-            elif re.search(r'\bblocked\b', status_text, re.I):
-                status = 'blocked'
-            elif re.search(r'\b(open|deferred)\b', status_text, re.I):
-                status = 'open'
-            else:
-                warnings.append(f'{path.name}:{n}: {ident} has ambiguous legacy status; retained as unknown.')
+        evaluated = parse_status.parse_row(line, headers, details.get(ident, ''), fields=data)
+        status = evaluated['effective_status']
+        if evaluated['issues']:
+            warnings.extend(f'{path.name}:{n}: {ident}: {issue}' for issue in evaluated['issues'])
+        elif status == 'unknown':
+            warnings.append(f'{path.name}:{n}: {ident} has ambiguous status; retained as unknown.')
         finding = data.get('finding', data.get('check', ''))
         target_text = data.get('target', '')
         if not target_text:
@@ -98,7 +87,8 @@ def read_ledger(path):
         if urgency == 'med': urgency = 'medium'
         rows.append(dict(id=ident, ledger=path.name, source=str(path), line=n, section=section,
                          finding=finding, status=status, target=target, urgency=urgency,
-                         blocker=target == 'THIS' and status not in CLOSED,
+                         blocker=evaluated['blocks_release'], completed=evaluated['completed'],
+                         integrity_issues=evaluated['issues'],
                          ux='unrated', ux_basis='', owner='', next='', effort=data.get('fix effort', data.get('effort', data.get('est', 'Unrated'))),
                          original=data, notes=[]))
     return rows, dict(path=str(path), ledger=path.name, sha256=hashlib.sha256(text.encode()).hexdigest(), rows=len(rows)), warnings
@@ -119,9 +109,9 @@ def annotate(rows, annotations):
 
 
 def sort_key(row, fields):
-    effort = level(row['effort'], ['trivial','small','medium','med','large'], 'unrated')
+    effort = level(row['effort'], ['triv','trivial','sml','small','medium','med','lrg','large'], 'unrated')
     keys = dict(blocker=not row['blocker'], urgency=URGENCY[row['urgency']], ux=IMPACT[row['ux']],
-                target=TARGET[row['target']], effort={'trivial':0,'small':1,'medium':2,'med':2,'large':3}.get(effort,4),
+                target=TARGET[row['target']], effort={'triv':0,'trivial':0,'sml':1,'small':1,'medium':2,'med':2,'lrg':3,'large':3}.get(effort,4),
                 id=row['id'], ledger=row['ledger'], status=row['status'])
     return tuple(keys[k] for k in fields)+(row['ledger'],row['line'])
 
@@ -134,8 +124,8 @@ def select(rows, args):
         if args.exclude_id and (key in args.exclude_id or r['id'] in args.exclude_id): continue
         if args.status:
             if r['status'] not in args.status: continue
-        elif args.view == 'unfinished' and r['status'] in CLOSED: continue
-        elif args.view == 'completed' and r['status'] not in CLOSED: continue
+        elif args.view == 'unfinished' and r['completed']: continue
+        elif args.view == 'completed' and not r['completed']: continue
         if args.blockers_only and not r['blocker']: continue
         if args.target and r['target'] not in args.target: continue
         if args.urgency and r['urgency'] not in args.urgency: continue
@@ -177,6 +167,7 @@ def render(rows, sources, warnings, args, total_blockers):
     labels={'id':'Item','ux':'User impact (estimate)','blocker':'Release gate','effort':'Fix effort'}
     heads=''.join(f'<th scope="col"><button data-col="{n}">{E(labels.get(k,k.title()))} ↕</button></th>' for n,k in enumerate(args.columns))
     body=[]
+    source_order = {(r['ledger'], r['line']): n for n, r in enumerate(sorted(rows, key=lambda r: (r['ledger'], r['line'])))}
     for r in rows:
         vals=[]
         for col in args.columns:
@@ -187,7 +178,7 @@ def render(rows, sources, warnings, args, total_blockers):
                 details='<p><b>Source:</b> '+E(r['source'])+' : '+str(r['line'])+'</p>'
                 if r['next']:details+='<p><b>Next action:</b> '+E(r['next'])+'</p>'
                 if r['ux_basis']:details+='<p><b>User-impact estimate:</b> '+E(r['ux_basis'])+'</p>'
-                details+=''.join('<p class="notice">'+E(n)+'</p>' for n in r['notes'])
+                details+=''.join('<p class="notice">'+E(n)+'</p>' for n in r['integrity_issues'] + r['notes'])
                 details+='<dl>'+''.join(f'<dt>{E(k.title())}</dt><dd>{E(v)}</dd>' for k,v in r['original'].items())+'</dl>'
                 value=f'<strong>{E(short)}</strong><details><summary>Source, ratings &amp; remaining work</summary>{details}</details>'
             elif col=='blocker':value='<span class="badge">'+('Blocks release' if r['blocker'] else 'Not gated')+'</span>'
@@ -197,7 +188,7 @@ def render(rows, sources, warnings, args, total_blockers):
             if isinstance(sortvalue,bool):sortvalue=int(sortvalue)
             vals.append(f'<td data-value="{E(str(sortvalue),quote=True)}">{value}</td>')
         search=' '.join(str(v) for v in r.values()).casefold()
-        body.append(f'<tr data-rank="{r["rank"]}" data-blocker="{str(r["blocker"]).lower()}" data-status="{E(r["status"])}" data-ledger="{E(r["ledger"])}" data-search="{E(search,quote=True)}">'+''.join(vals)+'</tr>')
+        body.append(f'<tr data-source-order="{source_order[(r["ledger"], r["line"])]}" data-rank="{r["rank"]}" data-blocker="{str(r["blocker"]).lower()}" data-status="{E(r["status"])}" data-ledger="{E(r["ledger"])}" data-search="{E(search,quote=True)}">'+''.join(vals)+'</tr>')
     criteria={k:getattr(args,k) for k in ['view','id','exclude_id','status','target','urgency','ledger','section','query','blockers_only','sort','columns'] if getattr(args,k)}
     options=lambda key: '<option value="">All</option>'+''.join(f'<option value="{E(v,quote=True)}">{E(v)}</option>' for v in sorted({str(r[key]) for r in rows}))
     data={'TITLE':E(args.title),'DATE':E(dt.datetime.now().astimezone().isoformat(timespec='seconds')),

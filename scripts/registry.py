@@ -55,6 +55,7 @@ import json
 import re
 import sys
 from pathlib import Path
+import managed_block
 
 BEGIN = "<!-- unforget-registry:begin -->"
 END = "<!-- unforget-registry:end -->"
@@ -74,6 +75,7 @@ GLOBAL_KEYS = [
     "ratio_flag_threshold",
     "stale_trivial_sessions",
     "row_char_budget",
+    "display_all_ledgers",
     "display_view",
     "display_group_by",
     "display_verbosity",
@@ -93,13 +95,11 @@ LEDGER_COLUMNS = ["name", "path", "role", "axis", "discipline", "parent", "death
 
 def extract_block(text: str) -> str | None:
     """Return the text BETWEEN the registry markers, or None if absent."""
-    start = text.find(BEGIN)
-    if start == -1:
+    span = managed_block.bounds(text, BEGIN, END)
+    if span is None:
         return None
-    end = text.find(END, start)
-    if end == -1:
-        return None
-    return text[start + len(BEGIN):end]
+    start, stop = span
+    return text[start + len(BEGIN):stop - len(END)]
 
 
 def parse_kv_table(block: str) -> dict:
@@ -118,6 +118,8 @@ def parse_kv_table(block: str) -> dict:
             continue
         # store empty/placeholder as None
         result[key] = None if val in ("", "-", "—", "(unset)") else val
+        if key == "display_all_ledgers" and val.lower() in ("true", "false"):
+            result[key] = val.lower() == "true"
     return result
 
 
@@ -154,7 +156,10 @@ def read_registry(dir_path: Path) -> dict:
     if not readme.exists():
         return {"error": f"no README.md in {dir_path}"}
     text = readme.read_text(encoding="utf-8", errors="replace")
-    block = extract_block(text)
+    try:
+        block = extract_block(text)
+    except ValueError as exc:
+        return {"error": str(exc)}
     if block is None:
         return {
             "dir": str(dir_path),
@@ -221,14 +226,7 @@ def write_registry(dir_path: Path, global_cfg: dict, ledgers: list[dict]) -> dic
     else:
         text = readme.read_text(encoding="utf-8", errors="replace")
         new_block = render_block(global_cfg, ledgers)
-        start = text.find(BEGIN)
-        if start == -1:
-            # append the block at the end, leaving human content untouched
-            text = text.rstrip() + "\n\n" + new_block + "\n"
-        else:
-            end = text.find(END, start)
-            end = end + len(END) if end != -1 else len(text)
-            text = text[:start] + new_block + text[end:]
+        text = managed_block.replace(text, new_block, BEGIN, END)
         readme.write_text(text, encoding="utf-8")
 
     # Write the cache mirror. Cache the NORMALIZED form (re-read from the README
@@ -328,7 +326,11 @@ def main() -> int:
         if "ledgers" not in payload:
             ledgers = current.get("ledgers", [])
 
-    result = write_registry(dir_path, global_cfg, ledgers)
+    try:
+        result = write_registry(dir_path, global_cfg, ledgers)
+    except (ValueError, OSError) as exc:
+        print(json.dumps({"error": str(exc)}), file=sys.stderr)
+        return 2
     result["merged"] = bool(args.merge)
     json.dump(result, sys.stdout); sys.stdout.write("\n")
     return 0

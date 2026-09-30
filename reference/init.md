@@ -95,7 +95,7 @@ Short questions before any scanning happens. The first three (path, cadence, rec
    - **Multiple found:** list them, maintain the block in all by default, and let the user narrow.
    - **None found:** "No AI instructions file found. Without one, unforget won't auto-recall. Create an instructions file (`AGENTS.md` in Codex; `CLAUDE.md` in Claude Code) with a maintained Deferred Work Index block? **(recommended; default yes)**".
 
-   When the user declines, say so plainly and once: "Recall trigger not installed — deferred-work questions won't auto-route to unforget until you add the block (re-run `init`, or `/unforget --version` will report it missing)." Never impose over an explicit no; do make the consequence visible rather than silent. Don't hardcode filenames — detect what the project uses.
+   When the user declines, say so plainly and once: "Recall trigger not installed — deferred-work questions won't auto-route to unforget until you add the block (use `/unforget import` to add it to this existing ledger; `/unforget --version` reports whether it is missing)." Never impose over an explicit no; do make the consequence visible rather than silent. Don't hardcode filenames — detect what the project uses.
 
 **Policies (inherited, not re-asked).** `init` also sets the two companion-spec policies with recommended defaults, stored in the registry so they persist and aren't re-litigated each run: **Policy 1 — deferral aggressiveness** (default `aggressive`; `reference/deferral-gate.md` §5) and **Policy 2 — multi-axis placement tiebreak** (default `lifespan-wins`; `reference/branching.md` §2.5). These are defaults, not questions — a start-of-run may one-tap re-confirm them but never forces a re-answer, and per-row overrides are always available.
 
@@ -346,3 +346,10 @@ After init runs:
 - CLAUDE.md / AGENTS.md has a maintained (or manual) Deferred Work Index block so future AI sessions auto-recall the ledgers — and, under *maintained*, it stays current as ledgers change.
 - The user can run `/unforget list --target=THIS` and see exactly what's blocking the next release, in one screen.
 - `/unforget import` reports **no drift** (registry matches disk; recall block matches registry).
+
+### Existing-ledger recall repair
+
+Keep the bootstrap refusal when UNFORGET.md already exists. Missing or stale maintained
+recall is repaired via `import` and `recall_block.py write` using the actual registry,
+without resetting the ledger or repeating onboarding. See `reference/commands.md` § Repair
+an existing ledger's recall block. Manual/none policies are not maintenance promises.

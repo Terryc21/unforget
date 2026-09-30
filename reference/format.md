@@ -50,8 +50,9 @@ read instead of parsing prose. Full spec: `reference/status.md`. In brief:
 - A token that **contradicts its own narration** (says `done-verified` over prose that says "re-opened"/"still owed") is a lint error the verify pass flags.
 
 **Optional on legacy, expected on new.** Rows written before v2 have no token and
-still work (a tokenless row is never auto-archived). New and edited rows get a
-token. Old word-statuses map: `Open`→`open`, `In Progress`→`in-progress`,
+still work (a tokenless row is never auto-archived). New v2 rows and explicit
+Status edits get a token. Target-only or rating-only edits preserve Status
+byte-for-byte; migrate it only on an explicit migration request. Old word-statuses map: `Open`→`open`, `In Progress`→`in-progress`,
 `Fixed`→`done-verified` (with a tier) or `done-unverified` (if unproven),
 `Deferred`→`open`/`blocked`, `Skipped`→`withdrawn`.
 
@@ -221,3 +222,11 @@ Things this skill deliberately does NOT do, and why:
 - **Renaming core columns.** "Call Urgency 'Priority' instead." Skill becomes incompatible with itself.
 - **Multiple files.** UNFORGET.md is the index. Detail files (per-plan markdown) are linked FROM rows, not duplicates of them.
 - **Auto-deferring things the AI thinks should be deferred.** Deferral is a user decision. The skill captures, organizes, and surfaces; it doesn't decide on the user's behalf.
+
+### Split safety
+
+Splits preserve the Compact target badge independently of the new headline and check ID,
+target, status, verification tier, code-sufficiency declaration, closure and release-blocking
+decisions before apply. A split that changes these semantics refuses without writing, even
+when the original prose would survive in history. Header-aware extraction keeps quoted
+Finding tokens and optional columns from becoming the row's actual Status.

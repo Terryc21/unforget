@@ -251,3 +251,15 @@ lossless split works identically on a v1 ledger (it operates on cell content, no
 `@status` tokens), so the remediation path is available before the gate is ever hit.
 
 The companion handoffs above are advisory and never affect the gate.
+
+## Opt-in count recipes
+
+`recipe.py run --file <ledger> --root <project>` is opt-in. Supported grammar:
+`grep -c [-i] [-F|-E] [-e] PATTERN [--] FILE...` or
+`rg -c [-i] [-F] [-e] PATTERN [--] FILE...` (`--count` also accepted).
+Quote patterns and filenames with spaces. Files must be explicit regular files within
+the root; no recursive search, absolute/traversal paths, escaping symlinks, interpreters,
+preprocessors, shell syntax or other flags. Unsupported forms return UNRUNNABLE. There is
+no bypass. A missing file, failed search, timeout or malformed count is DECAYED, never
+FIXED. Only documented exit-1 no-match output counts as zero. Multi-file results sum one
+validated count per file. A recipe checks a premise; it does not grant verified closure.

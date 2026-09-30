@@ -180,7 +180,16 @@ def run(dir_path: Path, recall_file: str | None) -> dict:
                 })
 
     # 4. stale-recall (only if a recall file is given)
-    if recall_file:
+    maintained = (reg.get("global", {}).get("recall_block") or "").lower() == "maintained"
+    if maintained and not recall_file:
+        configured = reg.get("global", {}).get("recall_file")
+        if configured:
+            path = Path(configured)
+            recall_file = str(path if path.is_absolute() else dir_path / path)
+        else:
+            findings.append({"check": "stale-recall", "severity": "warn", "state": "absent",
+                             "message": "maintained recall has no recall_file; configure it through import"})
+    if maintained and recall_file:
         class _A:  # minimal args shim for recall_block.do_check
             pass
         a = _A()
@@ -189,12 +198,12 @@ def run(dir_path: Path, recall_file: str | None) -> dict:
         a.registry = None
         a.home = None
         rc = recall_block.do_check(a)
-        if "error" not in rc and rc.get("block_present") and rc.get("in_sync") is False:
+        if rc.get("in_sync") is not True:
             findings.append({
                 "check": "stale-recall", "severity": "warn",
                 "file": recall_file,
-                "message": ("the maintained recall block is stale vs the registry — "
-                            "rewrite it (init/import) to refresh the paths/ledger list."),
+                "state": rc.get("state", "unreadable"),
+                "message": rc.get("error") or rc.get("advisory", "recall check failed; repair through import"),
             })
 
     clean = not findings

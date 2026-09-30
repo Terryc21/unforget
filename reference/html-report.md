@@ -144,3 +144,15 @@ requires `ux_basis`. Annotations cannot alter status, target or blocker membersh
 Do not copy Stuffolio's IDs, release assumptions, source paths or ratings into
 another project's report. The bundled asset is the reusable visual model; a user's
 provided HTML can guide style without supplying current ledger facts.
+
+### Closure integrity and effort order
+
+Header-aware Status extraction feeds `parse_status.py`'s shared closure evaluator.
+Invalid verified claims stay in unfinished scope, retain THIS blocking status, and show
+integrity issues in both report warnings and source details. Filters affect included rows,
+never input-wide blockers. Annotations cannot remove integrity issues. Negated or mixed
+legacy states such as "Not fixed" or "Open; unit tests passed" remain unfinished.
+
+Effort sorting treats Triv/Trivial, Sml/Small, Med/Medium and Lrg/Large identically,
+case-insensitively. Unknowns sort last; generation and browser sorting use the same numeric
+key, preserving the source spelling and stable ties.

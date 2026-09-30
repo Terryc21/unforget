@@ -61,10 +61,6 @@ def normalize_scan_surfaces(data: dict, repo_root: str) -> dict:
         mf = surfaces["memory_files"]
         if "notes" in mf:
             mf["notes"] = ["<machine-specific note suppressed>"] if mf["notes"] else []
-        # candidates are unstable in the test environment — clear them.
-        # The fixture deliberately does NOT plant a real Surface 6 hit.
-        if mf.get("candidates"):
-            mf["candidates"] = ["<unstable in test env; cleared>"]
 
     return data
 

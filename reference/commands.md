@@ -134,6 +134,12 @@ Refine a row's columns after import. Most useful immediately after `/unforget in
 3. Show the diff (old value to new value for each changed cell).
 4. Apply the change to UNFORGET.md.
 
+**Change only the requested cells.** A Target-only or rating-only edit preserves
+the Status cell byte-for-byte, including a legacy word-status in a v2 ledger.
+Do not add status/verification tokens or migrate the row opportunistically.
+Write status tokens when Status itself changes, or when the user explicitly
+requests a format migration; the verification-evidence rules still apply.
+
 ### Status-token rule (format v2+)
 
 When changing status, write the `@status:` token (see `reference/format.md` §
@@ -241,7 +247,7 @@ Same as `/unforget init` Phases 2 to 4 and Phase 7 (see `reference/init.md` and 
   - **registered-but-missing** (error) — a ledger in the registry not found on disk. Report the last-known path (`"MI-UNFORGET registered at <path> — not found; moved or deleted?"`) instead of silently proceeding. Turns a 20-minute "are they lost?" hunt into one line.
   - **found-but-unregistered** (warn) — a ledger-shaped file on disk (`*UNFORGET*.md`, `TERRY-*`, `MI-*`) not in the registry → **offer to register it**. This is the check that surfaces a stranded parallel-tree ledger.
   - **posture-mismatch** (warn) — a ledger whose actual git-tracked state disagrees with its registered `git_posture` (e.g. registered `ignored` but git tracks it) → flag.
-  - **stale-recall** (warn, only with `--recall-file`) — the maintained recall block's content doesn't match the registry → offer to rewrite it (`scripts/recall_block.py write`) if maintained; if manual, just warn.
+  - **stale-recall** (warn, maintained policy) — a required block is stale, absent, malformed or unreadable. Resolve the configured `recall_file` or use `--recall-file`; offer the import repair path. Manual/none policies are not maintenance failures.
   The helper is **read-only** — it reports; you walk the fixes with the user (register the stranded file, rewrite the recall block, correct the posture). Exit 1 means drift was found. See `reference/init.md` § Phase 6b migration and `reference/registry.md`.
 - **Recall-block maintenance (format v2+):** when the registry's recall mode is `maintained`, after importing new rows or registering a found ledger, refresh the Deferred Work Index block: `python3 scripts/recall_block.py write --file <recall-file> --dir <ledger-dir>`. It rewrites only between its markers; the user's surrounding content is untouched. This is what keeps the block from rotting between sessions.
 - **Branch auto-suggest (format v2+):** after importing, if the newly-added rows reveal a repeated pattern that clears the `reference/branching.md` §3 cascade to "new ledger" for **≥2 related items** (same actor / lifespan-scope / subject cluster), `import` may *offer* a `/unforget branch` — naming the pattern it saw, never branching unilaterally, at most once per pattern. `import` is the more likely place to catch this than `add`, since it surfaces a batch at once (e.g. several stranded ledgers or a cluster of user-only findings). See `/unforget add` § Branch auto-suggest and `reference/branching.md` §6.
@@ -295,8 +301,8 @@ For the simplest case (`/unforget list` alone), this is the answer the user was 
 
 **Status classification for every mode below** is via `python3 scripts/parse_status.py --file <path>` — the same source of truth `--status` already uses, no new parsing logic:
 
-- **Open bucket** — every row where `archivable` is `false`. This includes `open`, `in-progress`, `blocked`, and **`done-unverified`**. A `done-unverified` row has code written but not proven against reality (device test, Sentry re-check, macOS build, etc.) — per `reference/status.md`, that is still open work, not done work, so it belongs in Open, not Completed. **This rule is load-bearing across every mode, not incidental** — a `--view` that put `done-unverified` in Completed would just relocate the exact misreading this feature exists to fix.
-- **Completed bucket** — every row where `archivable` is `true`: `done-verified` or `withdrawn`.
+- **Open bucket** — every row where `completed` is `false`. This includes `open`, `in-progress`, `blocked`, and **`done-unverified`**. A `done-unverified` row has code written but not proven against reality (device test, Sentry re-check, macOS build, etc.) — per `reference/status.md`, that is still open work, not done work, so it belongs in Open, not Completed. **This rule is load-bearing across every mode, not incidental** — a `--view` that put `done-unverified` in Completed would just relocate the exact misreading this feature exists to fix.
+- **Completed bucket** — every row where `completed` is `true`: clean `done-verified`/`withdrawn`, or an unambiguous legacy completion. `archivable` is stricter and excludes tokenless rows.
 - Legacy tokenless rows (pre-format-v2) are classified by their loose word-status mapping, same as `--status` does (`Open`→Open bucket, `Fixed`→Completed bucket); a row that cannot be classified at all is listed under a third **Unparsed** heading in modes that show more than one bucket, rather than silently dropped — silent misclassification is worse than a visible "couldn't tell" bucket.
 
 **`--view=all`** (default, unchanged): one table, every matched row, sorted per `--group-by` (default: Target then Urgency). This is today's existing behavior — nothing about it changes.
@@ -346,8 +352,9 @@ Orthogonal to `--view` — controls *how* the matched rows are grouped/sorted wi
 
 ### Multi-ledger scope (`--ledgers=` / `--all-ledgers`)
 
-**Default is single-ledger, unchanged.** `/unforget list` (no scope flag) reads only the
-ledger it's pointed at, exactly as today. Cross-ledger reads are opt-in, never automatic —
+**Default is single-ledger unless explicitly saved otherwise.** `/unforget list` without
+a scope flag uses `display_all_ledgers` when set; otherwise it reads the current ledger.
+Cross-ledger scope is opt-in through a request or a saved interview answer —
 a project's sibling ledgers exist because their work was deliberately kept separate (a
 different actor, a different lifespan/discipline, a different domain; see
 `reference/branching.md` §2 for the three axes), and silently unioning them by default would
@@ -357,7 +364,7 @@ sprint-scoped rows mixed into a release read.
 **Scope comes from the registry, not from re-discovering files.** The registry already
 records every ledger's `role` (`main`/`child`), `axis`, `parent`, and `death` condition
 (`reference/registry.md` § The schema) — that's the authoritative sibling declaration, and
-this feature adds no new registry field. `--ledgers=`/`--all-ledgers` read that existing
+the union reads the existing ledger table; its saved default is `display_all_ledgers`. `--ledgers=`/`--all-ledgers` read that existing
 table; they do not glob for `*UNFORGET*.md` in the project. A file that looks like a ledger
 but was never registered is not in scope, on purpose — an unregistered file is exactly the
 "stranded ledger" failure the registry exists to prevent (`reference/registry.md`'s own
@@ -408,7 +415,7 @@ and rejected. It would mean a bare `/unforget list` could silently change its an
 sibling ledgers get created (a `branch` call today changes tomorrow's default output with no
 flag touched), and it would surface unregistered stray files the registry was built specifically
 to stop the skill from losing track of or confusing with real ledgers. Explicit opt-in, declared
-once in the registry and invoked per-call, keeps the default behavior stable and keeps scope a
+through a saved interview answer or an explicit per-call flag, keeps the default behavior stable and keeps scope a
 decision the user makes, not one the tool infers.
 
 **Composes with `--view` and `--group-by`.** `--all-ledgers --view=split --group-by=section`
@@ -422,12 +429,10 @@ The base `list` filters (`--target=`, `--section=`, `--status=`, `--stale`, `--a
 enough to apply by eye against the rendered table and have never needed a fallback. The three
 additions in this file do, because they depend on logic beyond "filter the visible columns":
 
-- **`--view=open` / `--view=done`:** for each row, read its `@status` token per
-  `reference/status.md`'s fallback (first-cell-BACKWARD-scanned `@status:` token; ignore any
-  token that appears earlier in the row, e.g. inside Finding prose, per the v2.1.0 quoted-token
-  fix). `open`/`in-progress`/`blocked`/`done-unverified` → Open bucket. `done-verified`/
-  `withdrawn` → Completed bucket. Legacy tokenless rows: word `Open` → Open bucket, word `Fixed`
-  (or equivalent closed word-status) → Completed bucket. A row matching neither → Unparsed.
+- **`--view=open` / `--view=done`:** locate Status by its table header, then apply the
+  shared contract in `reference/status.md`: only clean verified/withdrawn claims or clear
+  legacy completion belong in Completed. Missing tiers, missing code-sufficiency notes,
+  session claims and contradictions remain Open. Ambiguous legacy rows remain Unparsed.
 - **`--view=split`:** run the `--view=open` and `--view=done` classification above once each
   over the same filtered row set (do not re-filter between the two), render as two headed
   tables with their own row counts, Unparsed as a third heading only if non-empty.
@@ -1071,7 +1076,7 @@ When the registry declares a **maintained** recall block (`recall_block: maintai
 
 ### Backward compatibility
 
-`branch` is a format-v2 command. It writes v2 children. It reads the registry (a v2 feature); on a project with no registry block, register the parent first (via `import`/`init`) so the child has a home and the parent can carry its pointer.
+`branch` is a format-v2 command. It writes v2 children. It reads the registry (a v2 feature); on a project with no registry block, register the existing parent first via `import` so the child has a home and the parent can carry its pointer.
 
 ---
 
@@ -1192,18 +1197,18 @@ When the install is broken or the recall trigger is missing, the last two lines 
 Install integrity: ✗ 2 companion files unreachable (reference/commands.md, scripts/scan_surfaces.py)
                      → the router will fail when it delegates to a missing file; reinstall or repair the skill directory
 Recall trigger: ✗ no Deferred Work Index block in this project's CLAUDE.md/AGENTS.md
-                  → deferred-work questions will NOT auto-route here; run /unforget init to add it
+                  → deferred-work questions will NOT auto-route here; run /unforget import to repair an existing ledger (init only for bootstrap)
 ```
 
 The version string is read from SKILL.md frontmatter `metadata.version` (legacy top-level `version` remains readable). Detect the actual loaded skill directory at runtime for either host, including plugin installs and symlinked checkouts; do not assume a Claude-only path. Supported format-version comes from the spec (currently `v1` and `v2`, backward compatible; a future `v3` would list here too once it lands).
 
 ### Version reconciliation
 
-The version is declared in **five** places: `SKILL.md`'s frontmatter, `.claude-plugin/plugin.json`, the newest `### vN.N.N` changelog heading, the README's shields.io badge cache-buster (`&v=N.N.N`), and the README's `**Maturity:** vN.N.N` bullet. Nothing used to compare them, so the plugin manifest sat **five releases stale** (2.1.0 while everything else read 2.6.0) with no check noticing — found 2026-08-13, the third instance of doc-vs-code drift in a single session (the others: the changelog describing `verify` checks the code didn't implement, and a test golden pinned to an old version).
+The version is reconciled across **six** possible declarations: `SKILL.md`'s frontmatter, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, the newest `### vN.N.N` heading in root `CHANGELOG.md` (legacy fallback: SKILL.md), the README's shields.io badge cache-buster (`&v=N.N.N`), and the README's `**Maturity:** vN.N.N` bullet. Nothing used to compare them, so the plugin manifest sat **five releases stale** (2.1.0 while everything else read 2.6.0) with no check noticing — found 2026-08-13, the third instance of doc-vs-code drift in a single session (the others: the changelog describing `verify` checks the code didn't implement, and a test golden pinned to an old version).
 
 The two README sites were added after the first pass shipped covering only three: bumping to 2.7.0 still required hand-grepping the README, which is precisely the manual step this check exists to eliminate. A check that covers most of the sites still leaves the release manual.
 
-`--version` now reconciles all five and reports `versions_in_sync` + `declared_versions`. Rules:
+`--version` now reconciles all declared sources and reports `versions_in_sync` + `declared_versions`. Rules:
 
 - **Only sources that actually declare a version vote.** A manual (v0.1) install with no plugin manifest is not drift — it simply has one fewer declaration. Same for an unparseable manifest, or a README with no badge/Maturity line: undeclared, never a crash.
 - **The README patterns are deliberately narrow**, anchored to the badge URL and the literal `**Maturity:**` bullet. Ordinary prose mentioning `v1.0.3` or "upgrading from 2.4.0" is NOT a declaration and must not be read as one — verified against a README containing exactly those strings.
@@ -1218,13 +1223,13 @@ The refactored skill (v0.2+) is a thin SKILL.md router that delegates to `refere
 
 `--version` closes that gap. **Preferred implementation:** delegate to `python3 scripts/verify_install.py --skill-root <dir> [--project-root <cwd>]` (returns JSON). It confirms every companion file the router depends on is reachable from the skill root, and — when `--project-root` is supplied — reports whether the recall trigger is installed. Report `integrity_ok` and `advisory` to the user on the two output lines above.
 
-Algorithm fallback if Python is unavailable: for each path in the router's companion table (`reference/format.md`, `reference/init.md`, `reference/surfaces.md`, `reference/promotion.md`, `reference/commands.md`, and the five `scripts/*.py`), test existence relative to the skill root; report any that are missing.
+Algorithm fallback if Python is unavailable: for each path in the router's companion table (`reference/format.md`, `reference/init.md`, `reference/surfaces.md`, `reference/promotion.md`, `reference/commands.md`, and the runtime helpers listed in `scripts/verify_install.py`), test existence relative to the skill root; report any that are missing.
 
 ### Recall trigger
 
 unforget only auto-activates on "what's deferred?"-style questions when the project's `CLAUDE.md` / `AGENTS.md` carries a **Deferred Work Index** block pointing at UNFORGET.md (see `## How to use unforget alongside CLAUDE.md / AGENTS.md` in SKILL.md, and `reference/init.md` for the block itself). Without it, a populated ledger sits invisible and the skill looks broken when it is working as designed.
 
-When `--version` runs inside a project directory, it scans `CLAUDE.md`, `.claude/CLAUDE.md`, and `AGENTS.md` for the block and reports `✓ installed in <file>` or `✗ missing` with the fix (`run /unforget init`). When run from a non-project directory (no `--project-root`), this line is omitted rather than reported as a failure.
+When `--version` runs inside a project directory, it scans `CLAUDE.md`, `.claude/CLAUDE.md`, and `AGENTS.md` for the block and reports `✓ installed in <file>` or `✗ missing` with the fix (`run /unforget import` for an existing ledger; `init` only for bootstrap). When run from a non-project directory (no `--project-root`), this line is omitted rather than reported as a failure.
 
 ### Behavior
 
@@ -1233,3 +1238,25 @@ When `--version` runs inside a project directory, it scans `CLAUDE.md`, `.claude
 - Version, format-version, and integrity checks work from any directory. The recall-trigger line requires a project context; it is silently skipped otherwise.
 
 After install, the user has no way to verify the skill loaded short of trying to use it. `/unforget --version` provides a no-side-effect health check. If the command does not respond, the install did not take. If it responds with the wrong version, the user knows to update before running `init` against a real project. If it responds with an integrity ✗, the user knows the companion files did not travel with the install before a single row is written.
+
+### Repair an existing ledger's recall block
+
+For an existing ledger, use `/unforget import` (Codex: `$unforget import`) to reconcile the
+actual registry and repair only its authorized recall block. Do not rerun onboarding.
+Read `registry.py read --dir <ledger-dir>`, confirm the configured maintained `recall_file`,
+then run `recall_block.py write --dir <ledger-dir> --file <resolved-recall-file>` and
+`import_drift.py --dir <ledger-dir> --recall-file <resolved-recall-file>` to verify the repair.
+The ledger and unrelated instruction text remain untouched. Malformed markers require
+explicit correction before the write; absent markers permit appending a new block.
+`init` still refuses when a ledger already exists; reserve it for genuine bootstrap.
+
+### Persisting multi-ledger interview answers
+
+Save the full-interview all-ledgers answer as `display_all_ledgers` through
+`display_prefs.py build-patch --all-ledgers` (true) or `--current-ledger` (false), followed
+by registry `write --merge`. Omit both flags for a skipped answer, preserving its prior
+value including false. Resolve with explicit `--ledgers <names>` or `--current-ledger`
+when requested; those override saved scope. Supply `--current-ledger-name` when the current
+ledger is a sibling. Name every selected ledger in the user-facing scope. New installations
+default to one current ledger. This preference governs terminal list/scan; HTML keeps its
+separately documented explicit-scope defaults.

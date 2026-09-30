@@ -66,7 +66,7 @@ VERIFIED_VALUES = {"code", "device", "session-claimed", "user"}
 
 # Tiers that are allowed to back a done-verified status (§3a). "code" is
 # allowed only with an explicit code-is-sufficient note (pure-logic changes);
-# we accept it here but the verify pass (Phase 3) is where the note is checked.
+# the shared evaluator checks the item-local declaration for every caller.
 DONE_VERIFIED_OK_TIERS = {"device", "user", "code"}
 
 # Narration phrases that contradict a "done"/closed token (§1b). These are the
@@ -75,6 +75,15 @@ DONE_VERIFIED_OK_TIERS = {"device", "user", "code"}
 CONTRADICTION_PHRASES = [
     "re-opened",
     "reopened",
+    "not fixed",
+    "not yet fixed",
+    "not closed",
+    "not complete",
+    "verification failed",
+    "verification pending",
+    "pending verification",
+    "failed on device",
+    "not done",
     "still broken",
     "still open",
     "still owed",
@@ -195,11 +204,87 @@ def target_is_this(row: str) -> bool:
     return bool(re.search(r"🔴 THIS|\bTHIS\b|🚢 THIS", cells[1]))
 
 
-def parse_row(row: str) -> dict:
+def detail_blocks(text: str) -> dict:
+    """Only item bullets within Detail sections can supply item-local evidence."""
+    result, active, rid = {}, False, None
+    for line in text.splitlines():
+        if line.startswith("#"):
+            active = bool(re.match(r"^###\s+Detail\b", line, re.I))
+            rid = None
+        match = re.match(r"^- \*\*([A-Za-z0-9-]+)\*\*\s*[-—]\s*(.*)", line)
+        if active and match:
+            rid = match[1]
+            result[rid] = result.get(rid, "") + "\n" + match[2]
+        elif active and rid:
+            result[rid] += "\n" + line
+    return result
+
+
+def row_contexts(text: str):
+    """Yield (line, declared headers) without trusting quoted tokens in Finding."""
+    headers = None
+    lines = text.splitlines()
+    for n, line in enumerate(lines):
+        if line.startswith("#"):
+            headers = None
+        if line.startswith("|") and n + 1 < len(lines) and re.match(r"^\|?[ :|-]+$", lines[n + 1]):
+            headers = [c.strip(" *`").lower() for c in data_cells(line)]
+        elif ROW_ID_RE.match(line):
+            yield line, headers
+
+
+def named_cell(row: str, headers, name: str, fallback):
+    if headers is not None and name in headers:
+        cells = data_cells(row)
+        index = headers.index(name)
+        return cells[index] if index < len(cells) else ""
+    return fallback(row)
+
+
+def row_target(row: str, headers=None) -> str:
+    if headers and 'target' in headers:
+        value = named_cell(row, headers, 'target', lambda r: '')
+    elif headers:
+        finding = named_cell(row, headers, 'finding', lambda r: '')
+        compact = COMPACT_FINDING_RE.match(finding)
+        return compact[1].split()[-1] if compact else ''
+    else:
+        cells = data_cells(row)
+        value = cells[1] if len(cells) > 1 else ''
+    match = re.search(r"\b(THIS|NEXT|LATER|SOMEDAY)\b", value)
+    return match[1] if match else ''
+
+
+def code_note(cell: str, detail: str = '') -> str:
+    # Status narration permits an inline declaration. Details require a dedicated
+    # declaration line (not quoted historical prose or another item's note).
+    match = re.search(r"Code-is-sufficient:\s*([^\n|]*)", cell, re.I)
+    if match and match[1].strip(" *`.;—"):
+        return match[1].strip(" *` ")
+    match = re.search(r"^\s*(?:\*\*)?Code-is-sufficient:(?:\*\*)?[ \t]*([^\n]*)", detail, re.I | re.M)
+    return match[1].strip(" *` ") if match and match[1].strip(" *`.;—") else ''
+
+
+def legacy_state(cell: str) -> str:
+    text = re.sub(r"[*`~]", "", cell).strip().lower()
+    if re.search(r"\b(not (?:yet )?(?:fixed|done|closed)|open|reopened|re-opened|deferred|still broken|still failing)\b", text):
+        return 'open'
+    if re.search(r"\bblocked\b", text):
+        return 'blocked'
+    if re.search(r"\bin[ -]progress\b", text):
+        return 'in-progress'
+    if re.search(r"owed|unverified|partial|mostly.fixed|not run|skipped|not (?:yet )?verified|failed|failing|pending", text):
+        return 'done-unverified'
+    if re.match(r"^(?:[✅✔✓]\s*)?(fixed|closed|done|withdrawn)\b", text):
+        return 'legacy-complete'
+    return 'unknown'
+
+
+def parse_row(row: str, headers=None, detail: str = "", fields=None) -> dict:
     row_id_match = ROW_ID_RE.match(row)
     row_id = row_id_match.group(1) if row_id_match else None
 
-    cell = status_cell(row)
+    cell = fields["status"] if fields is not None else named_cell(row, headers, "status", status_cell)
     status_match = STATUS_RE.search(cell)
     verified_match = VERIFIED_RE.search(cell)
 
@@ -225,6 +310,10 @@ def parse_row(row: str) -> dict:
     if verified and not verified_valid_value:
         issues.append(f"unknown @verified value: {verified!r}")
 
+    sufficiency = code_note(cell, detail)
+    if len(STATUS_RE.findall(cell)) > 1 or len(VERIFIED_RE.findall(cell)) > 1:
+        issues.append("multiple status/verification tokens in Status cell")
+
     # Tier rule (§3a): done-verified must be backed by device/user (or code w/ note).
     # session-claimed can NEVER back done-verified.
     tier_valid = True
@@ -238,6 +327,9 @@ def parse_row(row: str) -> dict:
                 "done-verified backed only by @verified:session-claimed "
                 "(a claim is not a verification; map to done-unverified)"
             )
+        elif verified == "code" and not sufficiency:
+            tier_valid = False
+            issues.append("done-verified with @verified:code needs Code-is-sufficient: <justification> for this item")
         elif verified not in DONE_VERIFIED_OK_TIERS:
             tier_valid = False
             issues.append(f"done-verified backed by @verified:{verified} (needs device/user)")
@@ -254,7 +346,7 @@ def parse_row(row: str) -> dict:
     # A false contradiction is not harmless: `archivable` goes False, so the row is
     # held out of archive forever and a human is sent to reconcile a real sentence
     # against a phantom conflict.
-    narration_scan = re.sub(r"@(?:status|verified):[a-z-]+", " ", narration_lc)
+    narration_scan = re.sub(r"@(?:status|verified):[a-z-]+", " ", (narration_lc + " " + sufficiency.lower()))
     contradiction = False
     if status in ("done-verified", "done-unverified", "withdrawn"):
         for phrase in CONTRADICTION_PHRASES:
@@ -292,13 +384,25 @@ def parse_row(row: str) -> dict:
     # done-verified claim is invalid (bad/absent tier, or contradicted by its own
     # prose) is NOT archivable — archiving it would bury an unresolved integrity
     # problem, the exact failure this feature exists to prevent.
-    archivable = status == "withdrawn" or (
-        status == "done-verified" and tier_valid and not contradiction
-    )
-    blocks_release = target_is_this(row) and not archivable
+    effective_status = status if token_present and status_valid else legacy_state(cell) if not token_present else "unknown"
+    archivable = not issues and (status == "withdrawn" or (status == "done-verified" and tier_valid and not contradiction))
+    completed = archivable or (not token_present and effective_status == "legacy-complete")
+    target = row_target(row, headers)
+    if fields is not None:
+        if "target" in fields:
+            match = re.search(r"\b(THIS|NEXT|LATER|SOMEDAY)\b", fields["target"])
+            target = match[1] if match else ""
+        else:
+            match = COMPACT_FINDING_RE.match(fields.get("finding", ""))
+            target = match[1].split()[-1] if match else ""
+    blocks_release = target == "THIS" and not completed
 
     return {
         "id": row_id,
+        "effective_status": effective_status,
+        "completed": completed,
+        "target": target,
+        "code_sufficiency": sufficiency,
         "token_present": token_present,
         "status": status,
         "status_valid": status_valid,
@@ -315,9 +419,10 @@ def parse_row(row: str) -> dict:
 
 def parse_file(text: str) -> list[dict]:
     results = []
-    for line in text.splitlines():
-        if ROW_ID_RE.match(line):
-            results.append(parse_row(line))
+    details = detail_blocks(text)
+    for line, headers in row_contexts(text):
+        rid = ROW_ID_RE.match(line)[1]
+        results.append(parse_row(line, headers, details.get(rid, "")))
     return results
 
 

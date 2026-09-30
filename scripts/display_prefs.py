@@ -188,6 +188,23 @@ def resolve(dir_path: Path, flags: dict, term_width: int | None) -> dict:
     sources["stale_days"] = ("registry" if prefs_set and any(
         global_cfg.get(k) for k in _STALE_KEYS.values()) else "default")
 
+    saved_all = global_cfg.get("display_all_ledgers")
+    explicit = flags.get("all_ledgers")
+    named = flags.get("ledgers")
+    if named:
+        all_ledgers, scope_source = False, "flag"
+    elif explicit is not None:
+        all_ledgers, scope_source = bool(explicit), "flag"
+    elif prefs_set and saved_all is not None:
+        all_ledgers, scope_source = str(saved_all).lower() == "true", "registry"
+    else:
+        all_ledgers, scope_source = False, "default"
+    registered = registry.read_registry(dir_path).get("ledgers", [])
+    names = [led.get("name") for led in registered if led.get("name")]
+    selected = ([n.strip() for n in named.split(",") if n.strip()] if isinstance(named, str) else list(named)) if named else names if all_ledgers else [flags.get("current_ledger") or "UNFORGET.md"]
+    if named and any(n not in names for n in selected):
+        return {"error": "unknown explicitly named ledger; choose from: " + ", ".join(names)}
+    sources["all_ledgers"] = scope_source
     flagged = [k for k, v in sources.items() if v == "flag"]
     if not prefs_set:
         advisory = ("no saved display preference (run `list --fresh` to set one); "
@@ -199,6 +216,9 @@ def resolve(dir_path: Path, flags: dict, term_width: int | None) -> dict:
         advisory = f"{err}; using defaults"
 
     return {
+        "all_ledgers": all_ledgers,
+        "selected_ledgers": selected,
+        "scope": "Ledgers: " + ", ".join(selected),
         "view": view,
         "group_by": group_by,
         "section": section,
@@ -217,8 +237,8 @@ def framing(dir_path: Path) -> dict:
     themselves are identical either way (spec: one code path, not two)."""
     global_cfg, err = _read_global(dir_path)
     prefs_set = _prefs_set(global_cfg)
-    current = {k: global_cfg.get(f"display_{k}") for k in ("view", "group_by", "verbosity", "sections")}
-    current = {k: v for k, v in current.items() if v}
+    current = {k: global_cfg.get(f"display_{k}") for k in ("view", "group_by", "verbosity", "sections", "all_ledgers")}
+    current = {k: v for k, v in current.items() if v is not None}
     if prefs_set:
         summary = ", ".join(f"{k}={v}" for k, v in current.items()) or "(no fields set)"
         lead = f"Currently: {summary}. Want to change it?"
@@ -241,6 +261,7 @@ def build_patch(answers: dict) -> dict:
     """
     global_patch: dict[str, str] = {}
     mapping = {
+        "all_ledgers": "display_all_ledgers",
         "view": "display_view",
         "group_by": "display_group_by",
         "verbosity": "display_verbosity",
@@ -254,7 +275,7 @@ def build_patch(answers: dict) -> dict:
     for ans_key, reg_key in mapping.items():
         val = answers.get(ans_key)
         if val is not None and str(val) != "":
-            global_patch[reg_key] = str(val)
+            global_patch[reg_key] = val if ans_key == "all_ledgers" else str(val)
 
     # Always stamp this, even for a 1-answer Quick interview: it is what makes
     # the NEXT --fresh use re-run framing instead of first-run framing.
@@ -299,6 +320,12 @@ def main() -> int:
     b.add_argument("--stale-later", dest="stale_later", type=int, default=None)
     b.add_argument("--stale-someday", dest="stale_someday", type=int, default=None)
 
+    for scope_parser in (r, b):
+        scope = scope_parser.add_mutually_exclusive_group()
+        scope.add_argument("--all-ledgers", dest="all_ledgers", action="store_true", default=None)
+        scope.add_argument("--current-ledger", dest="all_ledgers", action="store_false")
+    r.add_argument("--ledgers", help="explicit comma-separated registered names; overrides saved scope")
+    r.add_argument("--current-ledger-name", default="UNFORGET.md", help="canonical current ledger filename")
     args = parser.parse_args()
 
     if args.action == "build-patch":
@@ -316,7 +343,11 @@ def main() -> int:
     else:
         flags = {"view": args.view, "group_by": args.group_by,
                  "section": args.section, "verbosity": args.verbosity}
+        flags.update(all_ledgers=args.all_ledgers, ledgers=args.ledgers, current_ledger=args.current_ledger_name)
         result = resolve(dir_path, flags, args.term_width)
+        if "error" in result:
+            print(json.dumps(result), file=sys.stderr)
+            return 2
 
     json.dump(result, sys.stdout); sys.stdout.write("\n")
     return 0

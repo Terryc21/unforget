@@ -52,6 +52,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+import managed_block
 
 # registry.py lives beside this script; reuse it as the single registry reader.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -70,13 +71,11 @@ POSTURE_NOTE = {
 
 def extract_block(text: str) -> str | None:
     """Return the block text (inclusive of markers), or None if absent."""
-    start = text.find(BEGIN)
-    if start == -1:
+    span = managed_block.bounds(text, BEGIN, END)
+    if span is None:
         return None
-    end = text.find(END, start)
-    if end == -1:
-        return None
-    return text[start:end + len(END)]
+    start, stop = span
+    return text[start:stop]
 
 
 def ledger_line(led: dict) -> str:
@@ -129,14 +128,8 @@ def render_block(global_cfg: dict, ledgers: list[dict], home: str | None) -> str
 
 def upsert_block(text: str, new_block: str) -> tuple[str, str]:
     """Insert or replace the block. Returns (new_text, action)."""
-    start = text.find(BEGIN)
-    if start == -1:
-        # append at end, leaving the user's content untouched
-        joined = text.rstrip() + "\n\n" + new_block + "\n"
-        return joined, "wrote"
-    end = text.find(END, start)
-    end = end + len(END) if end != -1 else len(text)
-    return text[:start] + new_block + text[end:], "updated"
+    span = managed_block.bounds(text, BEGIN, END)
+    return managed_block.replace(text, new_block, BEGIN, END), "updated" if span else "wrote"
 
 
 def load_registry(args) -> dict:
@@ -172,6 +165,12 @@ def do_write(args, write: bool) -> dict:
     reg = load_registry(args)
     if "error" in reg:
         return {"error": reg["error"]}
+    target = Path(args.file)
+    try:
+        existing = target.read_text(encoding="utf-8") if target.exists() else ""
+        managed_block.bounds(existing, BEGIN, END)
+    except (ValueError, OSError) as exc:
+        return {"error": str(exc)}
     home = resolve_home(args, reg)
     # If an explicit --home was given that differs from the stored value, persist it
     # to the registry so `check` re-renders an identical block (writer/checker agree).
@@ -183,11 +182,9 @@ def do_write(args, write: bool) -> dict:
             try:
                 registry.write_registry(Path(args.dir), g, reg.get("ledgers", []))
                 reg["global"] = g
-            except OSError:
-                pass  # non-fatal: the block still renders with the resolved home
+            except (OSError, ValueError) as exc:
+                return {"error": str(exc)}
     new_block = render_block(reg["global"], reg["ledgers"], home)
-    target = Path(args.file)
-    existing = target.read_text(encoding="utf-8", errors="replace") if target.exists() else ""
     had_block = extract_block(existing) is not None
     new_text, action = upsert_block(existing, new_block) if existing else (new_block + "\n", "wrote")
     if not write:
@@ -215,24 +212,31 @@ def do_check(args) -> dict:
     target = Path(args.file)
     if not target.exists():
         return {"file": str(target), "block_present": False, "action": "none",
-                "in_sync": None, "ledger_count": len(reg["ledgers"]),
+                "state": "absent", "in_sync": False, "ledger_count": len(reg["ledgers"]),
                 "advisory": f"{target.name} not found; no recall block"}
-    text = target.read_text(encoding="utf-8", errors="replace")
-    current = extract_block(text)
+    try:
+        text = target.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return {"file": str(target), "state": "unreadable", "error": str(exc), "in_sync": False}
+    try:
+        current = extract_block(text)
+    except ValueError as exc:
+        return {"file": str(target), "state": "malformed", "error": str(exc), "in_sync": False}
     if current is None:
         return {"file": str(target), "block_present": False, "action": "none",
-                "in_sync": None, "ledger_count": len(reg["ledgers"]),
-                "advisory": "no maintained recall block; run init/import to add one"}
+                "state": "absent", "in_sync": False, "ledger_count": len(reg["ledgers"]),
+                "advisory": "no maintained recall block; run import to repair an existing ledger"}
     expected = render_block(reg["global"], reg["ledgers"], resolve_home(args, reg))
     in_sync = current.strip() == expected.strip()
     return {
         "file": str(target),
         "block_present": True,
         "action": "none",
+        "state": "matching" if in_sync else "stale",
         "in_sync": in_sync,
         "ledger_count": len(reg["ledgers"]),
         "advisory": ("recall block matches the registry" if in_sync
-                     else "recall block is STALE vs the registry — rewrite (init/import) to refresh"),
+                     else "recall block is STALE vs the registry — rewrite with import to refresh"),
     }
 
 

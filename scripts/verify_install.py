@@ -18,8 +18,8 @@ Two concerns, one command, both feeding `/unforget --version`:
      invisible and the skill looks broken when it is working as designed. This
      check reports whether that trigger is installed for the given project.
 
-  3. Version reconciliation. The version is declared in FIVE places (SKILL.md
-     frontmatter, .claude-plugin/plugin.json, the newest changelog heading, the
+  3. Version reconciliation. The version is reconciled across package declarations (SKILL.md
+     frontmatter, plugin and marketplace manifests, the newest root changelog heading, the
      README's shields.io badge cache-buster, and the README's "Maturity:"
      bullet) and nothing used to compare them — so the plugin manifest sat FIVE
      releases stale without any check noticing (measured 2026-08-13). Drift is
@@ -77,6 +77,13 @@ from pathlib import Path
 # table in SKILL.md grows a new reference file or script, add it here so the
 # integrity check keeps pace with what the prose actually reads.
 REQUIRED_COMPANIONS = [
+    "SKILL.md",
+    "CHANGELOG.md",
+    "scripts/README.md",
+    "scripts/verify_install.py",
+    "scripts/display_prefs.py",
+    "scripts/managed_block.py",
+    "scripts/recipe.py",
     "reference/format.md",
     "reference/init.md",
     "reference/surfaces.md",
@@ -183,10 +190,20 @@ def read_declared_versions(skill_root: Path) -> dict:
         except (ValueError, OSError):
             manifest_version = None  # unparseable == undeclared, never a crash
     versions["plugin_manifest"] = manifest_version
+    marketplace = skill_root / ".claude-plugin" / "marketplace.json"
+    versions["marketplace_manifest"] = None
+    if marketplace.exists():
+        try:
+            plugins = json.loads(marketplace.read_text(encoding="utf-8")).get("plugins", [])
+            versions["marketplace_manifest"] = next((p.get("version") for p in plugins if p.get("name") == "unforget"), None)
+        except (ValueError, OSError):
+            pass
 
-    # Newest changelog heading in SKILL.md. Headings are newest-first, so the
+    # Root changelog, with legacy fallback for older package layouts. The
     # FIRST match is the current release.
-    skill_md = skill_root / "SKILL.md"
+    skill_md = skill_root / "CHANGELOG.md"
+    if not skill_md.exists():
+        skill_md = skill_root / "SKILL.md"
     changelog_version = None
     if skill_md.exists():
         match = CHANGELOG_RE.search(skill_md.read_text(encoding="utf-8", errors="replace"))
@@ -236,7 +253,7 @@ def check_version_sync(skill_root: Path) -> tuple[bool, dict, str | None]:
 def check_integrity(skill_root: Path) -> tuple[list[str], list[str]]:
     present, missing = [], []
     for rel in REQUIRED_COMPANIONS:
-        (present if (skill_root / rel).exists() else missing).append(rel)
+        (present if (skill_root / rel).is_file() else missing).append(rel)
     return present, missing
 
 
@@ -297,7 +314,7 @@ def main() -> int:
         advisory = (
             "install intact, but no Deferred Work Index block found in the "
             "project's CLAUDE.md/AGENTS.md — deferred-work questions will NOT "
-            "auto-route to unforget; run /unforget init to add the recall trigger"
+            "auto-route to unforget; run /unforget import to repair an existing ledger; use init only for bootstrap"
         )
     elif recall_checked and recall_present:
         advisory = f"install intact; recall trigger installed in {recall_source}"

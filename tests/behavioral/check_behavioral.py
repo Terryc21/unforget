@@ -43,6 +43,8 @@ Usage:
 Output: one line per assertion (PASS/FAIL), a summary, exit 0 iff all pass.
 Exit codes: 0 all passed · 1 one or more failed · 2 usage / missing files.
 """
+from __future__ import annotations
+
 import argparse
 import re
 import sys

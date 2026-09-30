@@ -141,6 +141,8 @@ Items from audit tools (linters, code review skills, custom audits) not fixed im
 ### Detail - Audit findings
 
 - **A1** - **CLOSED 2026-04-18 commit `2ce6d3f5`. `@verified:code`** (pure-logic change: a guard replacing a force-unwrap, covered by new tests — code is ground truth here). radar-suite found three force unwraps in the payment flow: `PaymentManager.swift:204`, `ReceiptValidator.swift:88`, `SubscriptionStore.swift:156`. Two were on guaranteed-non-nil values (kept with documentation comments); one was a real crash risk (replaced with guard let + Sentry breadcrumb). Tests added for the converted path. **1-Star Risk 🔴 At risk (deep):** a force-unwrap crash in the *payment* flow is the highest-exposure one-star trigger there is — a user who can't complete a purchase and gets a crash is the review you fear. Now fixed, but the row records why it was ranked deepest.
+
+  Code-is-sufficient: Pure-logic guard replacing a force-unwrap, covered by the new tests described above.
 - **A2** - radar-suite finding ID `MOD-001`. Migration path: ObservableObject + @Published -> @Observable macro. Spec: `Documentation/Architecture/Modernization.md`. Incremental approach - convert when touching a file, don't chase the chain.
 - **A3** - code-review-tool flagged 6 files >800 lines. None are causing problems today; tracked for future split. List: `MainView.swift` (1240), `OrderManager.swift` (910), `SearchService.swift` (864), `SettingsView.swift` (823), `ChatViewModel.swift` (812), `ReportGenerator.swift` (806).
 - **A4** - radar-suite finding ID `ERR-003`. Convert `try?` calls that silently swallow real errors. Use `ModelContext+Logging.swift`'s `fetchWithLogging()` helper. Targets are listed in the radar report.
