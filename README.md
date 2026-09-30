@@ -32,6 +32,12 @@ light/dark mode and printing. Reports do not change ledger status. Missing ratin
 stay unrated; estimated user impact carries a reason. See the
 [full report reference](reference/html-report.md).
 
+[![Example HTML report with unfinished items ranked by release blocker and urgency](examples/unfinished-ledger.png)](examples/README.md)
+
+**[Download the interactive example](https://github.com/Terryc21/unforget/raw/refs/heads/main/examples/unfinished-ledger.html)**
+and open it in your browser to try search, filtering and sorting. Generated from the
+bundled sample ledger; see [the source and regeneration command](examples/README.md).
+
 ## What it makes
 
 One `UNFORGET.md` in your project. Each row is something you deferred:

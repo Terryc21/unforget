@@ -53,6 +53,11 @@ class ReportTests(unittest.TestCase):
         rows,_,_=self.load('| A1 | NEXT | one | LOW | @status:open |\n| A2 | NEXT | two | HIGH | @status:open |\n| A3 | NEXT | three | — | @status:open |')
         h.annotate(rows,{'UNFORGET.md::A1':{'ux':'severe','ux_basis':'Recorded data loss.'}})
         self.assertEqual([r['id'] for r in h.select(rows,self.args('--sort','ux,urgency'))],['A1','A2','A3'])
+    def test_abbreviated_urgency_header_and_critical_value(self):
+        rows,_,_=self.load('| A1 | NEXT | one | HIGH | @status:open |\n| A2 | NEXT | two | CRIT | @status:open |\n| A3 | NEXT | three | MED | @status:open |', HEADER.replace('Urgency', 'Urg'))
+        selected=h.select(rows,self.args())
+        self.assertEqual([r['id'] for r in selected],['A2','A1','A3'])
+        self.assertEqual([r['urgency'] for r in selected],['critical','high','medium'])
     def test_annotations_cannot_fake_closure(self):
         rows,_,_=self.load('| A1 | THIS | one | HIGH | @status:open |')
         with self.assertRaises(ValueError):h.annotate(rows,{'UNFORGET.md::A1':{'status':'done-verified'}})

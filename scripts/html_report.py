@@ -93,7 +93,8 @@ def read_ledger(path):
             target_text = compact[1] if compact else ''
         target = level(target_text, ['THIS','NEXT','LATER','SOMEDAY'], 'Unassigned')
         target = target.upper() if target != 'Unassigned' else target
-        urgency = level(data.get('urgency', ''), ['critical','high','medium','med','low'], 'unrated')
+        urgency = level(data.get('urgency', data.get('urg', '')), ['critical','crit','high','medium','med','low'], 'unrated')
+        if urgency == 'crit': urgency = 'critical'
         if urgency == 'med': urgency = 'medium'
         rows.append(dict(id=ident, ledger=path.name, source=str(path), line=n, section=section,
                          finding=finding, status=status, target=target, urgency=urgency,
