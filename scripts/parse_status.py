@@ -375,6 +375,12 @@ def parse_row(row: str, headers=None, detail: str = "", fields=None) -> dict:
                             "not verified", "unverified"}
             if status == "done-unverified" and phrase in owed_phrases:
                 continue
+            # Withdrawn means closed WITHOUT a fix (an accepted risk, a premise
+            # that no longer applies), so saying it was not fixed AGREES with the
+            # token. "still broken" / "still open" stay contradictions: a
+            # withdrawn row that says the defect is live may belong open.
+            if status == "withdrawn" and phrase in ("not fixed", "not yet fixed"):
+                continue
             contradiction = True
             issues.append(f"token says {status} but narration says {phrase!r}")
             break

@@ -132,6 +132,12 @@ for cell, expect, label in [
      "'re-opened' IS a contradiction"),
     ("`@status:withdrawn` · still broken", True,
      "withdrawn over 'still broken' IS a contradiction"),
+    ("`@status:withdrawn` · ACCEPTED, NOT FIXED (Terry's call); gap unchanged", False,
+     "withdrawn over 'not fixed' is NOT a contradiction (withdrawn means closed without a fix)"),
+    ("`@status:withdrawn` · not yet fixed, accepted as is", False,
+     "withdrawn over 'not yet fixed' is NOT a contradiction"),
+    ("`@status:done-verified` `@verified:device` · not fixed", True,
+     "control: done-verified over 'not fixed' IS still a contradiction"),
 ]:
     got = any("narration says" in i
               for i in parse_status.parse_row(ROW.format(cell))["issues"])
