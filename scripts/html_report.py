@@ -328,6 +328,8 @@ def render(rows, sources, warnings, args, total_blockers):
           'OWED':str(sum(r['status']=='done-unverified' for r in rows)), 'HEADERS':heads,'ROWS':''.join(body),
           'SCOPE':E(args.scope_note),'CRITERIA':E(json.dumps(criteria,ensure_ascii=False)),
           'NOTES':''.join('<li>'+E(x)+'</li>' for x in args.note+warnings),
+          # What a cut or a filter left out must be visible without opening anything.
+          'SELECTION':''.join('<p class="notice"><b>'+E(x)+'</b></p>' for x in (selection_notes(args) if getattr(args,'select_info',None) else [])),
           'SOURCES':''.join(f'<li>{E(s["path"])} · {s["rows"]} source rows · SHA-256 <code>{s["sha256"]}</code></li>' for s in sources),
           'STATUS_OPTIONS':options('status'),'LEDGER_OPTIONS':options('ledger')}
     return re.sub(r'@@([A-Z_]+)@@',lambda m:data[m[1]],template)
@@ -352,8 +354,8 @@ def main():
             r,s,w=read_ledger(path);rows+=r;sources.append(s);warnings+=w
         if args.annotations:annotate(rows,json.loads(args.annotations.read_text(encoding='utf-8')))
         selected=select(rows,args)
-        warnings.extend(selection_notes(args))
         report=render(selected,sources,warnings,args,sum(r['blocker'] for r in rows))
+        warnings=warnings+selection_notes(args)   # still reported to the caller on stdout
         output.parent.mkdir(parents=True,exist_ok=True);output.write_text(report,encoding='utf-8')
         print(json.dumps(dict(output=str(output),rows=len(selected),matched=args.select_info['matched'],unclassified=args.select_info['unclassified'],blockers_in_report=sum(r['blocker'] for r in selected),blockers_in_inputs=sum(r['blocker'] for r in rows),warnings=warnings)))
     except (ValueError,OSError,TypeError,KeyError) as e:p.error(str(e))

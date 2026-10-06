@@ -109,6 +109,11 @@ class LimitAndFilterTests(LedgerHelpers, unittest.TestCase):
         self.assertEqual([r['id'] for r in h.select(rows,self.args('--sort','roi'))],['A2','A1','A3'])
         a=self.args('--roi','excellent');self.assertEqual([r['id'] for r in h.select(rows,a)],['A2'])
         self.assertEqual(a.select_info['unclassified']['roi'],1)
+    def test_cut_note_is_visible_not_collapsed(self):
+        rows=self.rated('| A1 | NEXT | a | HIGH | Good | Small | @status:open |\n| A2 | NEXT | b | LOW | Good | Small | @status:open |')
+        a=self.args('--limit','1');page=h.render(h.select(rows,a),[],[],a,0)
+        shown=page.find('Showing 1 of 2');collapsed=page.find('<summary>Criteria')
+        self.assertNotEqual(shown,-1);self.assertLess(shown,collapsed)
     def test_no_limit_means_no_cap(self):
         rows=self.rated('| A1 | NEXT | a | HIGH | Good | Small | @status:open |\n| A2 | NEXT | b | LOW | Good | Small | @status:open |')
         a=self.args();self.assertEqual(len(h.select(rows,a)),2);self.assertEqual(a.select_info['matched'],2)
