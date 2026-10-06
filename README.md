@@ -69,18 +69,21 @@ The file is the record. When you want to *look* at it, ask for a view. You get a
 page you can search, sort, filter and print, in light or dark mode. Making a view never changes
 your ledger.
 
-Ask in plain words:
+Ask in plain words. These are the ready-made views and what to type for each:
 
-> /unforget report: show me the ten most urgent things
+| View | What to type | What you get |
+|---|---|---|
+| **Top 10 by urgency** | `/unforget report: show me the ten most urgent things` | The ten things that most need doing, ship blockers first |
+| **Quick wins** | `/unforget report: quick wins` | Trivial and small fixes, best value for the effort first |
+| **Trivial fixes only** | `/unforget report: only trivial fixes` | Only the fixes rated trivial, plus a count of rows it couldn't rate |
+| **Best value first** | `/unforget report: best value first` | Everything open, ranked by value for the effort |
+| **Ship blockers** | `/unforget report: ship blockers only` | Only what stands between you and your next release |
 
-Or pick one of the ready-made views:
+**Your own mix.** Describe the cut you want in your own words, combining ledgers, statuses,
+release targets, urgency, effort, value, columns and order. For example:
 
-| View | What you get |
-|---|---|
-| **Top 10 by urgency** | The ten things that most need doing, ship blockers first |
-| **Quick wins** | Trivial and small fixes, best value for the effort first |
-| **Ship blockers** | Only what stands between you and your next release |
-| **Your own mix** | Any combination of ledgers, statuses, targets, urgency, effort, value, columns and order |
+> /unforget report: include all my ledgers, show high-urgency NEXT work, and rank smaller fixes
+> first.
 
 Every view keeps three promises:
 
