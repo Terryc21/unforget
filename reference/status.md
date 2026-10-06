@@ -152,3 +152,45 @@ verified claims remain unfinished without changing the ledger. Supply real evide
 return the row to `done-unverified`. A clean legacy completion (Fixed/Closed/Done/Withdrawn
 at the start, without negation or open/owed/mixed narration) may count as completed for
 release/reporting, but tokenless rows are never automatically archived.
+
+## Close on report (v2.10.0)
+
+**The problem.** A session reports "fixed", the user believes it, and the ledger row either
+stays open or is closed without proof. What the user believes and what the ledger records
+drift apart, and the gap surfaces weeks later as a `verify` error or as "finished" work that
+still shows as unfinished.
+
+**The rule.** When a session reports a fix for an item that has a ledger row, it updates that
+row in the **same turn**, before the reply ends. Never leave it for "later" or for the user.
+
+1. **Find the row.** Match the fixed item to its row ID. If none exists and the fix closes a
+   deferred item, say so; do not invent a row after the fact.
+2. **Pick the honest status from the evidence produced in this session:**
+   - **`done-verified` `@verified:code`** only when tests that exercise the fix pass and the
+     code alone settles the item. Write `Code-is-sufficient: <reason>` from the evidence just
+     produced (for example "pure function; the new test fails without the fix"), never from
+     memory and never as "tests passed". A negative control (the test fails with the fix
+     removed) is the strongest basis.
+   - **`done-verified` `@verified:device` / `user`** only when that check actually happened.
+   - **`done-unverified` `@verified:session-claimed`** when the fix is written but its proof is
+     not: name what is owed in the narration ("device check owed", "needs the 2-account
+     test"). This is not a failure; it is the honest state, and it keeps blocking a release
+     if the row is THIS.
+3. **Validate** with `python3 scripts/parse_status.py --row "<row>"` and fix any
+   `tier_valid:false` or contradiction before saving (see `reference/commands.md` §
+   Status-token rule).
+4. **Report the row, not just the fix.** End the fix report with the row's new state in one
+   line, for example "A280 → `done-verified` `@verified:code` (Code-is-sufficient: …)" or
+   "A41 → `done-unverified`, device check owed".
+
+**Wording must match the ledger.** Say "fixed and verified" only when the row now reads
+`done-verified`. Otherwise say "fixed, <check> owed". A user should never be told more than the
+ledger records.
+
+**When not to close.** The user said to hold it; the fix is partial (update the narration with
+what remains and keep the row open); or the session cannot write the ledger (say so and give
+the exact status line to paste).
+
+**Projects can add a backstop.** A project hook can compare recent commits that cite a row ID
+against the ledger and remind the session when a cited row is still open or closed without
+proof. unforget does not ship one; it is host- and project-specific.

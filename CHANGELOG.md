@@ -24,6 +24,9 @@ Includes everything listed under v2.9.1 below, which was never released on its o
   the user says not to, or the run is unattended), and says where the file lives.
 - A cut or filter's "Showing N of M" and unclassified-row lines now appear in plain view under
   the scope line; they were inside the collapsed "Criteria" section.
+- Close on report: when a session reports a fix for an item with a ledger row, it updates the
+  row in the same turn with the honest status and its proof, and ends the report with the row's
+  new state; "verified" is said only when the row says so (`reference/status.md`).
 - Example gallery: `examples/README.md` shows a preview and a downloadable page for each
   ready-made view (unfinished work, top 10, quick wins, trivial fixes only, best value first,
   ship blockers), all generated from the sample ledger.

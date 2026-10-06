@@ -96,6 +96,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **Completed rows have piled up and you want them out of the active view** → `/unforget archive` (lightweight; use this between releases instead of `promote`)
 - **You're about to ship a release** → `/unforget promote`
 - **You want to verify the install loaded correctly** → `/unforget --version`
+- **You just reported a fix for something that has a ledger row** → update that row in the same turn, with the honest status and its proof (`done-verified` with a `Code-is-sufficient:` reason drawn from this session's evidence, or `done-unverified` naming the owed check), and end the report with the row's new state (`reference/status.md` § Close on report). Say "verified" only when the row says so.
 - **A row is being closed (`/unforget edit <ID> --status=Fixed`) and you want the post-fix sweep** → see `reference/promotion.md` § post-fix-sweep
 
 ---
@@ -112,7 +113,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/promotion.md` | Promote ritual, dry-run mechanics, post-fix-sweep workflow, backups and recovery | Running `/unforget promote` or marking a row Fixed |
 | `reference/commands.md` | Per-subcommand specs for `add`, `edit`, `import`, `list`, `show`, `scan`, `archive`, `--version` (incl. `--version`'s install-integrity + recall-trigger checks) | Running any of those subcommands |
 | `reference/html-report.md` | HTML defaults, user choices, scope/provenance, generator and verification | Creating an HTML report or `list --html` |
-| `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance | Reading/writing a row's status; running `archive`/`list`/`edit` |
+| `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance, and close-on-report (update the row in the same turn a fix is reported) | Reading/writing a row's status; running `archive`/`list`/`edit`; reporting a fix |
 | `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
 | `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
