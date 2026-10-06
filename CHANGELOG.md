@@ -7,6 +7,9 @@
   faster fix, and the report states "Showing N of M matching rows".
 - Effort and ROI filters match the first recognized word of the cell and count the rows they
   could not classify, so a filter cannot silently drop rows with unfamiliar values.
+- Projects can map their own rating words and column names for these filters through four optional
+  registry keys (`report_effort_words`, `report_roi_words`, `report_effort_column`,
+  `report_roi_column`). Bad entries are reported, not applied; nothing changes without them.
 - Adds tests with negative controls for each rule. No format change; existing ledgers are untouched.
 
 ### v2.9.1 — integrity and workflow hardening (patch candidate, 2026-09-30)

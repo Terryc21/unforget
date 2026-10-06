@@ -111,3 +111,45 @@ class LimitAndFilterTests(ReportTests):
         a=self.args();self.assertEqual(len(h.select(rows,a)),2);self.assertEqual(a.select_info['matched'],2)
 
 if __name__=='__main__':unittest.main()
+
+
+def registry_readme(*pairs):
+    rows=''.join(f'| {k} | {v} |\n' for k,v in pairs)
+    return ('# Ledgers\n\n<!-- unforget-registry:begin -->\n\n**Global**\n\n| key | value |\n|---|---|\n'
+            + rows + '\n<!-- unforget-registry:end -->\n')
+
+class VocabularyTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
+        self.dir=Path(self.tmp.name);self.path=self.dir/'UNFORGET.md'
+    def load(self,rows,header,*pairs):
+        if pairs:(self.dir/'README.md').write_text(registry_readme(*pairs))
+        self.path.write_text(header+rows);return h.read_ledger(self.path)
+    def args(self,*flags):
+        a=h.parser().parse_args(['--file',str(self.path),'--output',str(self.dir/'r.html'),*flags]);a.sort=a.sort.split(',');a.columns=a.columns.split(',');return a
+    SIZE='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Size | Value | Status |\n|---|---|---|---|---|---|---|\n'
+    ROWS='| A1 | NEXT | a | HIGH | XS | High | @status:open |\n| A2 | NEXT | b | HIGH | L | Low | @status:open |\n| A3 | NEXT | c | HIGH | M | High | @status:open |'
+    def test_project_words_and_columns_classify_rows(self):
+        rows,_,warnings=self.load(self.ROWS,self.SIZE,('report_effort_column','Size'),('report_roi_column','Value'),
+                                  ('report_effort_words','XS=trivial, S=small, M=medium, L=large'),('report_roi_words','High=good, Low=poor'))
+        a=self.args('--effort','trivial');self.assertEqual([r['id'] for r in h.select(rows,a)],['A1'])
+        self.assertEqual(a.select_info['unclassified']['effort'],0)
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--roi','good'))],['A1','A3'])
+        self.assertTrue(any('Project vocabulary' in w for w in warnings))
+    def test_without_registry_the_same_rows_are_unclassified(self):
+        rows,_,_=self.load(self.ROWS,self.SIZE)   # negative control: no README, no mapping
+        a=self.args('--effort','trivial');self.assertEqual(h.select(rows,a),[])
+        self.assertEqual(a.select_info['unclassified']['effort'],3)
+    def test_project_word_overrides_builtin(self):
+        hdr='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Fix Effort | Status |\n|---|---|---|---|---|---|\n'
+        rows,_,_=self.load('| A1 | NEXT | a | HIGH | Small | @status:open |',hdr,('report_effort_words','Small=trivial'))
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--effort','trivial'))],['A1'])
+    def test_bad_entries_are_reported_not_applied(self):
+        hdr='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Fix Effort | Status |\n|---|---|---|---|---|---|\n'
+        rows,_,warnings=self.load('| A1 | NEXT | a | HIGH | XS | @status:open |',hdr,('report_effort_words','XS=tiny, S'))
+        self.assertTrue(any('ignored XS=tiny, S' in w for w in warnings))
+        self.assertEqual(h.select(rows,self.args('--effort','trivial')),[])
+    def test_vocabulary_does_not_leak_into_query(self):
+        hdr='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Fix Effort | Status |\n|---|---|---|---|---|---|\n'
+        rows,_,_=self.load('| A1 | NEXT | a | HIGH | Small | @status:open |',hdr,('report_effort_words','Zebra=trivial'))
+        self.assertEqual(h.select(rows,self.args('--query','zebra')),[])

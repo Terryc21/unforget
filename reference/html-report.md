@@ -121,6 +121,29 @@ flag for several levels. Rows whose value has no recognizable level (for example
 `--effort unrated` to see them, so an empty "trivial only" list is never mistaken for a
 clean ledger. Blast radius is free text, so it has no filter. `roi` is also a sort key.
 
+### Project vocabulary
+
+A project that rates work in other words (T-shirt sizes, story points, "High"/"Low" ROI)
+maps them once in its registry block (the ledger directory's `README.md`, see
+`reference/registry.md`). Example rows in the Global table:
+
+```
+| report_effort_column | Size |
+| report_effort_words  | XS=trivial, S=small, M=medium, L=large |
+| report_roi_words     | High=good, OK=fair, Low=poor |
+```
+
+Project words are added to the built-in ones, and a project word wins where both name the
+same word. Column names are tried after the defaults. Entries that are not `WORD=level` or
+name an unknown level are listed in the report's notes and not applied. The report states
+when a project vocabulary was used and how many words it held. The words are kept off the
+rows, so `--query` never matches them. When a filter still finds unclassified rows, its note
+names the key to add.
+
+When a user asks for a filter and the report counts unclassified rows, offer to map them:
+show the unrecognized values, propose levels, and write only what the user confirms, with
+`registry.py write --merge` (never a bare write).
+
 `--view unfinished|all|completed`; repeatable `--status`, `--target`, `--urgency`,
 `--ledger`, `--section`; `--query` searches the row's source/presentation text.
 `--id` and `--exclude-id` accept repeated IDs or `filename.md::ID` keys for reviewed

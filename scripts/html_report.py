@@ -53,12 +53,66 @@ def word_level(text, words):
     return words[match[1].lower()] if match else 'unrated'
 
 
+# Per-project vocabulary, keyed by ledger path. Kept off the row so --query and
+# the rendered row data never see it.
+VOCAB = {}
+VOCAB_KEYS = dict(effort_words=('effort', EFFORT), roi_words=('roi', ROI))
+
+
+def parse_word_map(value, levels):
+    """'XS=trivial, S=small' -> ({'xs': 'trivial', 's': 'small'}, [problems])."""
+    mapping, problems = {}, []
+    for part in (value or '').split(','):
+        part = part.strip()
+        if not part: continue
+        word, sep, lvl = part.partition('=')
+        word, lvl = word.strip().lower(), lvl.strip().lower()
+        if not sep or not word or lvl not in levels or lvl == 'unrated':
+            problems.append(part)
+        else:
+            mapping[word] = lvl
+    return mapping, problems
+
+
+def load_vocab(ledger_dir):
+    """Read report_* keys from the project's registry (README.md block).
+
+    report_effort_words / report_roi_words: 'WORD=level, ...' added to the built-in
+    words (a project word wins over a built-in one). report_effort_column /
+    report_roi_column: extra header names, comma-separated, tried after the defaults.
+    Returns (vocab, notes). A missing registry is not an error: built-ins apply.
+    """
+    try:
+        import registry
+        cfg = registry.read_registry(Path(ledger_dir)).get('global', {}) or {}
+    except Exception as exc:
+        return {}, [f'{ledger_dir}: registry unreadable ({exc}); built-in report words only.']
+    vocab, notes = {}, []
+    for key, (field, levels) in VOCAB_KEYS.items():
+        mapping, problems = parse_word_map(cfg.get('report_' + key), levels)
+        if mapping: vocab[field + '_words'] = mapping
+        if problems:
+            notes.append(f"report_{key}: ignored {', '.join(problems)} (use WORD=level; levels: {', '.join(l for l in levels if l != 'unrated')}).")
+    for field in ('effort', 'roi'):
+        cols = [c.strip().lower() for c in (cfg.get(f'report_{field}_column') or '').split(',') if c.strip()]
+        if cols: vocab[field + '_columns'] = cols
+    if vocab:
+        counts = ', '.join(f"{k.replace('_', ' ')}: {len(v)}" for k, v in vocab.items())
+        notes.append(f'Project vocabulary from {Path(ledger_dir) / "README.md"} ({counts}).')
+    return vocab, notes
+
+
+def words_for(row, field, builtin):
+    custom = VOCAB.get(row.get('source', ''), {}).get(field + '_words')
+    return {**builtin, **custom} if custom else builtin
+
+
 def effort_of(row):
-    return word_level(row['effort'], EFFORT_WORDS)
+    return word_level(row['effort'], words_for(row, 'effort', EFFORT_WORDS))
 
 
 def roi_of(row):
-    return word_level(row.get('roi', ''), ROI_WORDS)
+    return word_level(row.get('roi', ''), words_for(row, 'roi', ROI_WORDS))
 
 
 def read_ledger(path):
@@ -70,6 +124,14 @@ def read_ledger(path):
     if not marker or int(marker[1]) not in (1, 2):
         warnings.append(f'{path.name}: missing or unsupported format marker; read-only best-effort snapshot.')
     details = parse_status.detail_blocks(text)
+    vocab, vocab_notes = load_vocab(path.parent)
+    VOCAB[str(path)] = vocab
+    warnings.extend(vocab_notes)
+
+    def column(data, defaults, field):
+        for name in list(defaults) + vocab.get(field + '_columns', []):
+            if name in data: return data[name]
+        return ''
     for n, line in enumerate(lines, 1):
         if line.startswith('#'):
             section = line.lstrip('# ').strip()
@@ -109,8 +171,8 @@ def read_ledger(path):
                          finding=finding, status=status, target=target, urgency=urgency,
                          blocker=evaluated['blocks_release'], completed=evaluated['completed'],
                          integrity_issues=evaluated['issues'],
-                         ux='unrated', ux_basis='', owner='', next='', effort=data.get('fix effort', data.get('effort', data.get('est', 'Unrated'))),
-                         roi=data.get('roi', ''), original=data, notes=[]))
+                         ux='unrated', ux_basis='', owner='', next='', effort=column(data, ('fix effort', 'effort', 'est'), 'effort') or 'Unrated',
+                         roi=column(data, ('roi',), 'roi'), original=data, notes=[]))
 
     return rows, dict(path=str(path), ledger=path.name, sha256=hashlib.sha256(text.encode()).hexdigest(), rows=len(rows)), warnings
 
@@ -268,7 +330,7 @@ def main():
             warnings.append(f"Showing {info['shown']-info['extra_blockers']} of {info['matched']} matching rows (limit {args.limit}, ties broken by lowest fix effort){tail}")
         for field,flag in (('effort',args.effort),('roi',args.roi)):
             if flag and info['unclassified'][field]:
-                warnings.append(f"{info['unclassified'][field]} row(s) that passed every other filter have no recognizable {field} and are excluded by --{field}; rerun with --{field} unrated to see them.")
+                warnings.append(f"{info['unclassified'][field]} row(s) that passed every other filter have no recognizable {field} and are excluded by --{field}; rerun with --{field} unrated to see them, or map their words with report_{field}_words in the ledger README's registry block.")
         report=render(selected,sources,warnings,args,sum(r['blocker'] for r in rows))
         output.parent.mkdir(parents=True,exist_ok=True);output.write_text(report,encoding='utf-8')
         print(json.dumps(dict(output=str(output),rows=len(selected),matched=info['matched'],unclassified=info['unclassified'],blockers_in_report=sum(r['blocker'] for r in selected),blockers_in_inputs=sum(r['blocker'] for r in rows),warnings=warnings)))
