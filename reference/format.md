@@ -217,9 +217,9 @@ Standard / Compact files keep `Last promoted:` and `Currently shipping toward:` 
 Things this skill deliberately does NOT do, and why:
 
 - **Custom column reordering.** Breaks comparability across projects.
-- **Custom rating scales.** Letting one user use 🔴/🟡/🟢/⚪ and another use P0/P1/P2/P3 makes the format un-shareable.
+- **Custom rating scales.** Letting one user use 🔴/🟡/🟢/⚪ and another use P0/P1/P2/P3 makes the format un-shareable. *Not an exception:* the HTML report can READ other words through the `report_*_words` registry keys (`reference/html-report.md` § Project vocabulary), so older or imported rows still appear in filtered views. That is a read-only translation for reports, not a second scale; new rows use the standard values.
 - **Per-row column visibility.** Hiding columns on some rows but not others. Devolves into chaos.
-- **Renaming core columns.** "Call Urgency 'Priority' instead." Skill becomes incompatible with itself.
+- **Renaming core columns.** "Call Urgency 'Priority' instead." Skill becomes incompatible with itself. *Not an exception:* `report_effort_column` / `report_roi_column` let the HTML report read a differently headed column in an existing ledger; the format's column names do not change.
 - **Multiple files.** UNFORGET.md is the index. Detail files (per-plan markdown) are linked FROM rows, not duplicates of them.
 - **Auto-deferring things the AI thinks should be deferred.** Deferral is a user decision. The skill captures, organizes, and surfaces; it doesn't decide on the user's behalf.
 

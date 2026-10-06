@@ -105,14 +105,15 @@ and open it in your browser to try search, filtering and sorting. A second examp
 shows a view cut to five rows, with its "Showing 5 of 7" line. Both were generated from the
 bundled sample ledger; see [the source and regeneration command](examples/README.md).
 
-### Use your own rating words
+### When rows use other rating words
 
-Out of the box, unforget reads effort as **trivial, small, medium or large**, and value for the
-effort (ROI) as **excellent, good, fair, marginal or poor**. If your project rates work its own
-way, such as T-shirt sizes, story points, or "High" and "Low", tell it once.
+unforget's scale rates effort as **trivial, small, medium or large**, and value for the effort
+(ROI) as **excellent, good, fair, marginal or poor**. Rows written in other words, such as T-shirt
+sizes, story points, "High" or "OK", or a column headed "Size" instead of "Fix Effort", usually
+come from older notes or another tool. Reports can still read them: map the words once.
 
-Setup creates a settings table in the README of your ledger folder. Add a row for each scale you
-use:
+Setup creates a settings table in the README of your ledger folder. Add a row for each set of
+words:
 
 ```markdown
 | report_effort_column | Size |
@@ -123,6 +124,10 @@ use:
 Your words are added to the built-in ones, and yours win if the two disagree. Anything unforget
 can't make sense of is listed in the report rather than guessed at. When a view finds rows it
 can't classify, your assistant can suggest a mapping and add only what you approve.
+
+This only teaches reports to *read* those words. It doesn't change your ledger or add a second
+scale, and new rows should still use the standard words, so the file stays readable by anyone
+who knows the format.
 
 Prefer exact options? `--limit`, `--effort`, `--roi` and the rest are in the
 [report reference](reference/html-report.md).
@@ -265,7 +270,7 @@ work that crosses teams.
   forward.
 - **Your AI reads it without being asked.** Setup wires it into your AGENTS.md or CLAUDE.md.
 - **You see it the way you want.** The ten most urgent, the quick wins, or only the ship
-  blockers, in your own rating words, with a clear count of anything left out.
+  blockers, with a clear count of anything left out, even when older rows use other words.
 - **It notices things going stale.** `/unforget scan` finds rows sitting far longer than their
   priority suggests.
 
@@ -349,7 +354,7 @@ table survived, because a misplaced `|` breaks a table quietly.
 |---|---|
 | **[Every command](reference/commands.md)** | Full detail on each one |
 | **[The format](reference/format.md)** | Columns, statuses, and the optional 1-star-risk column |
-| **[Reports](reference/html-report.md)** | Views, filters, row limits, and using your own rating words |
+| **[Reports](reference/html-report.md)** | Views, filters, row limits, and reading other rating words |
 | **[Setup](reference/init.md)** | What `init` does, step by step |
 | **[Settings](reference/registry.md)** | The settings table in your ledger folder's README |
 | **[Release ritual](reference/promotion.md)** | What `promote` checks before letting you ship |
