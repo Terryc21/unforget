@@ -1,5 +1,14 @@
 # Changelog
 
+### Unreleased — row limits and effort/ROI filters for HTML reports
+
+- `html_report.py` gains `--limit N`, `--effort`, `--roi` and a `roi` sort key. A limit never hides
+  a release blocker (blockers below the cut are shown and counted), ties at the cut go to the
+  faster fix, and the report states "Showing N of M matching rows".
+- Effort and ROI filters match the first recognized word of the cell and count the rows they
+  could not classify, so a filter cannot silently drop rows with unfamiliar values.
+- Adds tests with negative controls for each rule. No format change; existing ledgers are untouched.
+
 ### v2.9.1 — integrity and workflow hardening (patch candidate, 2026-09-30)
 
 - Refuse malformed registry/recall markers before writes; keep branch rollback intact.

@@ -74,4 +74,40 @@ class ReportTests(unittest.TestCase):
         self.assertEqual([r['id'] for r in h.select(rows,self.args('--id','A2'))],['A2'])
         self.assertEqual(h.select(rows,self.args('--query','does not exist')),[])
 
+
+
+HEADER_RATED='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | ROI | Fix Effort | Status |\n|---|---|---|---|---|---|---|\n'
+
+class LimitAndFilterTests(ReportTests):
+    def rated(self,rows):
+        return self.load(rows,HEADER_RATED)[0]
+    def test_limit_caps_rows_and_reports_matched(self):
+        rows=self.rated('| A1 | NEXT | a | HIGH | Good | Small | @status:open |\n| A2 | NEXT | b | MED | Good | Small | @status:open |\n| A3 | NEXT | c | LOW | Good | Small | @status:open |')
+        a=self.args('--limit','2');selected=h.select(rows,a)
+        self.assertEqual([r['id'] for r in selected],['A1','A2'])
+        self.assertEqual((a.select_info['matched'],a.select_info['shown'],a.select_info['extra_blockers']),(3,2,0))
+    def test_limit_never_hides_a_release_blocker(self):
+        rows=self.rated('| A1 | NEXT | a | HIGH | Good | Small | @status:open |\n| A2 | NEXT | b | HIGH | Good | Small | @status:open |\n| A3 | THIS | blocker | LOW | Good | Small | @status:open |')
+        a=self.args('--limit','1','--sort','urgency');selected=h.select(rows,a)
+        self.assertEqual([r['id'] for r in selected],['A1','A3'])
+        self.assertEqual(a.select_info['extra_blockers'],1)
+    def test_tie_at_the_cut_goes_to_the_faster_fix(self):
+        rows=self.rated('| A1 | NEXT | a | HIGH | Good | Large | @status:open |\n| A2 | NEXT | b | HIGH | Good | Trivial | @status:open |')
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--limit','1','--sort','urgency'))],['A2'])
+    def test_effort_filter_and_unclassified_count(self):
+        rows=self.rated('| A1 | NEXT | a | HIGH | Good | Trivial | @status:open |\n| A2 | NEXT | b | HIGH | Good | Small-Med | @status:open |\n| A3 | NEXT | c | HIGH | Good | Done | @status:open |\n| A4 | NEXT | d | HIGH | Good | 🟢 Triv | @status:open |')
+        a=self.args('--effort','trivial');selected=h.select(rows,a)
+        self.assertEqual(sorted(r['id'] for r in selected),['A1','A4'])
+        self.assertEqual(a.select_info['unclassified']['effort'],1)
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--effort','unrated'))],['A3'])
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--effort','small'))],['A2'])
+    def test_roi_filter_and_sort(self):
+        rows=self.rated('| A1 | NEXT | a | HIGH | 🟢 Good | Small | @status:open |\n| A2 | NEXT | b | HIGH | 🟠 Excellent | Small | @status:open |\n| A3 | NEXT | c | HIGH | 🔵 High | Small | @status:open |')
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--sort','roi'))],['A2','A1','A3'])
+        a=self.args('--roi','excellent');self.assertEqual([r['id'] for r in h.select(rows,a)],['A2'])
+        self.assertEqual(a.select_info['unclassified']['roi'],1)
+    def test_no_limit_means_no_cap(self):
+        rows=self.rated('| A1 | NEXT | a | HIGH | Good | Small | @status:open |\n| A2 | NEXT | b | LOW | Good | Small | @status:open |')
+        a=self.args();self.assertEqual(len(h.select(rows,a)),2);self.assertEqual(a.select_info['matched'],2)
+
 if __name__=='__main__':unittest.main()

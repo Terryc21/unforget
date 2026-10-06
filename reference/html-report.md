@@ -103,7 +103,23 @@ python3 scripts/html_report.py --file /project/Documentation/Ledgers/UNFORGET.md
   --target NEXT --urgency high --sort effort,ux,urgency \
   --columns rank,id,blocker,finding,urgency,ux,status,effort \
   --output /workspace/outputs/next-small-fixes.html
+
+python3 scripts/html_report.py --file /project/Documentation/Ledgers/UNFORGET.md \
+  --limit 10 --sort blocker,urgency --output /workspace/outputs/top-ten.html
+python3 scripts/html_report.py --file /project/Documentation/Ledgers/UNFORGET.md \
+  --effort trivial --effort small --sort roi,urgency --output /workspace/outputs/quick-wins.html
 ```
+
+`--limit N` shows the first N rows after sorting, for requests such as "top ten most
+urgent". A cap never hides a release blocker: blockers ranked below the cut are still
+shown and counted separately, and the report notes "Showing N of M matching rows". Ties
+at the cut go to the lower fix effort unless `effort` is already in `--sort`. `--effort`
+(`trivial|small|medium|large|unrated`) and `--roi` (`excellent|good|fair|marginal|poor|unrated`)
+filter on the first recognized word of the cell, so "Small-Med" counts as small; repeat a
+flag for several levels. Rows whose value has no recognizable level (for example "Done",
+"N/A") are excluded by a named level, and the report counts them: rerun with
+`--effort unrated` to see them, so an empty "trivial only" list is never mistaken for a
+clean ledger. Blast radius is free text, so it has no filter. `roi` is also a sort key.
 
 `--view unfinished|all|completed`; repeatable `--status`, `--target`, `--urgency`,
 `--ledger`, `--section`; `--query` searches the row's source/presentation text.

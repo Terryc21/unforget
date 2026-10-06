@@ -22,7 +22,13 @@ URGENCY = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'unrated': 4}
 IMPACT = {'severe': 0, 'high': 1, 'moderate': 2, 'low': 3, 'indirect': 4, 'unrated': 5}
 TARGET = {'THIS': 0, 'NEXT': 1, 'LATER': 2, 'SOMEDAY': 3, 'Unassigned': 4}
 COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'owner']
-SORTS = ['blocker', 'urgency', 'ux', 'target', 'effort', 'id', 'ledger', 'status']
+SORTS = ['blocker', 'urgency', 'ux', 'target', 'effort', 'roi', 'id', 'ledger', 'status']
+EFFORT = {'trivial': 0, 'small': 1, 'medium': 2, 'large': 3, 'unrated': 4}
+EFFORT_WORDS = {'triv': 'trivial', 'trivial': 'trivial', 'sml': 'small', 'small': 'small',
+                'med': 'medium', 'medium': 'medium', 'lrg': 'large', 'large': 'large'}
+ROI = {'excellent': 0, 'good': 1, 'fair': 2, 'marginal': 3, 'poor': 4, 'unrated': 5}
+ROI_WORDS = {'excel': 'excellent', 'excellent': 'excellent', 'good': 'good', 'fair': 'fair',
+             'marginal': 'marginal', 'poor': 'poor'}
 DELIMITER = re.compile(r'^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$')
 ID = re.compile(r'(?:[A-Za-z]+-?)?\d+[a-z]?$', re.I)
 E = html.escape
@@ -39,6 +45,20 @@ def plain(text):
 def level(text, choices, default):
     match = re.search(r'\b(' + '|'.join(choices) + r')\b', text, re.I)
     return match[1].lower() if match else default
+
+
+def word_level(text, words):
+    """First recognized word wins ("Small-Med" is small); no match is 'unrated'."""
+    match = re.search(r'\b(' + '|'.join(sorted(words, key=len, reverse=True)) + r')\b', text, re.I)
+    return words[match[1].lower()] if match else 'unrated'
+
+
+def effort_of(row):
+    return word_level(row['effort'], EFFORT_WORDS)
+
+
+def roi_of(row):
+    return word_level(row.get('roi', ''), ROI_WORDS)
 
 
 def read_ledger(path):
@@ -90,7 +110,8 @@ def read_ledger(path):
                          blocker=evaluated['blocks_release'], completed=evaluated['completed'],
                          integrity_issues=evaluated['issues'],
                          ux='unrated', ux_basis='', owner='', next='', effort=data.get('fix effort', data.get('effort', data.get('est', 'Unrated'))),
-                         original=data, notes=[]))
+                         roi=data.get('roi', ''), original=data, notes=[]))
+
     return rows, dict(path=str(path), ledger=path.name, sha256=hashlib.sha256(text.encode()).hexdigest(), rows=len(rows)), warnings
 
 
@@ -109,15 +130,16 @@ def annotate(rows, annotations):
 
 
 def sort_key(row, fields):
-    effort = level(row['effort'], ['triv','trivial','sml','small','medium','med','lrg','large'], 'unrated')
     keys = dict(blocker=not row['blocker'], urgency=URGENCY[row['urgency']], ux=IMPACT[row['ux']],
-                target=TARGET[row['target']], effort={'triv':0,'trivial':0,'sml':1,'small':1,'medium':2,'med':2,'lrg':3,'large':3}.get(effort,4),
+                target=TARGET[row['target']],
+                effort=EFFORT[effort_of(row)], roi=ROI[roi_of(row)],
                 id=row['id'], ledger=row['ledger'], status=row['status'])
     return tuple(keys[k] for k in fields)+(row['ledger'],row['line'])
 
 
 def select(rows, args):
-    result=[]
+    """Filter, sort, then cap. Records what it did in args.select_info for the report notes."""
+    result, unclassified = [], dict(effort=0, roi=0)
     for r in rows:
         key=r['ledger']+'::'+r['id']
         if args.id and key not in args.id and r['id'] not in args.id: continue
@@ -132,9 +154,26 @@ def select(rows, args):
         if args.ledger and r['ledger'] not in args.ledger: continue
         if args.section and not any(s.casefold() in r['section'].casefold() for s in args.section): continue
         if args.query and args.query.casefold() not in json.dumps(r,ensure_ascii=False).casefold(): continue
-        result.append(r.copy())
-    result.sort(key=lambda r:sort_key(r,args.sort))
+        # Effort and ROI filters run last so the unclassified counts cover only rows
+        # every other filter let through: those are the rows the filter may be hiding.
+        for field, wanted, of in (('effort', args.effort, effort_of), ('roi', args.roi, roi_of)):
+            if wanted:
+                level_ = of(r)
+                if level_ == 'unrated' and 'unrated' not in wanted: unclassified[field] += 1
+                if level_ not in wanted: break
+        else:
+            result.append(r.copy())
+    fields = list(args.sort)
+    if args.limit and 'effort' not in fields: fields.append('effort')  # ties at the cut: faster fix first
+    result.sort(key=lambda r:sort_key(r,fields))
+    matched, extra = len(result), 0
+    if args.limit and matched > args.limit:
+        head = result[:args.limit]
+        beyond = [r for r in result[args.limit:] if r['blocker']]  # a cap never hides a release blocker
+        extra = len(beyond)
+        result = head + beyond
     for n,r in enumerate(result,1):r['rank']=n
+    args.select_info = dict(matched=matched, shown=len(result), extra_blockers=extra, unclassified=unclassified)
     return result
 
 
@@ -151,6 +190,9 @@ def parser():
     p.add_argument('--ledger',action='append')
     p.add_argument('--section',action='append')
     p.add_argument('--query')
+    p.add_argument('--effort',action='append',choices=list(EFFORT),help='Fix effort level (trivial, small, medium, large, unrated); repeat for several.')
+    p.add_argument('--roi',action='append',choices=list(ROI),help='ROI level (excellent, good, fair, marginal, poor, unrated); repeat for several.')
+    p.add_argument('--limit',type=int,help='Show at most N rows after sorting; release blockers beyond the cut are still shown and counted.')
     p.add_argument('--id',action='append',help='Include an ID or filename.md::ID; repeat for a reviewed custom subset.')
     p.add_argument('--exclude-id',action='append',help='Exclude a reviewed duplicate/pointer ID or filename.md::ID.')
     p.add_argument('--sort',default='blocker,urgency,ux',help='Ordered comma-separated keys: '+','.join(SORTS))
@@ -189,7 +231,7 @@ def render(rows, sources, warnings, args, total_blockers):
             vals.append(f'<td data-value="{E(str(sortvalue),quote=True)}">{value}</td>')
         search=' '.join(str(v) for v in r.values()).casefold()
         body.append(f'<tr data-source-order="{source_order[(r["ledger"], r["line"])]}" data-rank="{r["rank"]}" data-blocker="{str(r["blocker"]).lower()}" data-status="{E(r["status"])}" data-ledger="{E(r["ledger"])}" data-search="{E(search,quote=True)}">'+''.join(vals)+'</tr>')
-    criteria={k:getattr(args,k) for k in ['view','id','exclude_id','status','target','urgency','ledger','section','query','blockers_only','sort','columns'] if getattr(args,k)}
+    criteria={k:getattr(args,k) for k in ['view','id','exclude_id','status','target','urgency','ledger','section','query','effort','roi','limit','blockers_only','sort','columns'] if getattr(args,k)}
     options=lambda key: '<option value="">All</option>'+''.join(f'<option value="{E(v,quote=True)}">{E(v)}</option>' for v in sorted({str(r[key]) for r in rows}))
     data={'TITLE':E(args.title),'DATE':E(dt.datetime.now().astimezone().isoformat(timespec='seconds')),
           'COUNT':str(len(rows)),'BLOCKERS':str(sum(r['blocker'] for r in rows)),'TOTAL_BLOCKERS':str(total_blockers),
@@ -208,6 +250,7 @@ def main():
         if not args.sort or set(args.sort)-set(SORTS):raise ValueError('Unknown sort key.')
         if not args.columns or set(args.columns)-set(COLUMNS) or len(set(args.columns))!=len(args.columns):raise ValueError('Unknown or duplicate column.')
         if 'finding' not in args.columns or 'id' not in args.columns:raise ValueError('Keep id and finding columns so provenance remains reachable.')
+        if args.limit is not None and args.limit < 1:raise ValueError('--limit must be at least 1.')
         paths=[p.resolve() for p in args.file]
         if len(set(paths))!=len(paths) or len({p.name for p in paths})!=len(paths):raise ValueError('Input ledger paths and names must be distinct.')
         output=args.output.resolve()
@@ -219,9 +262,16 @@ def main():
             r,s,w=read_ledger(path);rows+=r;sources.append(s);warnings+=w
         if args.annotations:annotate(rows,json.loads(args.annotations.read_text(encoding='utf-8')))
         selected=select(rows,args)
+        info=args.select_info
+        if args.limit and info['matched']>args.limit:
+            tail=f"; {info['extra_blockers']} more release blocker(s) are shown beyond the limit." if info['extra_blockers'] else '.'
+            warnings.append(f"Showing {info['shown']-info['extra_blockers']} of {info['matched']} matching rows (limit {args.limit}, ties broken by lowest fix effort){tail}")
+        for field,flag in (('effort',args.effort),('roi',args.roi)):
+            if flag and info['unclassified'][field]:
+                warnings.append(f"{info['unclassified'][field]} row(s) that passed every other filter have no recognizable {field} and are excluded by --{field}; rerun with --{field} unrated to see them.")
         report=render(selected,sources,warnings,args,sum(r['blocker'] for r in rows))
         output.parent.mkdir(parents=True,exist_ok=True);output.write_text(report,encoding='utf-8')
-        print(json.dumps(dict(output=str(output),rows=len(selected),blockers_in_report=sum(r['blocker'] for r in selected),blockers_in_inputs=sum(r['blocker'] for r in rows),warnings=warnings)))
+        print(json.dumps(dict(output=str(output),rows=len(selected),matched=info['matched'],unclassified=info['unclassified'],blockers_in_report=sum(r['blocker'] for r in selected),blockers_in_inputs=sum(r['blocker'] for r in rows),warnings=warnings)))
     except (ValueError,OSError,TypeError,KeyError) as e:p.error(str(e))
 
 if __name__=='__main__':main()
