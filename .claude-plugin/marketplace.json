@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "unforget",
-  "description": "Single source of truth for deferred work \u2014 paused plans, audit findings, session spillover, observed-but-not-yet-fixed bugs",
+  "description": "Single source of truth for deferred work: paused plans, audit findings, session spillover, observed-but-not-yet-fixed bugs",
   "owner": {
     "name": "Terry Nyberg"
   },
@@ -10,7 +10,7 @@
       "name": "unforget",
       "version": "2.10.0",
       "source": "./",
-      "description": "A single source of truth for deferred work: ONE file per project (UNFORGET.md), four sections of 10-column rating tables, and a release-cycle Target column that promotes items toward shipping. Format v2 adds machine-readable status tokens (a done isn't done until it's verified), a ledger registry, an integrity-lint verify gate, a deferral gate that makes deferring cost something, atomic child ledgers, self-maintaining recall, and companion-skill handoffs. Backward compatible with v1 ledgers. Includes scoped HTML ledger reports with custom filters and ranking.",
+      "description": "A single source of truth for deferred work: ONE file per project (UNFORGET.md), four sections of 10-column rating tables, and a release-cycle Target column that promotes items toward shipping. Format v2 adds machine-readable status tokens (a done isn't done until it's verified), a ledger registry, an integrity-lint verify gate, a deferral gate that makes deferring cost something, atomic child ledgers, self-maintaining recall, and companion-skill handoffs. Backward compatible with v1 ledgers. Includes HTML ledger views (top 10 by urgency, quick wins, ship blockers, or your own mix) that say what they left out, never hide a ship blocker, and can read your project's own rating words.",
       "author": {
         "name": "Terry Nyberg"
       },

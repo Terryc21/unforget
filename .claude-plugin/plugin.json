@@ -1,7 +1,7 @@
 {
   "name": "unforget",
   "version": "2.10.0",
-  "description": "A single source of truth for deferred work, kept in one UNFORGET.md per project so nothing slips between releases. Activate when the user asks what's deferred, what's the backlog, or wants to log something for later without losing it. Includes scoped HTML ledger reports with custom filters and ranking.",
+  "description": "A single source of truth for deferred work, kept in one UNFORGET.md per project so nothing slips between releases. Activate when the user asks what's deferred, what's the backlog, or wants to log something for later without losing it. Includes HTML ledger views (top 10 by urgency, quick wins, ship blockers, or your own mix) that say what they left out, never hide a ship blocker, and can read your project's own rating words.",
   "author": {
     "name": "Terry Nyberg"
   },
