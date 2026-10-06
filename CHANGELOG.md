@@ -1,6 +1,9 @@
 # Changelog
 
-### Unreleased — row limits and effort/ROI filters for HTML reports
+### v2.10.0 — report views: row limits, effort/ROI filters, your own rating words (2026-10-06) · minor
+
+Includes everything listed under v2.9.1 below, which was never released on its own.
+
 
 - `html_report.py` gains `--limit N`, `--effort`, `--roi` and a `roi` sort key. A limit never hides
   a release blocker (blockers below the cut are shown and counted), ties at the cut go to the
@@ -11,8 +14,11 @@
   registry keys (`report_effort_words`, `report_roi_words`, `report_effort_column`,
   `report_roi_column`). Bad entries are reported, not applied; nothing changes without them.
 - Adds tests with negative controls for each rule. No format change; existing ledgers are untouched.
+- README rewritten in plainer language, with a "See your ledger your way" section.
+- Design note `DESIGN-v2.10-ledger-view-offers.md`: when a session should offer these views, and
+  optional 1-Star Risk / Confidence columns. A spec only; nothing in it is implemented yet.
 
-### v2.9.1 — integrity and workflow hardening (patch candidate, 2026-09-30)
+### v2.9.1 — integrity and workflow hardening (never released on its own; ships in v2.10.0)
 
 - Refuse malformed registry/recall markers before writes; keep branch rollback intact.
 - Restrict opt-in recipes to read-only grep/rg count searches; failed commands never imply closure.

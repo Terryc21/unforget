@@ -40,18 +40,18 @@
     "scripts/companions.py"
   ],
   "declared_versions": {
-    "changelog": "2.9.1",
-    "marketplace_manifest": "2.9.1",
-    "plugin_manifest": "2.9.1",
-    "readme_badge": "2.9.1",
+    "changelog": "2.10.0",
+    "marketplace_manifest": "2.10.0",
+    "plugin_manifest": "2.10.0",
+    "readme_badge": "2.10.0",
     "readme_maturity": null,
-    "skill_md": "2.9.1"
+    "skill_md": "2.10.0"
   },
   "integrity_ok": true,
   "recall_checked": false,
   "recall_trigger_present": null,
   "recall_trigger_source": null,
   "skill_root": "<REPO_ROOT>",
-  "version": "2.9.1",
+  "version": "2.10.0",
   "versions_in_sync": true
 }
