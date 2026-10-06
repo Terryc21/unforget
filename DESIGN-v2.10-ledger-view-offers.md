@@ -1,10 +1,11 @@
-# DESIGN — v2.10: offering the ledger view at the right moment
+# DESIGN v2.10: offering the ledger view at the right moment
 
 **Status:** SPEC, not implemented. Written 2026-10-06.
 **Scope:** when a session should offer the user a view of the ledger, and one format
-addition (1-Star Risk and Confidence columns) that makes a "review risk" view possible.
-The row limit, effort and ROI filters and the presets are already implemented (see
-`CHANGELOG.md`, Unreleased); this note covers only what needs a decision first.
+addition (an optional Confidence column) plus report support for the existing 1-Star Risk
+column. The row limit and the effort and ROI filters shipped in v2.10.0 (see `CHANGELOG.md`);
+the presets below are named combinations of those flags, not a separate feature. This note
+covers only what needs a decision first.
 
 ---
 
@@ -19,7 +20,7 @@ Measured on one real 234-row ledger (2026-10-06): 29 unfinished rows were Trivia
 13 further rows carried an effort value no filter could classify ("Done", "N/A"). Neither
 fact is visible unless someone asks for that exact cut.
 
-## Part 1 — Triggers (judgment: changes how every session behaves)
+## Part 1: Triggers (judgment: changes how every session behaves)
 
 Offer on **events**, not on a timer or a usage count. A periodic offer fires when nothing has
 changed and teaches the user to dismiss it.
@@ -42,7 +43,7 @@ existing display preferences, the ledger's content hash and a per-row state hash
 of the last offer the user accepted. "Changed" means either differs. Open: the exact key and
 file (see Decisions).
 
-## Part 2 — Presets and "choose my own" (already implemented as flags)
+## Part 2: Presets and "choose my own" (already implemented as flags)
 
 The offer carries four presets, each mapping to existing flags:
 
@@ -57,17 +58,21 @@ Every view states "Showing N of M" and the count of rows it could not classify. 
 hides a release blocker. A "trivial only" list is also a finding: the ledger's own tripwire
 says trivial fixes should be done, not logged, so a non-empty list means some were deferred.
 
-## Part 3 — 1-Star Risk and Confidence columns (format change)
+## Part 3: Review-risk views (report support for 1-Star Risk, plus a Confidence column)
 
-A "rank by App Store review risk" view needs the data on the row. Some ledgers already carry
-it in their local rating spec; the 10-column default does not.
+`1-Star Risk` already exists as an optional column (`reference/format.md` § Optional column:
+`1-Star Risk`), and the sample ledger carries it. What is missing is report support: the HTML
+report cannot filter, sort or show it. `Confidence` is the only new column proposed.
 
-- **Additive and optional.** Two new optional columns after the existing ones. A ledger without
-  them reads as before; filters on them treat missing as `unrated` and count those rows.
+- **1-Star Risk in reports:** add it as a filter, a sort key and a displayable column, read
+  from the existing optional column. No format change.
+- **Confidence, additive and optional.** One new optional column after the existing ones. A
+  ledger without it reads as before; filters on it treat missing as `unrated` and count those
+  rows.
 - **`verify`** gains no new error. A missing column is not a defect.
 - **Migration:** none forced. Rows are rated as they are touched, as with every other column.
 - **Risk:** the column header set is matched by position in some helpers (`row_budget.py`,
-  header-order checks). Each must be audited before the columns ship. This is the one-way-ish
+  header-order checks). Each must be audited before Confidence ships. This is the one-way-ish
   part of this note and why it needs a decision before code.
 
 ## What the user experiences
@@ -83,7 +88,8 @@ it in their local rating spec; the 10-column default does not.
    marker is proven cheap and correct.
 2. **Marker location:** the display-preferences file (per project, already read each time) or a
    new file. Recommendation: the preferences file.
-3. **Columns:** add 1-Star Risk and Confidence to the default ledger format, or leave them to
-   local rating specs? Recommendation: add as optional, after the helper audit above.
+3. **Columns:** add report support for the existing 1-Star Risk column (no format change), and
+   add Confidence as an optional column or leave it to local rating specs? Recommendation:
+   report support now; Confidence as optional, after the helper audit above.
 4. **Suppression:** a "stop offering" switch, per session and persistent. Recommendation: both,
    in the same vocabulary the rating and weeds rules already use.
