@@ -22,6 +22,11 @@ Includes everything listed under v2.9.1 below, which was never released on its o
   rating scale.
 - After a report is written, the session opens it in the user's default browser (skipped when
   the user says not to, or the run is unattended), and says where the file lives.
+- A cut or filter's "Showing N of M" and unclassified-row lines now appear in plain view under
+  the scope line; they were inside the collapsed "Criteria" section.
+- Example gallery: `examples/README.md` shows a preview and a downloadable page for each
+  ready-made view (unfinished work, top 10, quick wins, trivial fixes only, best value first,
+  ship blockers), all generated from the sample ledger.
 - README rewritten in plainer language, with a "See your ledger your way" section, and a second
   interactive example, `examples/quick-wins.html`, generated from the sample ledger.
 - Store descriptions (`plugin.json`, `marketplace.json`) now name the new views.

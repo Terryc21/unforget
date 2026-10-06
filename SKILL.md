@@ -71,7 +71,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget edit` | Refine a row's columns; closure recommendations on `--status=Fixed` | `reference/commands.md` |
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
 | `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers, `--fresh` re-runs the display-preference interview | `reference/commands.md` |
-| `/unforget report` / `list --html` | Create a standalone HTML table with default unfinished scope or user-selected ledgers, filters, columns and ranking | `reference/html-report.md` |
+| `/unforget report` / `list --html` | Create a standalone HTML table with default unfinished scope or user-selected ledgers, filters, columns and ranking, then open it in the user's browser | `reference/html-report.md` |
 | `/unforget show` | Synthesized current-state read for ONE row (Finding/Impact/Fix, no history); `--full` appends the raw Detail block; markdown baseline, optional interactive card view where available | `reference/commands.md` |
 | `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
 | `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
@@ -86,7 +86,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **You want to capture one new item, fast** → `/unforget add "<finding>"`
 - **You want to update an existing row's columns** → `/unforget edit <ID>`
 - **A new audit / plan / memory file appeared since init** → `/unforget import`
-- **The user wants an HTML ledger table or custom ranked report** → `/unforget report` (read `reference/html-report.md`; default unfinished, current ledger, blockers → urgency → user impact).
+- **The user wants an HTML ledger table or custom ranked report** → `/unforget report` (read `reference/html-report.md`; default unfinished, current ledger, blockers → urgency → user impact; open the finished page in the user's browser unless they said not to, step 8).
 - **The user wants a cut of the ledger** ("top ten most urgent", "quick wins", "only trivial fixes") → `/unforget report` with `--limit`, `--effort`, `--roi` and `--sort` (read `reference/html-report.md`); state the "Showing N of M" line and any unclassified-row count the report prints, then open the page in the user's browser unless they said not to (`reference/html-report.md` step 8).
 - **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only)
 - **You've picked one row to actually work on and want its current state, not its whole history** → `/unforget show <ID>` (add `--full` for the complete raw history)

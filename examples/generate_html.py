@@ -2,8 +2,8 @@
 """Regenerate the public HTML example using the shared report generator.
 
 Run from any directory: python3 /path/to/unforget/examples/generate_html.py
-Replaces examples/unfinished-ledger.html and examples/quick-wins.html (or only the
-pages named on the command line); the source ledger is read-only.
+Replaces every page listed in PAGES (or only the pages named on the command line);
+the source ledger is read-only.
 """
 import sys
 from pathlib import Path
@@ -21,6 +21,39 @@ PAGES = [
         '--sort', 'blocker,urgency',
         '--columns', 'rank,id,blocker,finding,urgency,status,effort',
         '--scope-note', 'Example from the bundled sample ledger. Unfinished work, ranked by release blockers, then recorded urgency.',
+        '--note', SAMPLE_NOTE + " P0 is the source ledger's illustrative release-blocker row.",
+        '--note', COMMON_NOTE,
+    ]),
+    ('top-10.html', [
+        '--title', 'Unforget · ten most urgent',
+        '--sort', 'blocker,urgency', '--limit', '10',
+        '--columns', 'rank,id,blocker,finding,urgency,status,effort,roi',
+        '--scope-note', 'Example from the bundled sample ledger. The ten most urgent unfinished items, ship blockers first.',
+        '--note', SAMPLE_NOTE,
+        '--note', COMMON_NOTE,
+    ]),
+    ('trivial-fixes.html', [
+        '--title', 'Unforget · trivial fixes only',
+        '--effort', 'trivial',
+        '--sort', 'urgency,roi',
+        '--columns', 'rank,id,blocker,finding,urgency,status,effort,roi',
+        '--scope-note', 'Example from the bundled sample ledger. Only the fixes rated trivial, most urgent first.',
+        '--note', SAMPLE_NOTE,
+        '--note', COMMON_NOTE,
+    ]),
+    ('best-value.html', [
+        '--title', 'Unforget · best value first',
+        '--sort', 'roi,urgency,effort',
+        '--columns', 'rank,id,blocker,finding,urgency,status,effort,roi',
+        '--scope-note', 'Example from the bundled sample ledger. Everything unfinished, ranked by value for the effort, then urgency, then fix effort.',
+        '--note', SAMPLE_NOTE,
+        '--note', COMMON_NOTE,
+    ]),
+    ('ship-blockers.html', [
+        '--title', 'Unforget · ship blockers',
+        '--blockers-only',
+        '--columns', 'rank,id,blocker,finding,urgency,status,effort,roi',
+        '--scope-note', 'Example from the bundled sample ledger. Only what stands between you and the next release.',
         '--note', SAMPLE_NOTE + " P0 is the source ledger's illustrative release-blocker row.",
         '--note', COMMON_NOTE,
     ]),
@@ -48,7 +81,6 @@ def build(source, name, flags):
     for row in rows:
         row['source'] = relative_source
     selected = report.select(rows, args)
-    warnings.extend(report.selection_notes(args))
     html = report.render(selected, [manifest], warnings, args,
                          sum(row['blocker'] for row in rows))
     output.write_text(html, encoding='utf-8')

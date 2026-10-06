@@ -66,8 +66,9 @@ until it's proven.
 ## See your ledger your way
 
 The file is the record. When you want to *look* at it, ask for a view. You get a standalone
-page you can search, sort, filter and print, in light or dark mode. Making a view never changes
-your ledger.
+page you can search, sort, filter and print, in light or dark mode. It opens in your browser as
+soon as it's ready, and you're told where it's saved so you can open it again later. (Say "don't
+open it" if you'd rather it didn't.) Making a view never changes your ledger.
 
 Ask in plain words. These are the ready-made views and what to type for each:
 
@@ -97,13 +98,13 @@ Every view keeps three promises:
 A quick-wins list is worth a look on its own. unforget's rule is that trivial fixes get done,
 not written down, so anything that shows up there probably slipped through.
 
-[![Example HTML report with unfinished items ranked by release blocker and urgency](examples/unfinished-ledger.png)](examples/README.md)
+Here is the Quick wins view of the bundled sample ledger. Note the line under the scope:
+"Showing 5 of 7 matching rows".
 
-**[Download the interactive example](https://github.com/Terryc21/unforget/raw/refs/heads/main/examples/unfinished-ledger.html)**
-and open it in your browser to try search, filtering and sorting. A second example,
-**[Quick wins](https://github.com/Terryc21/unforget/raw/refs/heads/main/examples/quick-wins.html)**,
-shows a view cut to five rows, with its "Showing 5 of 7" line. Both were generated from the
-bundled sample ledger; see [the source and regeneration command](examples/README.md).
+[![Quick wins view: trivial and small fixes, best value first, cut to five rows, with a visible Showing 5 of 7 note](examples/quick-wins.png)](examples/README.md)
+
+**[See every view in the example gallery](examples/README.md)**: a preview of each one, what
+to type for it, and a download of the real interactive page.
 
 ### When rows use other rating words
 
