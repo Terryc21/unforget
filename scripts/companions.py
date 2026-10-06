@@ -67,6 +67,8 @@ import re
 import sys
 from pathlib import Path
 
+import managed_block
+
 BEGIN = "<!-- unforget-companions:begin — maintained by the unforget skill; edit the skill/invoke/url freely -->"
 END = "<!-- unforget-companions:end -->"
 
@@ -247,16 +249,20 @@ def main() -> int:
             }))
             return 0
         path.parent.mkdir(parents=True, exist_ok=True)
-        # rewrite only between markers if the file exists with other content
+        # rewrite only between markers if the file exists with other content.
+        # managed_block refuses an unpaired or duplicated marker: a missing END
+        # used to replace everything from BEGIN to the end of the user's file.
         if path.exists():
             text = path.read_text(encoding="utf-8", errors="replace")
-            start = text.find(BEGIN)
-            if start != -1:
-                e = text.find(END, start)
-                e = e + len(END) if e != -1 else len(text)
-                text = text[:start] + render(SHIPPED_DEFAULT) + text[e:]
-            else:
-                text = text.rstrip() + "\n\n" + render(SHIPPED_DEFAULT) + "\n"
+            try:
+                if managed_block.bounds(text, BEGIN, END) is None:
+                    text = text.rstrip() + "\n\n" + render(SHIPPED_DEFAULT) + "\n"
+                else:
+                    text = managed_block.replace(text, render(SHIPPED_DEFAULT), BEGIN, END)
+            except ValueError as exc:
+                print(json.dumps({"file": str(path), "action": "refused",
+                                  "error": f"{exc}; the file was not changed. Repair the markers by hand, then re-run."}))
+                return 1
             path.write_text(text, encoding="utf-8")
         else:
             path.write_text(render(SHIPPED_DEFAULT) + "\n", encoding="utf-8")
