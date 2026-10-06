@@ -9,7 +9,8 @@ spec=importlib.util.spec_from_file_location('html_report',SCRIPT)
 h=importlib.util.module_from_spec(spec);spec.loader.exec_module(h)
 HEADER='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Status |\n|---|---|---|---|---|\n'
 
-class ReportTests(unittest.TestCase):
+class LedgerHelpers:
+    """Temp-ledger helpers shared by the test classes (a mixin, so no class inherits another's tests)."""
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.path=Path(self.tmp.name)/'UNFORGET.md'
@@ -17,6 +18,8 @@ class ReportTests(unittest.TestCase):
         self.path.write_text(header+rows);return h.read_ledger(self.path)
     def args(self,*flags):
         a=h.parser().parse_args(['--file',str(self.path),'--output',str(Path(self.tmp.name)/'report.html'),*flags]);a.sort=a.sort.split(',');a.columns=a.columns.split(',');return a
+
+class ReportTests(LedgerHelpers, unittest.TestCase):
     def test_owed_this_blocks_even_if_code_done(self):
         rows,_,_=self.load('| A48a | 🚢 THIS | Code repaired | 🟡 HIGH | @status:done-unverified @verified:code |\n| A48b | THIS | Closed | HIGH | @status:done-verified @verified:device |')
         selected=h.select(rows,self.args());self.assertEqual([r['id'] for r in selected],['A48a']);self.assertTrue(selected[0]['blocker'])
@@ -78,7 +81,7 @@ class ReportTests(unittest.TestCase):
 
 HEADER_RATED='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | ROI | Fix Effort | Status |\n|---|---|---|---|---|---|---|\n'
 
-class LimitAndFilterTests(ReportTests):
+class LimitAndFilterTests(LedgerHelpers, unittest.TestCase):
     def rated(self,rows):
         return self.load(rows,HEADER_RATED)[0]
     def test_limit_caps_rows_and_reports_matched(self):
@@ -149,6 +152,16 @@ class VocabularyTests(unittest.TestCase):
         rows,_,warnings=self.load('| A1 | NEXT | a | HIGH | XS | @status:open |',hdr,('report_effort_words','XS=tiny, S'))
         self.assertTrue(any('ignored XS=tiny, S' in w for w in warnings))
         self.assertEqual(h.select(rows,self.args('--effort','trivial')),[])
+    def test_vocabulary_survives_a_rewritten_source_path(self):
+        rows,_,_=self.load(self.ROWS,self.SIZE,('report_effort_column','Size'),('report_effort_words','XS=trivial'))
+        for r in rows: r['source']='UNFORGET.md'   # what examples/generate_html.py does
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--effort','trivial'))],['A1'])
+    def test_internal_path_key_never_reaches_the_page(self):
+        rows,_,_=self.load(self.ROWS,self.SIZE)
+        for r in rows: r['source']='UNFORGET.md'
+        a=self.args();page=h.render(h.select(rows,a),[],[],a,0)
+        self.assertNotIn(self.tmp.name.casefold(),page.casefold())   # the page lowercases its search text
+        self.assertEqual(h.select(rows,self.args('--query',Path(self.tmp.name).name)),[])
     def test_vocabulary_does_not_leak_into_query(self):
         hdr='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Fix Effort | Status |\n|---|---|---|---|---|---|\n'
         rows,_,_=self.load('| A1 | NEXT | a | HIGH | Small | @status:open |',hdr,('report_effort_words','Zebra=trivial'))

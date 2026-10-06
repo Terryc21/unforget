@@ -102,8 +102,17 @@ def load_vocab(ledger_dir):
     return vocab, notes
 
 
+INTERNAL = {'vocab_key'}
+
+
+def public(row):
+    """The row without internal keys: never searched, never rendered."""
+    return {k: v for k, v in row.items() if k not in INTERNAL}
+
+
 def words_for(row, field, builtin):
-    custom = VOCAB.get(row.get('source', ''), {}).get(field + '_words')
+    # vocab_key, not source: callers may rewrite source (e.g. to a relative path).
+    custom = VOCAB.get(row.get('vocab_key') or row.get('source', ''), {}).get(field + '_words')
     return {**builtin, **custom} if custom else builtin
 
 
@@ -172,7 +181,7 @@ def read_ledger(path):
                          blocker=evaluated['blocks_release'], completed=evaluated['completed'],
                          integrity_issues=evaluated['issues'],
                          ux='unrated', ux_basis='', owner='', next='', effort=column(data, ('fix effort', 'effort', 'est'), 'effort') or 'Unrated',
-                         roi=column(data, ('roi',), 'roi'), original=data, notes=[]))
+                         roi=column(data, ('roi',), 'roi'), vocab_key=str(path), original=data, notes=[]))
 
     return rows, dict(path=str(path), ledger=path.name, sha256=hashlib.sha256(text.encode()).hexdigest(), rows=len(rows)), warnings
 
@@ -215,7 +224,7 @@ def select(rows, args):
         if args.urgency and r['urgency'] not in args.urgency: continue
         if args.ledger and r['ledger'] not in args.ledger: continue
         if args.section and not any(s.casefold() in r['section'].casefold() for s in args.section): continue
-        if args.query and args.query.casefold() not in json.dumps(r,ensure_ascii=False).casefold(): continue
+        if args.query and args.query.casefold() not in json.dumps(public(r),ensure_ascii=False).casefold(): continue
         # Effort and ROI filters run last so the unclassified counts cover only rows
         # every other filter let through: those are the rows the filter may be hiding.
         for field, wanted, of in (('effort', args.effort, effort_of), ('roi', args.roi, roi_of)):
@@ -237,6 +246,18 @@ def select(rows, args):
     for n,r in enumerate(result,1):r['rank']=n
     args.select_info = dict(matched=matched, shown=len(result), extra_blockers=extra, unclassified=unclassified)
     return result
+
+
+def selection_notes(args):
+    """Report notes describing what select() cut or could not classify. Call after select()."""
+    info, notes = args.select_info, []
+    if args.limit and info['matched'] > args.limit:
+        tail = f"; {info['extra_blockers']} more release blocker(s) are shown beyond the limit." if info['extra_blockers'] else '.'
+        notes.append(f"Showing {info['shown'] - info['extra_blockers']} of {info['matched']} matching rows (limit {args.limit}, ties broken by lowest fix effort){tail}")
+    for field, flag in (('effort', args.effort), ('roi', args.roi)):
+        if flag and info['unclassified'][field]:
+            notes.append(f"{info['unclassified'][field]} row(s) that passed every other filter have no recognizable {field} and are excluded by --{field}; rerun with --{field} unrated to see them, or map their words with report_{field}_words in the ledger README's registry block.")
+    return notes
 
 
 def parser():
@@ -291,7 +312,7 @@ def render(rows, sources, warnings, args, total_blockers):
             sortvalue=sort_key(r,[col])[0] if col in SORTS else r.get(col,'')
             if isinstance(sortvalue,bool):sortvalue=int(sortvalue)
             vals.append(f'<td data-value="{E(str(sortvalue),quote=True)}">{value}</td>')
-        search=' '.join(str(v) for v in r.values()).casefold()
+        search=' '.join(str(v) for v in public(r).values()).casefold()
         body.append(f'<tr data-source-order="{source_order[(r["ledger"], r["line"])]}" data-rank="{r["rank"]}" data-blocker="{str(r["blocker"]).lower()}" data-status="{E(r["status"])}" data-ledger="{E(r["ledger"])}" data-search="{E(search,quote=True)}">'+''.join(vals)+'</tr>')
     criteria={k:getattr(args,k) for k in ['view','id','exclude_id','status','target','urgency','ledger','section','query','effort','roi','limit','blockers_only','sort','columns'] if getattr(args,k)}
     options=lambda key: '<option value="">All</option>'+''.join(f'<option value="{E(v,quote=True)}">{E(v)}</option>' for v in sorted({str(r[key]) for r in rows}))
@@ -324,16 +345,10 @@ def main():
             r,s,w=read_ledger(path);rows+=r;sources.append(s);warnings+=w
         if args.annotations:annotate(rows,json.loads(args.annotations.read_text(encoding='utf-8')))
         selected=select(rows,args)
-        info=args.select_info
-        if args.limit and info['matched']>args.limit:
-            tail=f"; {info['extra_blockers']} more release blocker(s) are shown beyond the limit." if info['extra_blockers'] else '.'
-            warnings.append(f"Showing {info['shown']-info['extra_blockers']} of {info['matched']} matching rows (limit {args.limit}, ties broken by lowest fix effort){tail}")
-        for field,flag in (('effort',args.effort),('roi',args.roi)):
-            if flag and info['unclassified'][field]:
-                warnings.append(f"{info['unclassified'][field]} row(s) that passed every other filter have no recognizable {field} and are excluded by --{field}; rerun with --{field} unrated to see them, or map their words with report_{field}_words in the ledger README's registry block.")
+        warnings.extend(selection_notes(args))
         report=render(selected,sources,warnings,args,sum(r['blocker'] for r in rows))
         output.parent.mkdir(parents=True,exist_ok=True);output.write_text(report,encoding='utf-8')
-        print(json.dumps(dict(output=str(output),rows=len(selected),matched=info['matched'],unclassified=info['unclassified'],blockers_in_report=sum(r['blocker'] for r in selected),blockers_in_inputs=sum(r['blocker'] for r in rows),warnings=warnings)))
+        print(json.dumps(dict(output=str(output),rows=len(selected),matched=args.select_info['matched'],unclassified=args.select_info['unclassified'],blockers_in_report=sum(r['blocker'] for r in selected),blockers_in_inputs=sum(r['blocker'] for r in rows),warnings=warnings)))
     except (ValueError,OSError,TypeError,KeyError) as e:p.error(str(e))
 
 if __name__=='__main__':main()
