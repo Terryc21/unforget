@@ -7,6 +7,7 @@ description: |
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
   nothing slips between releases. Activate when the user asks "what's deferred?",
   "what's the backlog?", "prioritize my plans," "show me what's blocking release,"
+  "what are my quick wins?", "show me the ten most urgent things," "only trivial fixes,"
   wants a scoped HTML ledger report, or wants to log something for later without losing it.
 license: Apache-2.0
 ---
