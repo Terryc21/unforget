@@ -2,7 +2,8 @@
 """Regenerate the public HTML example using the shared report generator.
 
 Run from any directory: python3 /path/to/unforget/examples/generate_html.py
-Replaces examples/unfinished-ledger.html and examples/quick-wins.html (or only the\npages named on the command line); the source ledger is read-only.
+Replaces examples/unfinished-ledger.html and examples/quick-wins.html (or only the
+pages named on the command line); the source ledger is read-only.
 """
 import sys
 from pathlib import Path
@@ -27,7 +28,7 @@ PAGES = [
         '--title', 'Unforget · quick wins',
         '--effort', 'trivial', '--effort', 'small',
         '--sort', 'roi,urgency', '--limit', '5',
-        '--columns', 'rank,id,blocker,finding,urgency,status,effort',
+        '--columns', 'rank,id,blocker,finding,urgency,status,effort,roi',
         '--scope-note', 'Example from the bundled sample ledger. Trivial and small fixes, best value for the effort first, cut to five rows.',
         '--note', SAMPLE_NOTE,
         '--note', COMMON_NOTE,

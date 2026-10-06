@@ -14,11 +14,18 @@ Includes everything listed under v2.9.1 below, which was never released on its o
   registry keys (`report_effort_words`, `report_roi_words`, `report_effort_column`,
   `report_roi_column`). Bad entries are reported, not applied; nothing changes without them.
 - Adds tests with negative controls for each rule. No format change; existing ledgers are untouched.
+- Fixes from a pre-release review: `companions.py init --force` now refuses an unpaired marker
+  instead of overwriting everything after it; project words are matched as text (a word like
+  `M+` or `(S)` no longer breaks the report); a malformed registry block is reported instead of
+  silently dropping the vocabulary; ROI can be shown as a column, and the quick-wins example
+  shows it. The vocabulary is documented as a read-only translation for reports, not a second
+  rating scale.
 - README rewritten in plainer language, with a "See your ledger your way" section, and a second
   interactive example, `examples/quick-wins.html`, generated from the sample ledger.
 - Store descriptions (`plugin.json`, `marketplace.json`) now name the new views.
 - Design note `DESIGN-v2.10-ledger-view-offers.md`: when a session should offer these views, and
-  optional 1-Star Risk / Confidence columns. A spec only; nothing in it is implemented yet.
+  report support for the existing 1-Star Risk column plus an optional Confidence column. A spec
+  only; nothing in it is implemented yet.
 
 ### v2.9.1 — integrity and workflow hardening (never released on its own; ships in v2.10.0)
 

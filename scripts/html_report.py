@@ -21,7 +21,7 @@ STATES = {'open', 'in-progress', 'blocked', 'done-unverified', 'done-verified', 
 URGENCY = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'unrated': 4}
 IMPACT = {'severe': 0, 'high': 1, 'moderate': 2, 'low': 3, 'indirect': 4, 'unrated': 5}
 TARGET = {'THIS': 0, 'NEXT': 1, 'LATER': 2, 'SOMEDAY': 3, 'Unassigned': 4}
-COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'owner']
+COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'roi', 'owner']
 SORTS = ['blocker', 'urgency', 'ux', 'target', 'effort', 'roi', 'id', 'ledger', 'status']
 EFFORT = {'trivial': 0, 'small': 1, 'medium': 2, 'large': 3, 'unrated': 4}
 EFFORT_WORDS = {'triv': 'trivial', 'trivial': 'trivial', 'sml': 'small', 'small': 'small',
@@ -49,7 +49,10 @@ def level(text, choices, default):
 
 def word_level(text, words):
     """First recognized word wins ("Small-Med" is small); no match is 'unrated'."""
-    match = re.search(r'\b(' + '|'.join(sorted(words, key=len, reverse=True)) + r')\b', text, re.I)
+    # Escape each word (a project word like "M+" or "(S)" is text, not a pattern) and
+    # use lookarounds, since \b cannot sit after a word that ends in punctuation.
+    alternation = '|'.join(re.escape(w) for w in sorted(words, key=len, reverse=True))
+    match = re.search(r'(?<!\w)(' + alternation + r')(?!\w)', text, re.I)
     return words[match[1].lower()] if match else 'unrated'
 
 
@@ -84,9 +87,13 @@ def load_vocab(ledger_dir):
     """
     try:
         import registry
-        cfg = registry.read_registry(Path(ledger_dir)).get('global', {}) or {}
+        reg = registry.read_registry(Path(ledger_dir))
     except Exception as exc:
         return {}, [f'{ledger_dir}: registry unreadable ({exc}); built-in report words only.']
+    if reg.get('error') and 'no README.md' not in reg['error']:
+        # read_registry reports a malformed block by returning an error, not raising.
+        return {}, [f"{ledger_dir}: registry unreadable ({reg['error']}); built-in report words only."]
+    cfg = reg.get('global', {}) or {}
     vocab, notes = {}, []
     for key, (field, levels) in VOCAB_KEYS.items():
         mapping, problems = parse_word_map(cfg.get('report_' + key), levels)
@@ -289,7 +296,7 @@ def parser():
 
 def render(rows, sources, warnings, args, total_blockers):
     template=(Path(__file__).resolve().parent.parent/'assets/html-report.html').read_text(encoding='utf-8')
-    labels={'id':'Item','ux':'User impact (estimate)','blocker':'Release gate','effort':'Fix effort'}
+    labels={'id':'Item','ux':'User impact (estimate)','blocker':'Release gate','effort':'Fix effort','roi':'Value (ROI)'}
     heads=''.join(f'<th scope="col"><button data-col="{n}">{E(labels.get(k,k.title()))} ↕</button></th>' for n,k in enumerate(args.columns))
     body=[]
     source_order = {(r['ledger'], r['line']): n for n, r in enumerate(sorted(rows, key=lambda r: (r['ledger'], r['line'])))}

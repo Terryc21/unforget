@@ -162,6 +162,18 @@ class VocabularyTests(unittest.TestCase):
         a=self.args();page=h.render(h.select(rows,a),[],[],a,0)
         self.assertNotIn(self.tmp.name.casefold(),page.casefold())   # the page lowercases its search text
         self.assertEqual(h.select(rows,self.args('--query',Path(self.tmp.name).name)),[])
+    def test_punctuated_project_words_are_text_not_patterns(self):
+        rows,_,_=self.load('| A1 | NEXT | a | HIGH | M+ | @status:open |\n| A2 | NEXT | b | HIGH | (S) | @status:open |\n| A3 | NEXT | c | HIGH | MMM | @status:open |',
+                           self.SIZE.replace('| Value ','').replace('|---|---|---|---|---|---|---|','|---|---|---|---|---|---|'),
+                           ('report_effort_column','Size'),('report_effort_words','M+=large, (S)=small'))
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--effort','large'))],['A1'])
+        self.assertEqual([r['id'] for r in h.select(rows,self.args('--effort','small'))],['A2'])
+        a=self.args('--effort','large');h.select(rows,a);self.assertEqual(a.select_info['unclassified']['effort'],1)  # MMM
+    def test_malformed_registry_is_reported_not_silently_ignored(self):
+        (self.dir/'README.md').write_text('<!-- unforget-registry:begin -->\n| report_effort_words | XS=trivial |\n')  # no end marker
+        self.path.write_text(self.SIZE+self.ROWS)
+        _,_,warnings=h.read_ledger(self.path)
+        self.assertTrue(any('registry unreadable' in w for w in warnings))
     def test_vocabulary_does_not_leak_into_query(self):
         hdr='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Fix Effort | Status |\n|---|---|---|---|---|---|\n'
         rows,_,_=self.load('| A1 | NEXT | a | HIGH | Small | @status:open |',hdr,('report_effort_words','Zebra=trivial'))

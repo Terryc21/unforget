@@ -123,8 +123,8 @@ clean ledger. Blast radius is free text, so it has no filter. `roi` is also a so
 
 ### Project vocabulary
 
-A project that rates work in other words (T-shirt sizes, story points, "High"/"Low" ROI)
-maps them once in its registry block (the ledger directory's `README.md`, see
+A ledger whose rows use other words (T-shirt sizes, story points, "High"/"Low" ROI, usually
+from older notes or another tool) maps them once in its registry block (the ledger directory's `README.md`, see
 `reference/registry.md`). Example rows in the Global table:
 
 ```
@@ -140,6 +140,9 @@ when a project vocabulary was used and how many words it held. The words are kep
 rows, so `--query` never matches them. When a filter still finds unclassified rows, its note
 names the key to add.
 
+This is a read-only translation for reports, not a second rating scale (`reference/format.md`
+§ Anti-patterns): new rows still use the standard values.
+
 When a user asks for a filter and the report counts unclassified rows, offer to map them:
 show the unrecognized values, propose levels, and write only what the user confirms, with
 `registry.py write --merge` (never a bare write).
@@ -149,7 +152,7 @@ show the unrecognized values, propose levels, and write only what the user confi
 `--id` and `--exclude-id` accept repeated IDs or `filename.md::ID` keys for reviewed
 custom subsets; qualify IDs when ledgers reuse them. Filters combine with AND; repeated values within a field use OR. `--section`
 uses case-insensitive substring matching. Sort keys: `blocker,urgency,ux,target,
-effort,id,ledger,status`. Keep `id` and `finding` columns to retain source access.
+effort,roi,id,ledger,status`. Keep `id` and `finding` columns to retain source access.
 Each supplied file must have a distinct filename. `--scope-note` describes scope;
 repeatable `--note` records gate results, limitations and reconciliation decisions.
 These notes are data, not executable HTML. Run `--help` for exact supported values.
