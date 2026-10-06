@@ -6,37 +6,17 @@
 
 **Everything you meant to come back to, in one place.**
 
-You put things off — a bug you couldn't reproduce, a plan you paused, a warning you'd rather
+You put things off: a bug you couldn't reproduce, a plan you paused, a warning you'd rather
 fix later. Right now those live in a `TODO` comment, a plan file, an audit report, a note to
 yourself, and your memory. Months later, "what did I put off?" means checking all of them.
 
-unforget puts them in one file, sorted by whether they block your next release.
+unforget puts them in one file, sorted by whether they block your next release. When you want
+to look at that file, it shows you the slice you care about: the ten most urgent things, the
+quick wins, or only what stands between you and shipping.
 
-*4 min read · [every command](reference/commands.md) · [the format](reference/format.md)*
+*5 min read · [every command](reference/commands.md) · [the format](reference/format.md) · [reports](reference/html-report.md)*
 
 ---
-
-## HTML ledger reports
-
-Use `$unforget report` in Codex or `/unforget report` in Claude Code
-(plugin: `/unforget:unforget report`) for a standalone table of unfinished work, ranked by release
-blockers, urgency and user impact. `/unforget report — show me options` offers
-unfinished work, release blockers or a custom report. You can specify ledgers,
-statuses, targets, urgency, columns and ranking in plain language. For example:
-
-> /unforget report — include all registered ledgers, show high-urgency NEXT work,
-> and rank smaller fixes first.
-
-Includes searchable and sortable rows, expandable original source details,
-light/dark mode and printing. Reports do not change ledger status. Missing ratings
-stay unrated; estimated user impact carries a reason. See the
-[full report reference](reference/html-report.md).
-
-[![Example HTML report with unfinished items ranked by release blocker and urgency](examples/unfinished-ledger.png)](examples/README.md)
-
-**[Download the interactive example](https://github.com/Terryc21/unforget/raw/refs/heads/main/examples/unfinished-ledger.html)**
-and open it in your browser to try search, filtering and sorting. Generated from the
-bundled sample ledger; see [the source and regeneration command](examples/README.md).
 
 ## What it makes
 
@@ -71,8 +51,8 @@ command to check whether it's still a problem. The table is the index; the detai
 
 Every row carries a status the skill can read, and there are two kinds of done:
 
-- **`done-verified`** — fixed, and somebody checked
-- **`done-unverified`** — the code is written, nobody confirmed it works
+- **`done-verified`:** fixed, and somebody checked.
+- **`done-unverified`:** the code is written, but nobody has confirmed it works.
 
 That second one still counts as **open**. It shows up in your list, and it stops a release
 until it's proven.
@@ -83,10 +63,75 @@ until it's proven.
 
 ---
 
+## See your ledger your way
+
+The file is the record. When you want to *look* at it, ask for a view. You get a standalone
+page you can search, sort, filter and print, in light or dark mode. Making a view never changes
+your ledger.
+
+Ask in plain words:
+
+> /unforget report: show me the ten most urgent things
+
+Or pick one of the ready-made views:
+
+| View | What you get |
+|---|---|
+| **Top 10 by urgency** | The ten things that most need doing, ship blockers first |
+| **Quick wins** | Trivial and small fixes, best value for the effort first |
+| **Ship blockers** | Only what stands between you and your next release |
+| **Your own mix** | Any combination of ledgers, statuses, targets, urgency, effort, value, columns and order |
+
+Every view keeps three promises:
+
+- **It tells you what it left out.** A shortened list says so, for example "Showing 10 of 47".
+- **It never hides a ship blocker.** If something blocking your release ranks below the cut, it
+  is shown anyway and counted separately.
+- **It tells you what it couldn't read.** If some rows say "Done" or "N/A" where an effort
+  rating belongs, a "trivial fixes only" view reports how many rows it couldn't sort into a
+  level. An empty list never pretends your ledger is clean.
+
+A quick-wins list is worth a look on its own. unforget's rule is that trivial fixes get done,
+not written down, so anything that shows up there probably slipped through.
+
+[![Example HTML report with unfinished items ranked by release blocker and urgency](examples/unfinished-ledger.png)](examples/README.md)
+
+**[Download the interactive example](https://github.com/Terryc21/unforget/raw/refs/heads/main/examples/unfinished-ledger.html)**
+and open it in your browser to try search, filtering and sorting. It was generated from the
+bundled sample ledger; see [the source and regeneration command](examples/README.md).
+
+### Use your own rating words
+
+Out of the box, unforget reads effort as **trivial, small, medium or large**, and value for the
+effort (ROI) as **excellent, good, fair, marginal or poor**. If your project rates work its own
+way, such as T-shirt sizes, story points, or "High" and "Low", tell it once.
+
+Setup creates a settings table in the README of your ledger folder. Add a row for each scale you
+use:
+
+```markdown
+| report_effort_column | Size |
+| report_effort_words  | XS=trivial, S=small, M=medium, L=large |
+| report_roi_words     | High=good, OK=fair, Low=poor |
+```
+
+Your words are added to the built-in ones, and yours win if the two disagree. Anything unforget
+can't make sense of is listed in the report rather than guessed at. When a view finds rows it
+can't classify, your assistant can suggest a mapping and add only what you approve.
+
+Prefer exact options? `--limit`, `--effort`, `--roi` and the rest are in the
+[report reference](reference/html-report.md).
+
+**Coming next:** offering these views at the moments you'd want them, such as before a release
+or after a session changed your list, instead of waiting to be asked. The plan is in
+[DESIGN-v2.10](DESIGN-v2.10-ledger-view-offers.md).
+
+---
+
 ## Install for Codex or Claude Code
 
-Version 2.9.1 uses **one shared skill**, including the same HTML generator. Choose
-one installation method per host. Python 3.9+ runs the bundled helpers.
+Version 2.9.1 uses **one shared skill**, including the same report generator. Choose
+one installation method per host. Python 3.9 or later runs the bundled helpers.
 
 ### Codex
 
@@ -149,7 +194,7 @@ loaded version and resources. Version-pinned checkouts need an explicit checkout
 of the next release tag instead of a pull. Windows users can install a full copy
 in each personal skills directory or use a supported directory link.
 
-The examples elsewhere use `/unforget` as workflow shorthand. In Codex, substitute
+The examples elsewhere use `/unforget` as shorthand. In Codex, substitute
 `$unforget`; for the Claude plugin, substitute `/unforget:unforget`. Both use your
 existing `UNFORGET.md`. New project recall pointers go in `AGENTS.md` for Codex and
 `CLAUDE.md` for Claude; both can point to the same ledger.
@@ -177,6 +222,12 @@ Something comes up while you're working on something else:
 
 Takes seconds. If it took longer, you'd stop doing it.
 
+Got a spare half hour?
+
+```
+/unforget report: quick wins
+```
+
 Getting ready to ship:
 
 ```
@@ -198,7 +249,7 @@ across several places, and you'd like your AI assistant to be able to read the l
 **Probably not if:** people outside your dev team need to file or read tickets, or you need
 sprints and story points. Jira and Linear do that; this doesn't try to.
 
-They work together fine — unforget for the technical debt near your code, the other tracker for
+They work together fine: unforget for the technical debt near your code, the other tracker for
 work that crosses teams.
 
 ### What makes it different from a to-do list
@@ -208,6 +259,8 @@ work that crosses teams.
 - **It knows about shipping.** One column says when, and one moment each release moves everything
   forward.
 - **Your AI reads it without being asked.** Setup wires it into your AGENTS.md or CLAUDE.md.
+- **You see it the way you want.** The ten most urgent, the quick wins, or only the ship
+  blockers, in your own rating words, with a clear count of anything left out.
 - **It notices things going stale.** `/unforget scan` finds rows sitting far longer than their
   priority suggests.
 
@@ -217,12 +270,12 @@ This one wasn't planned, and it's the most interesting thing the format does.
 
 Three features got added for small, separate reasons: rows can link to each other (`[[A72]]`),
 each closed row keeps a detail block explaining *why* it was fixed that way, and those blocks
-record the dead ends — the hypotheses you tried and threw away. None of that was meant to build
-anything bigger.
+record the dead ends, meaning the hypotheses you tried and threw away. None of that was meant to
+build anything bigger.
 
 But past a certain number of closed rows, they cross a line together. A new bug stops being
 solved from scratch and starts being *argued against precedent*: "this is the same shape as that
-row we closed in June — make the fix look like that one." A wrong-but-plausible fix gets caught
+row we closed in June, so make the fix look like that one." A wrong-but-plausible fix gets caught
 by a closed row that already says *don't do the obvious thing here, and here's why.* The ledger
 quietly became a place you compare a current problem against related problems you already solved.
 
@@ -232,16 +285,16 @@ abandoned (you don't commit a theory you disproved), and the reason a plausible 
 Those live in the closed rows, not the diff.
 
 Once a ledger is mature enough, it's worth naming that second use explicitly. A `PRECEDENTS.md`
-file — a one-line-per-entry index that *points at* the closed rows carrying reusable shapes and
-traps, without copying them — makes "what did we already learn about this?" a lookup instead of a
+file (a one-line-per-entry index that *points at* the closed rows carrying reusable shapes and
+traps, without copying them) makes "what did we already learn about this?" a lookup instead of a
 memory. It references the rows; the rows stay the source of truth.
 
 🛑 **Only build the index on a mature ledger.** With three closed rows, an index manufactures
-false precedent from whatever you happened to fix *first* — superstition wearing a CANON label.
+false precedent from whatever you happened to fix *first*: superstition wearing a CANON label.
 The signals that say a ledger is ready: a real share of rows closed (not a handful), many rows
 cited by other rows, a reference shape that recurred across months rather than one early fix, and
-citations that point at *closed* work. Measure before you formalize. On a young ledger, skip it —
-the format is a to-do list first, and only earns the second use with age.
+citations that point at *closed* work. Measure before you formalize. On a young ledger, skip it.
+The format is a to-do list first, and only earns the second use with age.
 
 ---
 
@@ -252,8 +305,9 @@ the format is a to-do list first, and only earns the second use with age.
 different project shapes, which caught 13 gaps that are now fixed.
 
 **Untested.** It knows one shape well: a single developer shipping an app in distinct releases.
-Web services, libraries, continuous deployment, non-Apple stacks — there's a Continuous preset
-for time-based work instead of release-based, but nobody has really put it through its paces.
+Web services, libraries, continuous deployment and non-Apple stacks are less proven. There's a
+Continuous preset for time-based work instead of release-based, but nobody has really put it
+through its paces.
 
 **Real limits, worth knowing before you start:**
 
@@ -264,7 +318,7 @@ for time-based work instead of release-based, but nobody has really put it throu
 - **You decide when to run the release check.** Forget, and nothing moves forward on its own.
 
 **What would help most:** try it on a project that isn't a mobile app and tell me where the format
-falls apart. [Open an issue](https://github.com/Terryc21/unforget/issues) — small repos, web
+falls apart. [Open an issue](https://github.com/Terryc21/unforget/issues). Small repos, web
 backends, Android, libraries, or a Cursor or Aider workflow are all more useful than another
 iOS report.
 
@@ -273,11 +327,11 @@ iOS report.
 ## Fits with what you already use
 
 Audit tools and linters drop their unfixed findings straight in. Paused plans become a row that
-points back at the plan file. Any AI that reads your project instructions can read the file —
+points back at the plan file. Any AI that reads your project instructions can read the file:
 Cursor, Copilot, Aider, Continue. It works with no AI at all, since it's just markdown.
 
 It commits to git like any other file. After a merge conflict, open it in a preview to check the
-table survived — a misplaced `|` breaks a table quietly.
+table survived, because a misplaced `|` breaks a table quietly.
 
 **[Pairing it with the bug-finding skills →](docs/POST_FIX_SWEEP.md)** ·
 **[If the file gets mangled →](docs/RECOVERY.md)**
@@ -290,7 +344,9 @@ table survived — a misplaced `|` breaks a table quietly.
 |---|---|
 | **[Every command](reference/commands.md)** | Full detail on each one |
 | **[The format](reference/format.md)** | Columns, statuses, and the optional 1-star-risk column |
+| **[Reports](reference/html-report.md)** | Views, filters, row limits, and using your own rating words |
 | **[Setup](reference/init.md)** | What `init` does, step by step |
+| **[Settings](reference/registry.md)** | The settings table in your ledger folder's README |
 | **[Release ritual](reference/promotion.md)** | What `promote` checks before letting you ship |
 | **[Splitting the file](reference/branching.md)** | When a sprint or someone else's list earns its own |
 | **[Recovery](docs/RECOVERY.md)** | Repairing a broken file |
@@ -299,7 +355,7 @@ table survived — a misplaced `|` breaks a table quietly.
 
 **Reading the file outside Claude.** Ten columns is wide. GitHub and GitLab render it fine, as do
 VS Code's preview, Obsidian, Typora, Bear, MacDown, iA Writer, and Marked 2. If a table looks
-broken in a narrow terminal, the file is fine — the window is too small.
+broken in a narrow terminal, the file is fine; the window is too small.
 
 ---
 
@@ -316,13 +372,13 @@ some rows, renaming or reordering the core columns, and splitting UNFORGET.md in
 
 ## Related skills
 
-[**bug-echo**](https://github.com/Terryc21/bug-echo) — find the same bug elsewhere after a fix ·
-[**bug-prospector**](https://github.com/Terryc21/bug-prospector) — hunt for bugs before a release ·
-[**workflow-audit**](https://github.com/Terryc21/workflow-audit) — trace SwiftUI behaviour ·
-[**radar-suite**](https://github.com/Terryc21/radar-suite) — six skills tracing user paths ·
-[**prompter**](https://github.com/Terryc21/prompter) — rewrite prompts before running them ·
-[**skill-reviewer**](https://github.com/Terryc21/skill-reviewer) — candid reviews of other skills ·
-[**tutorial-creator**](https://github.com/Terryc21/tutorial-creator) — lessons from your own code
+[**bug-echo**](https://github.com/Terryc21/bug-echo): find the same bug elsewhere after a fix ·
+[**bug-prospector**](https://github.com/Terryc21/bug-prospector): hunt for bugs before a release ·
+[**workflow-audit**](https://github.com/Terryc21/workflow-audit): trace SwiftUI behaviour ·
+[**radar-suite**](https://github.com/Terryc21/radar-suite): six skills tracing user paths ·
+[**prompter**](https://github.com/Terryc21/prompter): rewrite prompts before running them ·
+[**skill-reviewer**](https://github.com/Terryc21/skill-reviewer): candid reviews of other skills ·
+[**tutorial-creator**](https://github.com/Terryc21/tutorial-creator): lessons from your own code
 
 ---
 
@@ -333,9 +389,9 @@ Nothing to memorise, and the file stays plain markdown you can edit yourself.
 **Terry Nyberg**, [Coffee & Code LLC](https://stuffolio.app/). It came out of
 [Stuffolio](https://stuffolio.app), where deferred work had spread across five different places
 and pre-release prep meant checking all of them. If unforget has caught something for you,
-[a coffee](https://buymeacoffee.com/stuffolio) is appreciated — though a note about how it went
+[a coffee](https://buymeacoffee.com/stuffolio) is appreciated, though a note about how it went
 on a project unlike mine is worth more.
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/stuffolio)
 
-Apache 2.0 — see [LICENSE](LICENSE).
+Apache 2.0. See [LICENSE](LICENSE).
