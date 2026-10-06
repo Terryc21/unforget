@@ -87,7 +87,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **You want to update an existing row's columns** → `/unforget edit <ID>`
 - **A new audit / plan / memory file appeared since init** → `/unforget import`
 - **The user wants an HTML ledger table or custom ranked report** → `/unforget report` (read `reference/html-report.md`; default unfinished, current ledger, blockers → urgency → user impact).
-- **The user wants a cut of the ledger** ("top ten most urgent", "quick wins", "only trivial fixes") → `/unforget report` with `--limit`, `--effort`, `--roi` and `--sort` (read `reference/html-report.md`); state the "Showing N of M" line and any unclassified-row count the report prints.
+- **The user wants a cut of the ledger** ("top ten most urgent", "quick wins", "only trivial fixes") → `/unforget report` with `--limit`, `--effort`, `--roi` and `--sort` (read `reference/html-report.md`); state the "Showing N of M" line and any unclassified-row count the report prints, then open the page in the user's browser unless they said not to (`reference/html-report.md` step 8).
 - **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only)
 - **You've picked one row to actually work on and want its current state, not its whole history** → `/unforget show <ID>` (add `--full` for the complete raw history)
 - **You want to find rows that have aged past their thresholds** → `/unforget scan`

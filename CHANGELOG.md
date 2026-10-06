@@ -20,6 +20,8 @@ Includes everything listed under v2.9.1 below, which was never released on its o
   silently dropping the vocabulary; ROI can be shown as a column, and the quick-wins example
   shows it. The vocabulary is documented as a read-only translation for reports, not a second
   rating scale.
+- After a report is written, the session opens it in the user's default browser (skipped when
+  the user says not to, or the run is unattended), and says where the file lives.
 - README rewritten in plainer language, with a "See your ledger your way" section, and a second
   interactive example, `examples/quick-wins.html`, generated from the sample ledger.
 - Store descriptions (`plugin.json`, `marketplace.json`) now name the new views.

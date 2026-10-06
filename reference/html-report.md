@@ -86,6 +86,18 @@ precedence, not an opaque weighted score; state the order in the report.
    Inspect desktop and narrow layouts when a browser is available. Otherwise
    disclose that visual verification was unavailable. Link the final HTML and
    report the included rows/blockers and any material coverage limit.
+8. **Open the report for the user** once it is written and checked, in their default
+   browser: `open "<path>"` on macOS, `xdg-open "<path>"` on Linux, `start "" "<path>"`
+   on Windows. The page is interactive (search, sort, filters), so a full browser is
+   the default. Opening is read-only and needs no confirmation. Then say where the file
+   lives, so it can be reopened later.
+   - **Skip it** when the user said not to open it, when the run is unattended (CI, a
+     scheduled job, no display), or when the command is unavailable. Say the report was
+     not opened and give the path.
+   - **A host's own preview pane** (for example, a desktop app's file viewer) is an
+     optional extra, not a replacement: some panes only open files inside the session's
+     folders, and a report saved elsewhere shows an error there. Use the pane only for a
+     report saved where the pane can open it.
 
 ## Helper usage
 
