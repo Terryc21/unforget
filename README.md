@@ -97,7 +97,9 @@ not written down, so anything that shows up there probably slipped through.
 [![Example HTML report with unfinished items ranked by release blocker and urgency](examples/unfinished-ledger.png)](examples/README.md)
 
 **[Download the interactive example](https://github.com/Terryc21/unforget/raw/refs/heads/main/examples/unfinished-ledger.html)**
-and open it in your browser to try search, filtering and sorting. It was generated from the
+and open it in your browser to try search, filtering and sorting. A second example,
+**[Quick wins](https://github.com/Terryc21/unforget/raw/refs/heads/main/examples/quick-wins.html)**,
+shows a view cut to five rows, with its "Showing 5 of 7" line. Both were generated from the
 bundled sample ledger; see [the source and regeneration command](examples/README.md).
 
 ### Use your own rating words

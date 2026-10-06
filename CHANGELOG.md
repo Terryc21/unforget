@@ -14,7 +14,9 @@ Includes everything listed under v2.9.1 below, which was never released on its o
   registry keys (`report_effort_words`, `report_roi_words`, `report_effort_column`,
   `report_roi_column`). Bad entries are reported, not applied; nothing changes without them.
 - Adds tests with negative controls for each rule. No format change; existing ledgers are untouched.
-- README rewritten in plainer language, with a "See your ledger your way" section.
+- README rewritten in plainer language, with a "See your ledger your way" section, and a second
+  interactive example, `examples/quick-wins.html`, generated from the sample ledger.
+- Store descriptions (`plugin.json`, `marketplace.json`) now name the new views.
 - Design note `DESIGN-v2.10-ledger-view-offers.md`: when a session should offer these views, and
   optional 1-Star Risk / Confidence columns. A spec only; nothing in it is implemented yet.
 
