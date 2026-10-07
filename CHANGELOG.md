@@ -1,5 +1,21 @@
 # Changelog
 
+### Unreleased — actionable HTML reports
+
+- Default reports show ID, item, release target, status, user impact, who acts next, and next
+  action. Expandable evidence includes dependencies, verification instructions, check dates
+  with their basis, source links, original ratings and ledger history.
+- Project-scoped report labels default to You and Coding assistant. Inferred assignments are
+  visibly Suggested; confirmed assignments require evidence. Unknown responsibility stays
+  Unassigned, and another project's name is never used as a default.
+- Adds action filters for work needing the user, ready work, verification and reconciliation;
+  summary counts stay fixed during browser filtering. Readiness requires evidence and cannot
+  bypass dependencies, verification owed, reconciliation or closure-integrity problems.
+- Preserves canonical statuses and release gates, row limits with blocker retention, project
+  rating vocabularies and effort/ROI filtering. Adds responsive cards for narrow screens.
+- Refreshes the README and all six gallery pages and previews using clearly fictional
+  presentation annotations. The sample ledger remains unchanged.
+
 ### v2.10.0 — report views: row limits, effort/ROI filters, your own rating words (2026-10-06) · minor
 
 Includes everything listed under v2.9.1 below, which was never released on its own.

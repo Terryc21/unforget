@@ -1,0 +1,110 @@
+{
+  "UNFORGET.md::P0": {
+    "next": "Implement the sample fix, then run its acceptance check.",
+    "owner_kind": "assistant",
+    "owner_source": "explicit",
+    "owner_basis": "Fictional example: the project owner explicitly assigned this implementation.",
+    "readiness": "ready",
+    "readiness_basis": "Fictional example: scope and acceptance criteria have been reviewed; no dependency remains."
+  },
+  "UNFORGET.md::P1": {
+    "next": "Choose the rollback approach before implementation.",
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
+    "dependencies": "Agreement on the migration rollback design."
+  },
+  "UNFORGET.md::P2": {
+    "next": "Group the failing tests by shared cause and fix one group at a time.",
+    "owner_kind": "assistant",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
+    "readiness": "ready",
+    "readiness_basis": "Fictional example: the four failure groups have reproducible test cases."
+  },
+  "UNFORGET.md::P4": {
+    "next": "Review the current search work and identify the next unfinished part.",
+    "owner_kind": "assistant",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment."
+  },
+  "UNFORGET.md::P6": {
+    "next": "Confirm account access for the wallet endpoint.",
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
+    "dependencies": "Access to the sample service account."
+  },
+  "UNFORGET.md::S1": {
+    "next": "Add the missing user_id to both error breadcrumbs.",
+    "owner_kind": "assistant",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
+    "last_checked": "2026-04-20",
+    "check_basis": "Fictional example: a source review found both missing fields; no device check was performed.",
+    "readiness": "ready",
+    "readiness_basis": "Fictional example: both call sites and a focused test are identified."
+  },
+  "UNFORGET.md::S2": {
+    "next": "Consolidate the four DateFormatter instances.",
+    "owner_kind": "assistant",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment."
+  },
+  "UNFORGET.md::S3": {
+    "next": "Check all three localized strings on a device.",
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
+    "verification": "Fictional acceptance check: open each affected screen in the supported locales and check wording and layout."
+  },
+  "UNFORGET.md::S4": {
+    "next": "Compare the asset references with the ledger count before deleting assets.",
+    "owner_kind": "assistant",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
+    "reconciliation": "Fictional example: a later scan reports fewer than 12 unused assets; the recorded count needs reconciliation."
+  },
+  "UNFORGET.md::A2": {
+    "next": "Review the proposed observation migration.",
+    "owner_kind": "person",
+    "owner_source": "explicit",
+    "owner_basis": "Fictional example: Alex was assigned this review by the project owner.",
+    "owner": "Alex"
+  },
+  "UNFORGET.md::A3": {
+    "next": "Agree which large file to split first."
+  },
+  "UNFORGET.md::A4": {
+    "next": "Replace the swallowed errors with explicit handling and focused tests.",
+    "owner_kind": "assistant",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment."
+  },
+  "UNFORGET.md::A5": {
+    "next": "Review cancellation behavior before planning the async-call migration.",
+    "owner_kind": "assistant",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment."
+  },
+  "UNFORGET.md::U1": {
+    "next": "Check keyboard dismissal on the first sheet opening on iPad.",
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
+    "verification": "Fictional acceptance check: open the sheet for the first time and confirm the onscreen keyboard dismisses when expected."
+  },
+  "UNFORGET.md::U2": {
+    "next": "Trace window restoration and propose a focused fix.",
+    "owner_kind": "assistant",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment."
+  },
+  "UNFORGET.md::U3": {
+    "next": "Choose accessible chart colors with the product owner.",
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
+    "dependencies": "Product owner feedback on the proposed palette."
+  }
+}

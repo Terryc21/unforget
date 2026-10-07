@@ -70,6 +70,20 @@ page you can search, sort, filter and print, in light or dark mode. It opens in 
 soon as it's ready, and you're told where it's saved so you can open it again later. (Say "don't
 open it" if you'd rather it didn't.) Making a view never changes your ledger.
 
+The default table puts **who acts next** and **the next action** beside each item's release
+target, status and user impact. Assignments inferred from the work are marked **Suggested**;
+confirmed assignments show their source in the expandable details. If responsibility is
+unclear, it stays **Unassigned**. Your label defaults to **You**, and the assistant's to
+**Coding assistant**. Each project can save its own name and labels in its ledger registry;
+names never carry over from another project.
+
+Use **Needs me**, **Ready to work on**, **Awaiting verification**, or **Needs reconciliation**
+to focus the table. Summary counts remain visible while you filter. Expand an item for its
+source, ratings, dependencies and verification instructions. **Last checked** appears only
+when an actual check and its evidence are recorded; generating a report does not verify work.
+See [report settings and assignment rules](reference/html-report.md#project-aware-identity)
+for details.
+
 Ask in plain words. These are the ready-made views and what to type for each:
 
 | View | What to type | What you get |

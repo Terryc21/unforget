@@ -70,6 +70,9 @@ and never touches the surrounding human prose:
 | `display_verbosity` | `auto` (default — keep terminal-width auto-detection) \| `full` \| `compact`; saved column-width preference. `full`/`compact` PIN the width, overriding auto-detect |
 | `display_sections` | `all`, or ONE of `paused` \| `spillover` \| `audit` \| `observed`; saved `--section=` default. Single-or-all only — `--section=` does not accept a list |
 | `display_prefs_set` | `true` \| `(unset)`; whether the display-preference interview has ever completed (distinct from the fields above being absent, which can also mean "asked, declined to set") |
+| `report_user_name` | Explicit project user name for HTML reports; unset by default. Never infer from paths or accounts. |
+| `report_user_label` | `you` (default) or `name`; name requires an explicit project name, otherwise falls back to You. |
+| `report_assistant_label` | HTML assignment label, default `Coding assistant`. |
 | `archive_nudge_threshold` | integer; completed-row count at which `list`/`add` append the archive nudge (default 5; `0` silences it). See `reference/commands.md` § The archive nudge |
 | `stale_days_this` | integer; days before an Open/In-Progress row is stale (default 30). See `reference/commands.md` § Staleness thresholds |
 | `stale_days_next` | integer; days before a Deferred 🔵 NEXT row is stale (default 90) |

@@ -118,7 +118,6 @@ class LimitAndFilterTests(LedgerHelpers, unittest.TestCase):
         rows=self.rated('| A1 | NEXT | a | HIGH | Good | Small | @status:open |\n| A2 | NEXT | b | LOW | Good | Small | @status:open |')
         a=self.args();self.assertEqual(len(h.select(rows,a)),2);self.assertEqual(a.select_info['matched'],2)
 
-if __name__=='__main__':unittest.main()
 
 
 def registry_readme(*pairs):
@@ -183,3 +182,83 @@ class VocabularyTests(unittest.TestCase):
         hdr='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Fix Effort | Status |\n|---|---|---|---|---|---|\n'
         rows,_,_=self.load('| A1 | NEXT | a | HIGH | Small | @status:open |',hdr,('report_effort_words','Zebra=trivial'))
         self.assertEqual(h.select(rows,self.args('--query','zebra')),[])
+
+
+class ActionReportTests(LedgerHelpers, unittest.TestCase):
+    def test_project_names_do_not_leak_between_inputs(self):
+        rows,_,_=self.load('| A1 | NEXT | USER ACTION: confirm account setting | HIGH | @status:open |')
+        row=rows[0]
+        h.prepare_presentation(rows,{str(self.path.resolve().parent):{'user_name':'Morgan','user_label':'name'}})
+        self.assertEqual(row['owner'],'Morgan');self.assertEqual(row['owner_source'],'recorded')
+        rows,_,_=self.load('| A1 | NEXT | Needs account access | HIGH | @status:open |')
+        h.prepare_presentation(rows)
+        self.assertEqual(rows[0]['owner'],'You');self.assertEqual(rows[0]['owner_source'],'suggested')
+        self.assertNotIn('Morgan',str(rows))
+    def test_unknown_is_unassigned_not_user(self):
+        rows,_,_=self.load('| A1 | NEXT | Product discussion | HIGH | @status:open |')
+        h.prepare_presentation(rows)
+        self.assertEqual(rows[0]['owner'],'Unassigned');self.assertEqual(rows[0]['readiness'],'unknown')
+    def test_suggestions_and_confirmed_named_owners(self):
+        rows,_,_=self.load('| A1 | NEXT | Fix HTML copy | HIGH | @status:open |')
+        h.prepare_presentation(rows)
+        self.assertEqual(rows[0]['owner'],'Coding assistant');self.assertEqual(rows[0]['owner_source'],'suggested')
+        h.annotate(rows,{'UNFORGET.md::A1':{'owner':'Release team','owner_kind':'team','owner_source':'explicit','owner_basis':'User assigned the release team.'}})
+        h.prepare_presentation(rows)
+        self.assertEqual(rows[0]['owner'],'Release team');self.assertEqual(rows[0]['owner_source'],'explicit')
+    def test_changing_recorded_owner_cannot_inherit_confirmation(self):
+        header=HEADER.replace('Status |','Status | Owner |').replace('|---|---|---|---|---|','|---|---|---|---|---|---|')
+        rows,_,_=self.load('| A1 | NEXT | Fix HTML copy | HIGH | @status:open | Robin |',header)
+        h.annotate(rows,{'UNFORGET.md::A1':{'owner':'Alex'}})
+        self.assertEqual(rows[0]['owner_source'],'suggested')
+    def test_last_checked_requires_actual_evidence_and_is_not_generated(self):
+        rows,_,_=self.load('| A1 | NEXT | fix | HIGH | @status:open |')
+        with self.assertRaises(ValueError):h.annotate(rows,{'UNFORGET.md::A1':{'last_checked':'2026-10-07'}})
+        with self.assertRaises(ValueError):h.annotate(rows,{'UNFORGET.md::A1':{'last_checked':'2026-02-30','check_basis':'Checked'}})
+        h.prepare_presentation(rows)
+        self.assertEqual(rows[0]['last_checked'],'')
+    def test_reconciliation_and_dependencies_prevent_ready(self):
+        rows,_,_=self.load('| A1 | THIS | Fix | HIGH | @status:open |')
+        h.annotate(rows,{'UNFORGET.md::A1':{'readiness':'ready','readiness_basis':'Reviewed','reconciliation':'Source conflicts with current files.'}})
+        h.prepare_presentation(rows)
+        self.assertNotEqual(rows[0]['readiness'],'ready');self.assertTrue(rows[0]['blocker']);self.assertEqual(rows[0]['status'],'open')
+        rows[0]['reconciliation']='';rows[0]['dependencies']='Account access';rows[0]['readiness']='ready'
+        h.prepare_presentation(rows);self.assertEqual(rows[0]['readiness'],'waiting')
+    def test_annotations_cannot_dismiss_canonical_verification(self):
+        rows,_,_=self.load('| A1 | THIS | Fix | HIGH | @status:done-unverified |')
+        h.annotate(rows,{'UNFORGET.md::A1':{'verification_owed':False,'readiness':'ready','readiness_basis':'Code compiles'}})
+        h.prepare_presentation(rows)
+        self.assertTrue(rows[0]['verification_owed']);self.assertNotEqual(rows[0]['readiness'],'ready');self.assertTrue(rows[0]['blocker'])
+    def test_details_and_annotation_html_are_escaped(self):
+        rows,source,_=self.load('| A1 | NEXT | Fix | HIGH | @status:open |\n\n### Detail\n- **A1** - <img src=x onerror=alert(1)> evidence\n\n- **A2** - unrelated evidence')
+        h.annotate(rows,{'UNFORGET.md::A1':{'owner':'<script>bad</script>','reconciliation':'<svg onload=bad()>','last_checked':'2026-10-07','check_basis':'Read file'}})
+        h.prepare_presentation(rows);out=h.render(h.select(rows,self.args()),[source],[],self.args(),0)
+        self.assertNotIn('<script>bad</script>',out);self.assertNotIn('<img src=x',out);self.assertIn('&lt;img',out)
+        self.assertIn('onerror=alert(1)',rows[0]['detail']);self.assertNotIn('unrelated evidence',rows[0]['detail'])
+    def test_registry_is_scoped_and_readme_beats_cache(self):
+        (self.path.parent/'README.md').write_text('<!-- unforget-registry:begin -->\n**Global**\n| key | value |\n|---|---|\n| report_user_name | Sam |\n| report_user_label | name |\n**Ledgers**\n<!-- unforget-registry:end -->')
+        (self.path.parent/'.unforget.json').write_text('{"global":{"report_user_name":"Wrong person"}}')
+        self.assertEqual(h.project_settings(self.path.parent)['user_name'],'Sam')
+    def test_named_assignee_requires_name_and_confirmed_provenance_requires_basis(self):
+        rows,_,_=self.load('| A1 | NEXT | Fix | HIGH | @status:open |')
+        with self.assertRaises(ValueError):h.annotate(rows,{'UNFORGET.md::A1':{'owner_kind':'person'}})
+        with self.assertRaises(ValueError):h.annotate(rows,{'UNFORGET.md::A1':{'owner':'Alex','owner_source':'explicit'}})
+
+
+    def test_invalid_closure_cannot_be_presented_as_ready(self):
+        rows,_,_=self.load('| A1 | THIS | Fix | HIGH | @status:done-verified |')
+        h.annotate(rows,{'UNFORGET.md::A1':{'readiness':'ready','readiness_basis':'Implementation reviewed'}})
+        h.prepare_presentation(rows)
+        self.assertFalse(rows[0]['completed'])
+        self.assertTrue(rows[0]['blocker'])
+        self.assertNotEqual(rows[0]['readiness'],'ready')
+
+    def test_gallery_source_link_resolves_beside_report(self):
+        rows,source,_=self.load('| A1 | NEXT | Fix | HIGH | @status:open |')
+        rows[0]['source']='examples/UNFORGET.md'
+        rows[0]['source_link']='UNFORGET.md'
+        h.prepare_presentation(rows)
+        out=h.render(h.select(rows,self.args()),[source],[],self.args(),0)
+        self.assertIn('href="UNFORGET.md"',out)
+        self.assertNotIn('href="examples/UNFORGET.md"',out)
+
+if __name__=='__main__':unittest.main()

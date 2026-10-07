@@ -186,7 +186,9 @@ next actions and user-impact estimates. Keys are `filename.md::ID`:
     "title": "Verify restored items survive relaunch",
     "ux": "severe",
     "ux_basis": "Source describes a restored item being purged at launch.",
-    "owner": "Device verification",
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "The check requires a physical device.",
     "next": "Run the documented restore and relaunch acceptance check.",
     "notes": ["Related verification procedure is recorded in V-07."]
   }
@@ -210,3 +212,78 @@ legacy states such as "Not fixed" or "Open; unit tests passed" remain unfinished
 Effort sorting treats Triv/Trivial, Sml/Small, Med/Medium and Lrg/Large identically,
 case-insensitively. Unknowns sort last; generation and browser sorting use the same numeric
 key, preserving the source spelling and stable ties.
+
+## Action-oriented display and assignment provenance
+
+The default columns are **ID · Item · Release target · Status · User impact · Who acts next · Next action**.
+`--columns` can also show rank, ledger, release gate, urgency, effort, verification,
+last_checked, reconciliation and readiness. Original ratings, dependencies,
+verification procedure, check evidence, source link/line, and ledger detail history
+remain expandable. Missing information stays **Not recorded** (owner: **Unassigned**).
+
+Summary cards show blockers across **all supplied inputs before filtering**, plus
+unfinished items, verification owed, and reconciliation flags in the report.
+Browser filtering never changes those counts. Action filters are **Needs me**,
+**Ready to work on**, **Awaiting verification**, and **Needs reconciliation**.
+Needs me includes suggested user assignments, visibly marked Suggested.
+A reconciliation annotation signals conflicting or outdated evidence; it never
+changes canonical status, target, or blocker membership. Zero matches is not a
+project-wide all-clear. Mobile reports display rows as readable cards.
+
+### Project-aware identity
+
+Read only the README registry beside each input ledger. Optional global keys:
+
+- `report_user_name`: a name explicitly supplied for this project; no default name.
+- `report_user_label`: `you` (default) or `name` for reports intended for sharing.
+- `report_assistant_label`: defaults to `Coding assistant`.
+
+Use **You** when no display name is explicitly configured. Never derive a person
+from filesystem paths, account names, authorship, another project, or an example.
+For multi-project input, resolve each row using its own ledger directory. CLI
+`--user-name`, `--user-label you|name`, and `--assistant-label` override this report
+only. Save a user-requested project preference with `registry.py write --merge`;
+never overwrite unrelated settings or write a global identity default.
+
+Assignments come first from a source Owner/Assignee/Who acts next column or an
+explicit user-only marker. The helper recognizes USER ACTION/HUMAN ACTION and an
+explicitly configured person's ACTION/ONLY marker. Narrow device/account/decision
+phrases and implementation requests can produce **Suggested** assignments. Do not
+interpret a mere mention of a person or device as responsibility. Unknown stays
+Unassigned. Use annotations for context requiring judgment:
+
+```json
+{
+  "UNFORGET.md::A1": {
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "The check needs the user's physical device.",
+    "next": "Run the documented restore and relaunch check.",
+    "verification": "Device test: restore, relaunch, and confirm the restored item remains.",
+    "verification_owed": true,
+    "dependencies": "A build containing the fix."
+  }
+}
+```
+
+`owner_kind`: user / assistant / person / team / unassigned. Person/team requires
+`owner`. `owner_source`: recorded / explicit / suggested. Recorded/explicit
+annotations require `owner_basis` citing ledger evidence or the user's assignment.
+An owner annotation lacking provenance is a suggestion, including older reports'
+annotations; changing a recorded owner never inherits its confirmation.
+Do not use `owner_source=explicit` simply because the user requested a report.
+
+Optional fields: `last_checked` (YYYY-MM-DD) with required `check_basis` describing
+an actual check, `reconciliation` (reason), `readiness` (ready / waiting / unknown)
+with required `readiness_basis` for ready. These are presentation annotations,
+not ledger edits. Readiness needs evidence of a concrete actionable next step;
+open alone is insufficient. Dependencies, blocked status, or verification owed
+prevent ready; reconciliation or ambiguous/completed status also exclude it.
+A done-unverified source always keeps verification owed, even if an annotation
+tries to turn it off. A check date is never filled from file modification time,
+a date mentioned in history, or report generation. Checking an obsolete sentence
+is not app/device verification; state precisely what was checked.
+
+Use `--timezone` with the user's IANA timezone when supplied by client context;
+it affects only the generation timestamp, never evidence dates. This generator
+reads metadata and local ledgers only; it does not run device/live-service checks.

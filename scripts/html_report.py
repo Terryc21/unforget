@@ -11,6 +11,8 @@ import hashlib
 import html
 import json
 import re
+import importlib.util
+from urllib.parse import quote
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -21,7 +23,10 @@ STATES = {'open', 'in-progress', 'blocked', 'done-unverified', 'done-verified', 
 URGENCY = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'unrated': 4}
 IMPACT = {'severe': 0, 'high': 1, 'moderate': 2, 'low': 3, 'indirect': 4, 'unrated': 5}
 TARGET = {'THIS': 0, 'NEXT': 1, 'LATER': 2, 'SOMEDAY': 3, 'Unassigned': 4}
-COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'roi', 'owner']
+DEFAULT_COLUMNS = ['id', 'finding', 'target', 'status', 'ux', 'owner', 'next']
+COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'roi', 'owner', 'next', 'verification', 'last_checked', 'reconciliation', 'readiness']
+OWNER_KINDS = {'user', 'assistant', 'person', 'team', 'unassigned'}
+OWNER_SOURCES = {'recorded', 'explicit', 'suggested'}
 SORTS = ['blocker', 'urgency', 'ux', 'target', 'effort', 'roi', 'id', 'ledger', 'status']
 EFFORT = {'trivial': 0, 'small': 1, 'medium': 2, 'large': 3, 'unrated': 4}
 EFFORT_WORDS = {'triv': 'trivial', 'trivial': 'trivial', 'sml': 'small', 'small': 'small',
@@ -188,23 +193,98 @@ def read_ledger(path):
                          blocker=evaluated['blocks_release'], completed=evaluated['completed'],
                          integrity_issues=evaluated['issues'],
                          ux='unrated', ux_basis='', owner='', next='', effort=column(data, ('fix effort', 'effort', 'est'), 'effort') or 'Unrated',
-                         roi=column(data, ('roi',), 'roi'), vocab_key=str(path), original=data, notes=[]))
+                         roi=column(data, ('roi',), 'roi'), vocab_key=str(path), original=data, notes=[], detail=details.get(ident,''),
+                         owner_kind='unassigned', owner_source='', owner_basis='',
+                         verification=data.get('verification needed',''), verification_owed=status=='done-unverified',
+                         last_checked=data.get('last checked',''), check_basis='', dependencies=data.get('dependencies',''),
+                         reconciliation='', readiness='unknown', readiness_basis=''))
+        row=rows[-1]
+        recorded_owner=data.get('who acts next',data.get('owner',data.get('assignee','')))
+        if recorded_owner and plain(recorded_owner).lower() not in ('—','-','unassigned','not recorded'):
+            row.update(owner=plain(recorded_owner),owner_kind='person',owner_source='recorded',owner_basis='Assignment in the source table.')
 
     return rows, dict(path=str(path), ledger=path.name, sha256=hashlib.sha256(text.encode()).hexdigest(), rows=len(rows)), warnings
 
 
 def annotate(rows, annotations):
-    """Only presentation fields are editable; status and gate stay source-derived."""
+    """Annotations never override ledger status, target, or release-gate membership."""
+    if not isinstance(annotations, dict): raise ValueError('Annotations must be an object keyed by ledger::ID.')
     keyed = {r['ledger']+'::'+r['id']: r for r in rows}
+    allowed = {'ux','ux_basis','owner','owner_kind','owner_source','owner_basis','next','title','notes',
+               'verification','verification_owed','last_checked','check_basis','dependencies',
+               'reconciliation','readiness','readiness_basis'}
     for key, note in annotations.items():
         if key not in keyed: raise ValueError(f'Annotation does not match an input row: {key}')
-        if set(note) - {'ux','ux_basis','owner','next','title','notes'}:
+        if not isinstance(note, dict) or set(note)-allowed:
             raise ValueError(f'{key}: annotations can only add presentation fields, not change source status or target.')
-        if any(not isinstance(v, str) for k,v in note.items() if k != 'notes') or ('notes' in note and (not isinstance(note['notes'],list) or not all(isinstance(v,str) for v in note['notes']))):
-            raise ValueError(f'{key}: invalid annotation types.')
-        if 'ux' in note and (note['ux'] not in IMPACT or (note['ux'] != 'unrated' and not note.get('ux_basis'))):
+        for field, value in note.items():
+            valid = (isinstance(value, list) and all(isinstance(v,str) for v in value)) if field=='notes' else (type(value) is bool if field=='verification_owed' else isinstance(value,str))
+            if not valid: raise ValueError(f'{key}: invalid annotation type for {field}.')
+        if 'ux' in note and (note['ux'] not in IMPACT or (note['ux']!='unrated' and not note.get('ux_basis'))):
             raise ValueError(f'{key}: UX estimate needs a valid level and ux_basis.')
-        keyed[key].update(note)
+        for field, choices in [('owner_kind',OWNER_KINDS),('owner_source',OWNER_SOURCES),('readiness',{'ready','waiting','unknown'})]:
+            if field in note and note[field] not in choices: raise ValueError(f'{key}: invalid {field}.')
+        if note.get('last_checked'):
+            try: dt.date.fromisoformat(note['last_checked'])
+            except ValueError: raise ValueError(f'{key}: last_checked must be an ISO date (YYYY-MM-DD).')
+            if not note.get('check_basis'): raise ValueError(f'{key}: last_checked needs check_basis describing the actual check.')
+        if note.get('readiness')=='ready' and not note.get('readiness_basis'):
+            raise ValueError(f'{key}: ready needs readiness_basis; open alone does not mean ready.')
+        row=keyed[key]
+        assignment_fields={'owner','owner_kind','owner_source','owner_basis'}
+        if assignment_fields & note.keys():
+            # Never inherit recorded provenance when an annotation changes an assignment.
+            source=note.get('owner_source','suggested')
+            if source in {'recorded','explicit'} and not note.get('owner_basis'):
+                raise ValueError(f'{key}: confirmed assignment needs owner_basis citing the source or instruction.')
+            row.update(owner='',owner_kind='unassigned',owner_source=source,
+                       owner_basis=note.get('owner_basis','Report suggestion; assignment has not been confirmed.'))
+            if note.get('owner') and 'owner_kind' not in note: row['owner_kind']='person'
+        row.update(note)
+        if row['owner_kind'] in {'person','team'} and not row['owner'].strip():
+            raise ValueError(f'{key}: named person/team needs an owner.')
+        # A report cannot dismiss a check owed by the canonical status.
+        if row['status']=='done-unverified': row['verification_owed']=True
+
+
+def project_settings(directory):
+    """Read only the registry beside each input; no global identity guesses or cache writes."""
+    spec=importlib.util.spec_from_file_location('unforget_report_registry',Path(__file__).with_name('registry.py'))
+    registry=importlib.util.module_from_spec(spec);spec.loader.exec_module(registry)
+    config=registry.read_registry(Path(directory)).get('global', {}) or {}
+    mode=config.get('report_user_label') or 'you'
+    if mode not in {'you','name'}: raise ValueError('report_user_label must be you or name.')
+    return {'user_name':config.get('report_user_name') or '', 'user_label':mode,
+            'assistant_label':config.get('report_assistant_label') or 'Coding assistant'}
+
+
+def prepare_presentation(rows, settings=None):
+    """Resolve labels and conservative suggestions without changing source obligations."""
+    settings=settings or {}
+    for r in rows:
+        cfg=settings.get(str(Path(r['source']).parent),{})
+        name=cfg.get('user_name','')
+        user=name if cfg.get('user_label')=='name' and name else 'You'
+        assistant=cfg.get('assistant_label') or 'Coding assistant'
+        raw=r['owner'].strip()
+        if raw.lower() in {'you','user','project user'} or (name and raw.casefold()==name.casefold()): r['owner_kind']='user'
+        elif raw.lower() in {'assistant','coding assistant'}: r['owner_kind']='assistant'
+        text=plain(r['finding']+' '+r['original']['status'])
+        if r['owner_kind']=='unassigned' and not r['owner_source']:
+            names=['USER','HUMAN']+([re.escape(name)] if name else [])
+            if re.search(r'\b(?:'+'|'.join(names)+r')[- ](?:ONLY|ACTION)\b',text,re.I):
+                r.update(owner_kind='user',owner_source='recorded',owner_basis='Source explicitly marks this as a user-only action.')
+            elif re.search(r'\b(?:needs?|requires?|awaiting|blocked on)\s+(?:a\s+)?(?:physical device|device test|account access|user decision|your confirmation)\b',text,re.I):
+                r.update(owner_kind='user',owner_source='suggested',owner_basis='The source describes a device, account, or decision requirement.')
+            elif re.match(r'^(?:fix|rewrite|update|remove|add)\b',text,re.I) and re.search(r'\b(?:copy|code|test|script|documentation|HTML|CSS)\b',text,re.I) and r['status'] in {'open','in-progress'}:
+                r.update(owner_kind='assistant',owner_source='suggested',owner_basis='The finding describes an implementation task; assignment has not been confirmed.')
+        if r['owner_kind']=='user': r['owner']=user
+        elif r['owner_kind']=='assistant': r['owner']=assistant
+        elif r['owner_kind']=='unassigned': r['owner']='Unassigned'
+        if r['verification'] and not r['completed']: r['verification_owed']=True
+        if r['status']=='done-unverified': r['verification_owed']=True
+        if r['dependencies'] or r['status']=='blocked' or r['verification_owed']: r['readiness']='waiting'
+        if r['reconciliation'] or r['completed'] or r['status']=='unknown' or r['integrity_issues']: r['readiness']='unknown'
 
 
 def sort_key(row, fields):
@@ -286,8 +366,12 @@ def parser():
     p.add_argument('--id',action='append',help='Include an ID or filename.md::ID; repeat for a reviewed custom subset.')
     p.add_argument('--exclude-id',action='append',help='Exclude a reviewed duplicate/pointer ID or filename.md::ID.')
     p.add_argument('--sort',default='blocker,urgency,ux',help='Ordered comma-separated keys: '+','.join(SORTS))
-    p.add_argument('--columns',default=','.join(COLUMNS),help='Visible columns: '+','.join(COLUMNS))
+    p.add_argument('--columns',default=','.join(DEFAULT_COLUMNS),help='Visible columns: '+','.join(COLUMNS))
     p.add_argument('--annotations',type=Path)
+    p.add_argument('--user-name',help='Explicit project user name; never inferred from paths or login names.')
+    p.add_argument('--user-label',choices=['you','name'],help='Override the registry display preference for this report.')
+    p.add_argument('--assistant-label',help='Override Coding assistant for this report.')
+    p.add_argument('--timezone',help='IANA timezone for generation time, e.g. America/Denver.')
     p.add_argument('--scope-note',default='Only the explicitly listed source ledgers were read.')
     p.add_argument('--note',action='append',default=[])
     p.add_argument('--force',action='store_true',help='Replace an existing HTML output when explicitly requested.')
@@ -296,7 +380,11 @@ def parser():
 
 def render(rows, sources, warnings, args, total_blockers):
     template=(Path(__file__).resolve().parent.parent/'assets/html-report.html').read_text(encoding='utf-8')
-    labels={'id':'Item','ux':'User impact (estimate)','blocker':'Release gate','effort':'Fix effort','roi':'Value (ROI)'}
+    labels={'id':'ID','finding':'Item','ux':'User impact','blocker':'Release gate','effort':'Fix effort',
+            'roi':'Value (ROI)', 'target':'Release target','owner':'Who acts next','next':'Next action','last_checked':'Last checked',
+            'verification':'Verification needed','reconciliation':'Needs reconciliation'}
+    statuses={'done-unverified':'Awaiting verification','done-verified':'Verified complete','in-progress':'In progress',
+              'legacy-complete':'Completed (legacy claim)','open':'Open','blocked':'Blocked','withdrawn':'Withdrawn','unknown':'Needs review'}
     heads=''.join(f'<th scope="col"><button data-col="{n}">{E(labels.get(k,k.title()))} ↕</button></th>' for n,k in enumerate(args.columns))
     body=[]
     source_order = {(r['ledger'], r['line']): n for n, r in enumerate(sorted(rows, key=lambda r: (r['ledger'], r['line'])))}
@@ -307,28 +395,53 @@ def render(rows, sources, warnings, args, total_blockers):
             if col=='finding':
                 title=r.get('title') or plain(r['finding'])
                 short=title if len(title)<=180 else title[:177].rsplit(' ',1)[0]+'…'
-                details='<p><b>Source:</b> '+E(r['source'])+' : '+str(r['line'])+'</p>'
-                if r['next']:details+='<p><b>Next action:</b> '+E(r['next'])+'</p>'
+                source_path=Path(r.get('source_link') or r['source'])
+                uri=source_path.as_uri() if source_path.is_absolute() else quote(source_path.as_posix(),safe='/')
+                details=f'<p><b>Source:</b> <a href="{E(uri,quote=True)}">{E(r["ledger"])}</a> · line {r["line"]}</p>'
+                for label,key,default in [('Who acts next','owner','Unassigned'),('Assignment evidence','owner_basis','Not recorded'),
+                    ('Next action','next','Not recorded'),('Verification needed','verification','Procedure not recorded' if r['verification_owed'] else 'Not recorded'),
+                    ('Last checked','last_checked','Not recorded'),('Check evidence','check_basis','Not recorded'),
+                    ('Dependencies','dependencies','Not recorded'),('Readiness evidence','readiness_basis','Not recorded')]:
+                    details+=f'<p><b>{label}:</b> {E(r.get(key) or default)}</p>'
+                if r['reconciliation']: details+='<p class="notice"><b>Needs reconciliation:</b> '+E(r['reconciliation'])+'</p>'
                 if r['ux_basis']:details+='<p><b>User-impact estimate:</b> '+E(r['ux_basis'])+'</p>'
                 details+=''.join('<p class="notice">'+E(n)+'</p>' for n in r['integrity_issues'] + r['notes'])
                 details+='<dl>'+''.join(f'<dt>{E(k.title())}</dt><dd>{E(v)}</dd>' for k,v in r['original'].items())+'</dl>'
-                value=f'<strong>{E(short)}</strong><details><summary>Source, ratings &amp; remaining work</summary>{details}</details>'
+                if r['detail']: details+='<details><summary>Evidence and history from the ledger</summary><pre>'+E(r['detail'])+'</pre></details>'
+                badges=('<span class="badge reconciliation">Needs reconciliation</span>' if r['reconciliation'] else '')
+                if r['blocker']: badges+='<span class="badge blocker">Release blocker</span>'
+                value=f'<strong>{E(short)}</strong>{badges}<details><summary>Evidence, verification &amp; ratings</summary>{details}</details>'
             elif col=='blocker':value='<span class="badge">'+('Blocks release' if r['blocker'] else 'Not gated')+'</span>'
-            elif col=='ux':value=E(r['ux'].title())+(' <small>estimated</small>' if r['ux']!='unrated' else '')
+            elif col=='ux':value=E(r['ux'].title())+(' <small>Estimated · basis in details</small>' if r['ux']!='unrated' else '')
+            elif col=='owner':
+                value=E(r['owner'] or 'Unassigned')
+                if r['owner_source']:
+                    text={'suggested':'Suggested','recorded':'Recorded assignment','explicit':'Explicitly assigned'}[r['owner_source']]
+                    value+=f'<small class="assignment {E(r["owner_source"])}">{text}</small>'
+            elif col=='status':value=E(statuses[r['status']])
             else:value=E(value or 'Not recorded')
             sortvalue=sort_key(r,[col])[0] if col in SORTS else r.get(col,'')
             if isinstance(sortvalue,bool):sortvalue=int(sortvalue)
-            vals.append(f'<td data-value="{E(str(sortvalue),quote=True)}">{value}</td>')
-        search=' '.join(str(v) for v in public(r).values()).casefold()
-        body.append(f'<tr data-source-order="{source_order[(r["ledger"], r["line"])]}" data-rank="{r["rank"]}" data-blocker="{str(r["blocker"]).lower()}" data-status="{E(r["status"])}" data-ledger="{E(r["ledger"])}" data-search="{E(search,quote=True)}">'+''.join(vals)+'</tr>')
+            vals.append(f'<td data-label="{E(labels.get(col,col.title()),quote=True)}" data-value="{E(str(sortvalue),quote=True)}">{value}</td>')
+        search=' '.join(' '.join(str(v) for v in public(r).values()).casefold().split())
+        # Each quick filter is independent of presentation wording and never changes the source gate.
+        flags={'mine':r['owner_kind']=='user','ready':r['readiness']=='ready',
+               'verification':r['verification_owed'],'reconciliation':bool(r['reconciliation'])}
+        attrs=' '.join(f'data-{k}="{str(v).lower()}"' for k,v in flags.items())
+        body.append(f'<tr data-source-order="{source_order[(r["ledger"], r["line"])]}" data-rank="{r["rank"]}" data-blocker="{str(r["blocker"]).lower()}" data-status="{E(r["status"])}" data-ledger="{E(r["ledger"])}" data-search="{E(search,quote=True)}" {attrs}>'+''.join(vals)+'</tr>')
     criteria={k:getattr(args,k) for k in ['view','id','exclude_id','status','target','urgency','ledger','section','query','effort','roi','limit','blockers_only','sort','columns'] if getattr(args,k)}
-    options=lambda key: '<option value="">All</option>'+''.join(f'<option value="{E(v,quote=True)}">{E(v)}</option>' for v in sorted({str(r[key]) for r in rows}))
-    data={'TITLE':E(args.title),'DATE':E(dt.datetime.now().astimezone().isoformat(timespec='seconds')),
-          'COUNT':str(len(rows)),'BLOCKERS':str(sum(r['blocker'] for r in rows)),'TOTAL_BLOCKERS':str(total_blockers),
-          'OWED':str(sum(r['status']=='done-unverified' for r in rows)), 'HEADERS':heads,'ROWS':''.join(body),
+    options=lambda key: '<option value="">All</option>'+''.join(f'<option value="{E(v,quote=True)}">{E(statuses.get(v,v) if key=="status" else v)}</option>' for v in sorted({str(r[key]) for r in rows}))
+    now=dt.datetime.now().astimezone()
+    if getattr(args,'timezone',None):
+        from zoneinfo import ZoneInfo
+        now=now.astimezone(ZoneInfo(args.timezone))
+    data={'TITLE':E(args.title),'DATE':E(now.isoformat(timespec='seconds')),
+          'HAS_BLOCKERS':str(total_blockers>0).lower(),'COUNT':str(len(rows)),'BLOCKERS':str(sum(r['blocker'] for r in rows)),'TOTAL_BLOCKERS':str(total_blockers),
+          'UNFINISHED':str(sum(not r['completed'] for r in rows)),
+          'RECONCILE':str(sum(bool(r['reconciliation']) for r in rows)),
+          'OWED':str(sum(r['verification_owed'] for r in rows)), 'HEADERS':heads,'ROWS':''.join(body),
           'SCOPE':E(args.scope_note),'CRITERIA':E(json.dumps(criteria,ensure_ascii=False)),
           'NOTES':''.join('<li>'+E(x)+'</li>' for x in args.note+warnings),
-          # What a cut or a filter left out must be visible without opening anything.
           'SELECTION':''.join('<p class="notice"><b>'+E(x)+'</b></p>' for x in (selection_notes(args) if getattr(args,'select_info',None) else [])),
           'SOURCES':''.join(f'<li>{E(s["path"])} · {s["rows"]} source rows · SHA-256 <code>{s["sha256"]}</code></li>' for s in sources),
           'STATUS_OPTIONS':options('status'),'LEDGER_OPTIONS':options('ledger')}
@@ -352,7 +465,14 @@ def main():
         rows,sources,warnings=[],[],[]
         for path in paths:
             r,s,w=read_ledger(path);rows+=r;sources.append(s);warnings+=w
+        settings={}
+        for path in paths:
+            cfg=project_settings(path.parent)
+            for field in ('user_name','user_label','assistant_label'):
+                if getattr(args,field,None) is not None: cfg[field]=getattr(args,field)
+            settings[str(path.parent)]=cfg
         if args.annotations:annotate(rows,json.loads(args.annotations.read_text(encoding='utf-8')))
+        prepare_presentation(rows,settings)
         selected=select(rows,args)
         report=render(selected,sources,warnings,args,sum(r['blocker'] for r in rows))
         warnings=warnings+selection_notes(args)   # still reported to the caller on stdout

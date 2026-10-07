@@ -22,8 +22,22 @@ as it's ready and tells you where the file is saved.
 "Showing 10 of 16 matching rows" on Top 10, "Showing 5 of 7" on Quick wins. On longer views the
 table scrolls inside the page, so a preview shows the first rows only. The sample's illustrative
 P0 row demonstrates a ship blocker. Completed and withdrawn work stays in the source but is left
-out of these views. User-impact estimates are omitted because the sample doesn't record them.
+out of these views. The default view leaves user impact Unrated because the sample records no assessment.
 This is sample data, not a live release assessment.
+
+**What the new display demonstrates.** The default view includes who acts next and a concrete
+next action. Most assignments are visibly **Suggested**; one fictional assistant assignment
+and one fictional teammate, Alex, demonstrate explicit assignments. The user label is **You**,
+so this example never sets a name for your project. One item stays **Unassigned**.
+
+Try the action filters above the table. Verification remains owed on unfinished checks;
+reconciliation flags highlight conflicting evidence without changing the ledger's status.
+The summary cards stay fixed while the table is filtered. Expand S1 to see a fictional dated
+source check, separate from the report's generation date. A source check is not a device test.
+
+These presentation-only examples live in [report-annotations.json](report-annotations.json).
+All assignments, next steps, readiness assessments and check evidence in that file are
+fictional illustrations. They are not evidence that the sample app was checked or changed.
 
 ## Regenerating
 
@@ -38,9 +52,9 @@ The script uses the shared report generator and template and rewrites every page
 regenerate only that page). The sample ledger stays unchanged. Source paths are relative to the
 repository root, and each page records the source checksum and generation time.
 
-The previews are Quick Look renders of each page (macOS), taken from a temporary copy zoomed to
-a desktop-width layout, trimmed, and reduced to a 256-color palette. Refresh them after a
-visible change to the report.
+The previews are browser screenshots at a desktop viewport. Refresh all six PNG files after
+a visible change to the report. Check the default view at a narrow viewport as well: each row
+becomes a card with labeled fields.
 
 For your own ledger, ask Codex `$unforget report`, or use `/unforget report` in Claude Code
 (`/unforget:unforget report` for a plugin install). See the
