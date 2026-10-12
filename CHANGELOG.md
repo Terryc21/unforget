@@ -1,6 +1,6 @@
 # Changelog
 
-### Unreleased — actionable HTML reports
+### v2.11.0 — actionable HTML reports (2026-10-12) · minor
 
 - Default reports show ID, item, release target, status, user impact, who acts next, and next
   action. Expandable evidence includes dependencies, verification instructions, check dates
