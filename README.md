@@ -433,3 +433,7 @@ on a project unlike mine is worth more.
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-FFDD00?style=flat&logo=buy-me-a-coffee&logoColor=black)](https://www.buymeacoffee.com/stuffolio)
 
 Apache 2.0. See [LICENSE](LICENSE).
+
+## Privacy
+
+unforget collects no data of its own. It has no server, no accounts, no telemetry and no analytics, and it sends nothing to its author. It reads and edits the ledger files you create (UNFORGET.md and any child ledgers), their backups, and a small registry in the ledger folder, and it may read project notes and planning files you point it at. Its helper scripts use only the Python standard library and make no network requests. HTML reports are written as local files. Anything it saves stays on your own machine. What you ask it to read is processed by Claude in your own session, under your own Anthropic terms and settings. Anthropic's plugin directory may show the author aggregate install counts; those come from the directory, not from the plugin.
