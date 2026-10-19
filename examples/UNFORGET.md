@@ -173,4 +173,4 @@ Bugs noticed but not reproduced; friction observed.
 - v0.2 plan files in `~/.claude/plans/`
 - Audit reports in `.agents/research/`
 - Sentry dashboard for crash signal
-- Companion skills (verify a closure, generalize a fix, score ship-risk) resolve through the global companion manifest — see the repo's `reference/skill-handoffs.md`.
+- Companion skills (verify a closure, generalize a fix, score ship-risk) resolve through the global companion manifest — see the repo's `skills/unforget/reference/skill-handoffs.md`.

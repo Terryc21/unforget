@@ -78,7 +78,7 @@ from pathlib import Path
 # integrity check keeps pace with what the prose actually reads.
 REQUIRED_COMPANIONS = [
     "SKILL.md",
-    "CHANGELOG.md",
+    "CHANGELOG.md",   # package-level: resolved via package_root()
     "scripts/README.md",
     "scripts/verify_install.py",
     "scripts/display_prefs.py",
@@ -171,6 +171,20 @@ README_BADGE_RE = re.compile(r"img\.shields\.io/github/v/tag/[^\s)]*?[?&]v=([0-9
 README_MATURITY_RE = re.compile(r"\*\*Maturity:\*\*\s*v([0-9]+\.[0-9]+\.[0-9]+)")
 
 
+def package_root(skill_root: Path) -> Path:
+    """Directory holding the package-level files (manifests, CHANGELOG, README).
+
+    A plugin install lays the skill out as `<package>/skills/<name>/SKILL.md`, so
+    the manifests and changelog sit two levels above the skill root. A standalone
+    skill install (or a copy of just the skill dir) has no such parent and keeps
+    everything beside SKILL.md.
+    """
+    pkg = skill_root.resolve().parent.parent
+    if skill_root.resolve().parent.name == "skills" and (pkg / ".claude-plugin").is_dir():
+        return pkg
+    return skill_root
+
+
 def read_declared_versions(skill_root: Path) -> dict:
     """Every place a version is declared, keyed by source. Absent -> None.
 
@@ -180,7 +194,7 @@ def read_declared_versions(skill_root: Path) -> dict:
     """
     versions: dict[str, str | None] = {"skill_md": read_version(skill_root)}
 
-    manifest = skill_root / ".claude-plugin" / "plugin.json"
+    manifest = package_root(skill_root) / ".claude-plugin" / "plugin.json"
     manifest_version = None
     if manifest.exists():
         try:
@@ -190,7 +204,7 @@ def read_declared_versions(skill_root: Path) -> dict:
         except (ValueError, OSError):
             manifest_version = None  # unparseable == undeclared, never a crash
     versions["plugin_manifest"] = manifest_version
-    marketplace = skill_root / ".claude-plugin" / "marketplace.json"
+    marketplace = package_root(skill_root) / ".claude-plugin" / "marketplace.json"
     versions["marketplace_manifest"] = None
     if marketplace.exists():
         try:
@@ -201,7 +215,7 @@ def read_declared_versions(skill_root: Path) -> dict:
 
     # Root changelog, with legacy fallback for older package layouts. The
     # FIRST match is the current release.
-    skill_md = skill_root / "CHANGELOG.md"
+    skill_md = package_root(skill_root) / "CHANGELOG.md"
     if not skill_md.exists():
         skill_md = skill_root / "SKILL.md"
     changelog_version = None
@@ -212,7 +226,7 @@ def read_declared_versions(skill_root: Path) -> dict:
 
     # README: the shields.io badge cache-buster and the "Maturity:" bullet.
     # Both are optional -- a README without either simply casts no vote.
-    readme = skill_root / "README.md"
+    readme = package_root(skill_root) / "README.md"
     badge_version = maturity_version = None
     if readme.exists():
         readme_text = readme.read_text(encoding="utf-8", errors="replace")
@@ -253,7 +267,8 @@ def check_version_sync(skill_root: Path) -> tuple[bool, dict, str | None]:
 def check_integrity(skill_root: Path) -> tuple[list[str], list[str]]:
     present, missing = [], []
     for rel in REQUIRED_COMPANIONS:
-        (present if (skill_root / rel).is_file() else missing).append(rel)
+        base = package_root(skill_root) if rel == "CHANGELOG.md" else skill_root
+        (present if (base / rel).is_file() else missing).append(rel)
     return present, missing
 
 

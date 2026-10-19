@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT = Path(__file__).resolve().parents[1] / 'scripts' / 'companions.py'
+SCRIPT = Path(__file__).resolve().parents[1] / 'skills' / 'unforget' / 'scripts' / 'companions.py'
 sys.path.insert(0, str(SCRIPT.parent))
 import companions  # noqa: E402
 

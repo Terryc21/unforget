@@ -51,7 +51,7 @@
   "recall_checked": false,
   "recall_trigger_present": null,
   "recall_trigger_source": null,
-  "skill_root": "<REPO_ROOT>",
+  "skill_root": "<REPO_ROOT>/skills/unforget",
   "version": "2.11.0",
   "versions_in_sync": true
 }

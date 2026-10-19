@@ -202,7 +202,7 @@ See `reference/format.md § Anti-patterns` for why each is banned — that file 
 
 ## Release history
 
-See [CHANGELOG.md](CHANGELOG.md) for current and historical release notes.
+See [CHANGELOG.md](../../CHANGELOG.md) for current and historical release notes.
 
 ---
 

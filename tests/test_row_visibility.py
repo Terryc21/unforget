@@ -28,7 +28,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPTS = ROOT / "scripts"
+SCRIPTS = ROOT / "skills" / "unforget" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 import parse_status  # noqa: E402
 import verify_ledger  # noqa: E402

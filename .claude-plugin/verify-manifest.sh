@@ -8,14 +8,14 @@
 #   4. version agrees across SKILL.md, plugin.json, and marketplace.json
 #      (this drift is why the marketplace listing once fell 6 versions behind)
 #
-# Note: this plugin uses the flat single-skill layout (one SKILL.md at repo
-# root, no skills/ subdir). Claude Code supports this layout with no "skills"
-# field. Codex loads the same root SKILL.md as a standalone skill.
+# Note: this plugin uses the standard plugin layout: the one skill lives at
+# skills/unforget/SKILL.md, which Claude Code discovers with no "skills" field.
+# Codex can load the same directory as a standalone skill.
 #
 # Run manually or add as a pre-commit / CI check.
 #
 # Adapted from radar-suite's verify-manifest.sh, simplified for unforget's
-# flat single-skill layout.
+# single-skill plugin layout.
 
 set -e
 
@@ -23,7 +23,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 MANIFEST="$SCRIPT_DIR/plugin.json"
 MARKETPLACE="$SCRIPT_DIR/marketplace.json"
-SKILL_FILE="$REPO_ROOT/SKILL.md"
+SKILL_DIR="$REPO_ROOT/skills/unforget"
+SKILL_FILE="$SKILL_DIR/SKILL.md"
 
 if [ ! -f "$MANIFEST" ]; then
     echo "ERROR: plugin.json not found at $MANIFEST"
@@ -56,7 +57,7 @@ if [ "$SKILL_NAME" != "unforget" ]; then
 fi
 
 # 4. version agreement across the three sources (catches the marketplace-listing drift)
-SKILL_VER=$(python3 - "$REPO_ROOT" <<'PY'
+SKILL_VER=$(python3 - "$SKILL_DIR" <<'PY'
 import sys
 from pathlib import Path
 root = Path(sys.argv[1])

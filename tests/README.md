@@ -37,7 +37,7 @@ dependencies.
 | `scripts/check_format_version.py` | `golden/check_format_version.json` | Run against the fixture's `UNFORGET.md`. Confirms the v1 marker + four section headers. |
 | `scripts/encode_project_path.py` | `golden/encode_project_path.json` | Run against a fixed string (`/Volumes/2 TB Drive/Coding/GitHub/unforget-test`) so the golden does not depend on the runner's filesystem layout. Catches the T-8 rule directly. |
 | `scripts/dedup_findings.py` | `golden/dedup_findings.json` | Run against `fixtures/dedup-input.json`. Confirms the Jaccard fuzzy-merge clusters two near-duplicate headlines and keeps two distinct findings separate. |
-| `scripts/verify_install.py` | `golden/verify_install.json` | Run with `--skill-root <repo-root>` (integrity-only; no `--project-root`, so the recall check is deliberately skipped for a stable golden). Confirms all 10 companion files resolve from the repo root and `integrity_ok` is true. `skill_root` is normalized to `<REPO_ROOT>`. |
+| `scripts/verify_install.py` | `golden/verify_install.json` | Run with `--skill-root <repo-root>/skills/unforget` (integrity-only; no `--project-root`, so the recall check is deliberately skipped for a stable golden). Confirms all 10 companion files resolve from the repo root and `integrity_ok` is true. `skill_root` is normalized to `<REPO_ROOT>`. |
 
 ### Repo-invariant checks (pass/fail, not golden-diffed)
 

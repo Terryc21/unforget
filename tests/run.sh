@@ -25,7 +25,8 @@ REPO_ROOT="$(cd .. && pwd -P)"
 FIXTURE="$TESTS_DIR/fixtures/sample-project"
 GOLDEN="$TESTS_DIR/golden"
 NORMALIZE="$TESTS_DIR/normalize.py"
-SCRIPTS="$REPO_ROOT/scripts"
+SKILL_ROOT="$REPO_ROOT/skills/unforget"
+SCRIPTS="$SKILL_ROOT/scripts"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -74,7 +75,7 @@ run_diff scan_surfaces        --root "$FIXTURE" --include-comments --memory-root
 run_diff check_format_version "$FIXTURE/Documentation/Development/UNFORGET.md"
 run_diff encode_project_path  "/Volumes/2 TB Drive/Coding/GitHub/unforget-test"
 run_diff dedup_findings       --candidates "$TESTS_DIR/fixtures/dedup-input.json"
-run_diff verify_install       --skill-root "$REPO_ROOT"
+run_diff verify_install       --skill-root "$SKILL_ROOT"
 
 if [[ "$BLESS" == 1 ]]; then
   echo
@@ -110,7 +111,7 @@ import json, subprocess, sys
 from pathlib import Path
 root = Path(sys.argv[1])
 ex = root / "examples" / "UNFORGET.md"
-scripts = root / "scripts"
+scripts = root / "skills" / "unforget" / "scripts"
 ok = True
 
 # 1. format v2 recognized

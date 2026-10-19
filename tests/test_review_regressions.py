@@ -11,7 +11,8 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(os.environ.get('UNFORGET_TEST_ROOT', Path(__file__).resolve().parents[1]))
-sys.path.insert(0, str(ROOT / 'scripts'))
+SKILL_ROOT = ROOT / 'skills' / 'unforget'
+sys.path.insert(0, str(SKILL_ROOT / 'scripts'))
 import parse_status as ps
 import registry
 import recall_block as recall
@@ -29,7 +30,7 @@ def ledger(status='`@status:open`', finding='Issue', target='THIS'):
     return '<!-- unforget-format: v2 -->\n## 3. Audit findings\n\n' + HEADER + f'| A1 | {target} | {finding} | High | Sml | {status} | Low |\n'
 
 def cli(script, *args):
-    return subprocess.run([sys.executable, str(ROOT/'scripts'/script), *map(str,args)], capture_output=True, text=True)
+    return subprocess.run([sys.executable, str(SKILL_ROOT/'scripts'/script), *map(str,args)], capture_output=True, text=True)
 
 class Regressions(unittest.TestCase):
     def setUp(self):
@@ -227,17 +228,17 @@ class Regressions(unittest.TestCase):
             for policy in ['manual','none']:
                 self.seed_registry(recall_block=policy,recall_file=str(p));self.assertTrue(import_drift.run(self.root,str(p))['clean'])
     def test_F7_required_runtime_files(self):
-        dst=self.root/'package';shutil.copytree(ROOT,dst,ignore=shutil.ignore_patterns('.git','__pycache__'))
+        pkg=self.root/'package';shutil.copytree(ROOT,pkg,ignore=shutil.ignore_patterns('.git','__pycache__'));dst=pkg/'skills'/'unforget'
         for filename in ['scripts/display_prefs.py','scripts/managed_block.py','scripts/recipe.py','scripts/parse_status.py']:
             p=dst/filename;original=p.read_bytes() if p.exists() else None
             if p.exists():p.unlink()
             out=cli('verify_install.py','--skill-root',dst);data=json.loads(out.stdout)
             self.assertNotEqual(out.returncode,0);self.assertFalse(data['integrity_ok']);self.assertIn(filename,data['companion_files_missing'])
             if original:p.write_bytes(original)
-        self.assertEqual(cli('verify_install.py','--skill-root',ROOT).returncode,0)
+        self.assertEqual(cli('verify_install.py','--skill-root',SKILL_ROOT).returncode,0)
     def test_F15_history_moved_version_sync(self):
-        text=(ROOT/'SKILL.md').read_text();self.assertNotIn('### v2.9.0',text);self.assertIn('CHANGELOG.md',text)
-        versions=verify_install.read_declared_versions(ROOT);self.assertEqual(versions['changelog'],'2.11.0');self.assertEqual(set(v for v in versions.values() if v),{'2.11.0'})
+        text=(SKILL_ROOT/'SKILL.md').read_text();self.assertNotIn('### v2.9.0',text);self.assertIn('CHANGELOG.md',text)
+        versions=verify_install.read_declared_versions(SKILL_ROOT);self.assertEqual(versions['changelog'],'2.11.0');self.assertEqual(set(v for v in versions.values() if v),{'2.11.0'})
 
     def test_F2_standard_lean_compact_optional_columns(self):
         layouts=[['#','Target','Finding','Urgency','Risk: Fix','Risk: No Fix','ROI','Blast Radius','Fix Effort','Status'],['#','Target','Finding','Urgency','Effort','Status'],['#','Finding','Urgency','Risk: Fix','Risk: No Fix','ROI','Blast Radius','Fix Effort','Status']]
@@ -307,7 +308,7 @@ class Regressions(unittest.TestCase):
 
     def test_F13_install_diagnostic_routes_existing_ledger_to_import(self):
         self.write('UNFORGET.md',ledger())
-        out=cli('verify_install.py','--skill-root',ROOT,'--project-root',self.root)
+        out=cli('verify_install.py','--skill-root',SKILL_ROOT,'--project-root',self.root)
         advisory=json.loads(out.stdout)['advisory']
         self.assertIn('/unforget import',advisory)
         self.assertNotIn('run /unforget init',advisory)

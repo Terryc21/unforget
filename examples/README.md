@@ -58,4 +58,4 @@ becomes a card with labeled fields.
 
 For your own ledger, ask Codex `$unforget report`, or use `/unforget report` in Claude Code
 (`/unforget:unforget report` for a plugin install). See the
-[report options](../reference/html-report.md) for custom scopes and rankings.
+[report options](../skills/unforget/reference/html-report.md) for custom scopes and rankings.

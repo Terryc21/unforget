@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SCRIPT=Path(__file__).resolve().parents[1]/'scripts/html_report.py'
+SCRIPT=Path(__file__).resolve().parents[1]/'skills/unforget/scripts/html_report.py'
 spec=importlib.util.spec_from_file_location('html_report',SCRIPT)
 h=importlib.util.module_from_spec(spec);spec.loader.exec_module(h)
 HEADER='<!-- unforget-format: v2 -->\n## Audit\n| # | Target | Finding | Urgency | Status |\n|---|---|---|---|---|\n'

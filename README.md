@@ -14,7 +14,7 @@ unforget puts them in one file, sorted by whether they block your next release. 
 to look at that file, it shows you the slice you care about: the ten most urgent things, the
 quick wins, or only what stands between you and shipping.
 
-*5 min read · [every command](reference/commands.md) · [the format](reference/format.md) · [reports](reference/html-report.md)*
+*5 min read · [every command](skills/unforget/reference/commands.md) · [the format](skills/unforget/reference/format.md) · [reports](skills/unforget/reference/html-report.md)*
 
 ---
 
@@ -81,7 +81,7 @@ Use **Needs me**, **Ready to work on**, **Awaiting verification**, or **Needs re
 to focus the table. Summary counts remain visible while you filter. Expand an item for its
 source, ratings, dependencies and verification instructions. **Last checked** appears only
 when an actual check and its evidence are recorded; generating a report does not verify work.
-See [report settings and assignment rules](reference/html-report.md#project-aware-identity)
+See [report settings and assignment rules](skills/unforget/reference/html-report.md#project-aware-identity)
 for details.
 
 Ask in plain words. These are the ready-made views and what to type for each:
@@ -145,7 +145,7 @@ scale, and new rows should still use the standard words, so the file stays reada
 who knows the format.
 
 Prefer exact options? `--limit`, `--effort`, `--roi` and the rest are in the
-[report reference](reference/html-report.md).
+[report reference](skills/unforget/reference/html-report.md).
 
 **Coming next:** offering these views at the moments you'd want them, such as before a release
 or after a session changed your list, instead of waiting to be asked. The plan is in
@@ -158,21 +158,27 @@ or after a session changed your list, instead of waiting to be asked. The plan i
 Version 2.11.0 uses **one shared skill**, including the same report generator. Choose
 one installation method per host. Python 3.9 or later runs the bundled helpers.
 
+The skill itself lives in `skills/unforget/` (its `SKILL.md`, `scripts/`, `reference/` and
+`assets/`), the layout Claude Code plugins expect. The repository root holds the plugin
+manifest, documentation, examples and tests. A skills folder must point at
+`skills/unforget`, not at the repository root.
+
 ### Codex
 
 In Codex, ask:
 
-> $skill-installer Install the unforget skill from https://github.com/Terryc21/unforget (repository root).
+> $skill-installer Install the unforget skill from https://github.com/Terryc21/unforget (path `skills/unforget`).
 
-Or clone it into the personal skills folder:
+Or clone the repository and link its skill folder into the personal skills folder:
 
 ```bash
-mkdir -p "$HOME/.agents/skills"
-git clone https://github.com/Terryc21/unforget.git "$HOME/.agents/skills/unforget"
+mkdir -p "$HOME/.local/share" "$HOME/.agents/skills"
+git clone https://github.com/Terryc21/unforget.git "$HOME/.local/share/unforget"
+ln -s "$HOME/.local/share/unforget/skills/unforget" "$HOME/.agents/skills/unforget"
 ```
 
 Then use `$unforget init` in your project. Restart Codex if the new skill does not
-appear. Update a manual clone with `git pull --ff-only` inside that clone.
+appear. Update with `git -C "$HOME/.local/share/unforget" pull --ff-only`.
 
 ### Claude Code
 
@@ -192,14 +198,21 @@ plugin update flow for marketplace installs.
 
 ### Use both tools from one checkout (macOS / Linux)
 
-For a new installation, clone once and link the same directory into both tools:
+For a new installation, clone once and link the same skill folder into both tools:
 
 ```bash
 mkdir -p "$HOME/.local/share" "$HOME/.agents/skills" "$HOME/.claude/skills"
 git clone https://github.com/Terryc21/unforget.git "$HOME/.local/share/unforget"
-ln -s "$HOME/.local/share/unforget" "$HOME/.agents/skills/unforget"
-ln -s "$HOME/.local/share/unforget" "$HOME/.claude/skills/unforget"
+ln -s "$HOME/.local/share/unforget/skills/unforget" "$HOME/.agents/skills/unforget"
+ln -s "$HOME/.local/share/unforget/skills/unforget" "$HOME/.claude/skills/unforget"
 ```
+
+**Upgrading a link made before this layout:** an older link points at the repository root,
+which no longer holds `SKILL.md`. After pulling, re-point it at the skill folder, for example
+`ln -sfn "$HOME/.local/share/unforget/skills/unforget" "$HOME/.claude/skills/unforget"`
+(and the same for `.agents`). `-n` replaces the link itself rather than writing inside it.
+Scripts are now run from `skills/unforget/scripts/`; update any hook or command that called
+them at the old `scripts/` path.
 
 These commands assume neither destination exists. For an existing installation,
 first preserve any customizations and replace only the chosen unforget install;
@@ -262,7 +275,7 @@ Getting ready to ship:
 That's your blocking list. Fix them, then `/unforget promote` checks they're really done and
 rolls everything forward.
 
-**[All the commands →](reference/commands.md)**
+**[All the commands →](skills/unforget/reference/commands.md)**
 
 ---
 
@@ -367,16 +380,16 @@ table survived, because a misplaced `|` breaks a table quietly.
 
 | | |
 |---|---|
-| **[Every command](reference/commands.md)** | Full detail on each one |
-| **[The format](reference/format.md)** | Columns, statuses, and the optional 1-star-risk column |
-| **[Reports](reference/html-report.md)** | Views, filters, row limits, and reading other rating words |
-| **[Setup](reference/init.md)** | What `init` does, step by step |
-| **[Settings](reference/registry.md)** | The settings table in your ledger folder's README |
-| **[Release ritual](reference/promotion.md)** | What `promote` checks before letting you ship |
-| **[Splitting the file](reference/branching.md)** | When a sprint or someone else's list earns its own |
+| **[Every command](skills/unforget/reference/commands.md)** | Full detail on each one |
+| **[The format](skills/unforget/reference/format.md)** | Columns, statuses, and the optional 1-star-risk column |
+| **[Reports](skills/unforget/reference/html-report.md)** | Views, filters, row limits, and reading other rating words |
+| **[Setup](skills/unforget/reference/init.md)** | What `init` does, step by step |
+| **[Settings](skills/unforget/reference/registry.md)** | The settings table in your ledger folder's README |
+| **[Release ritual](skills/unforget/reference/promotion.md)** | What `promote` checks before letting you ship |
+| **[Splitting the file](skills/unforget/reference/branching.md)** | When a sprint or someone else's list earns its own |
 | **[Recovery](docs/RECOVERY.md)** | Repairing a broken file |
 | **[CHANGELOG.md](CHANGELOG.md)** | Current and historical release notes |
-| **[SKILL.md](SKILL.md)** | Shared Codex / Claude Code skill instructions |
+| **[SKILL.md](skills/unforget/SKILL.md)** | Shared Codex / Claude Code skill instructions |
 
 **Reading the file outside Claude.** Ten columns is wide. GitHub and GitLab render it fine, as do
 VS Code's preview, Obsidian, Typora, Bear, MacDown, iA Writer, and Marked 2. If a table looks
