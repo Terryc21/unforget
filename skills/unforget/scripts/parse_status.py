@@ -150,6 +150,18 @@ ROW_ID_PATTERN = r"(?:[A-Za-z]{1,8}-?)?\d+[A-Za-z]?(?:-[A-Za-z]{1,3}\d+[A-Za-z]?
 ROW_ID_RE = re.compile(rf"^\|\s*\*{{0,2}}({ROW_ID_PATTERN})\*{{0,2}}\s*\|")
 
 
+# A `|` escaped as `\|` is cell text, not a column break (GitHub-flavored
+# markdown, inside or outside backticks). Every ledger-row splitter uses this
+# one pattern; html_report.py already did, so verify and the HTML report once
+# counted different cells for the same row (fixed 2026-11-18).
+CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
+
+
+def split_row(row: str) -> list[str]:
+    """Split a table row on its unescaped pipes, keeping each piece's text as-is."""
+    return CELL_SPLIT_RE.split(row)
+
+
 def status_cell(row: str) -> str:
     """Return the Status cell of a table row.
 
@@ -173,7 +185,7 @@ def status_cell(row: str) -> str:
     in every layout the format allows — including with 1-Star Risk appended,
     since that column carries no token.
     """
-    cells = [c.strip() for c in row.rstrip().rstrip("|").split("|")]
+    cells = [c.strip() for c in split_row(row.rstrip().rstrip("|"))]
     if not cells:
         return ""
     for cell in reversed(cells):
@@ -196,7 +208,7 @@ TARGET_BADGE_RE = re.compile(r"^\**\s*(🔴 THIS|🔵 NEXT|🟡 LATER|⚪ SOMEDA
 
 def data_cells(row: str) -> list[str]:
     """The table columns of a data row (leading/trailing empty splits removed)."""
-    return [c.strip() for c in row.strip().strip("|").split("|")]
+    return [c.strip() for c in split_row(row.strip().strip("|"))]
 
 
 def finding_cell(row: str) -> str:

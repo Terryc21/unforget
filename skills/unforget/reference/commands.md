@@ -1126,7 +1126,7 @@ On a v1 (tokenless) ledger, `verify` emits only warnings (bloat, stale-recipe, o
 
 ## /unforget archive
 
-Move completed rows out of the active tables into a dated archive file. **Lightweight and safe to run anytime** — this is the everyday cleanup command, distinct from the heavyweight release-time `/unforget promote` ritual (see `reference/promotion.md`). `promote` re-triages the whole release cycle (verify THIS, roll NEXT→THIS, re-rank SOMEDAY, stamp the release line); `archive` does only the one job of clearing finished work out of view.
+Move completed rows out of the active tables into the ledger's archive file (§ The archive file, below). **Lightweight and safe to run anytime** — this is the everyday cleanup command, distinct from the heavyweight release-time `/unforget promote` ritual (see `reference/promotion.md`). `promote` re-triages the whole release cycle (verify THIS, roll NEXT→THIS, re-rank SOMEDAY, stamp the release line); `archive` does only the one job of clearing finished work out of view.
 
 ### Why this exists
 
@@ -1160,10 +1160,20 @@ Archiving a row that still owes work hides real remaining work — the exact fai
 3. **Preview** — show the two lists (IDs + one-line title) and counts: "Archive N clean-Done rows; keep M Done-but-owed rows active." On `--dry-run`, stop here and write nothing.
 4. **Confirm** with the user (single AskUserQuestion: proceed / show-full-rows / cancel).
 5. **Back up first** — copy UNFORGET.md to a temp path before editing, so a mis-classification is recoverable.
-6. **Write:** move the archived rows to `UNFORGET-archive.md` in the same directory as UNFORGET.md (create with a header if absent; append a dated `## Archived <date>` block if it exists). Remove those rows from the active tables. Preserve table structure — section headers and separator rows stay intact.
+6. **Write:** move the archived rows to the ledger's archive file (§ The archive file), in a new dated block. Remove those rows from the active tables. Preserve table structure — section headers and separator rows stay intact.
 7. **Report** the before/after active row count and the archive-file path.
 
 `archive` modifies UNFORGET.md, so (like `promote`) it always previews before writing. Unlike `promote`, it does not touch Target values, re-rank anything, or stamp release metadata — it only relocates finished rows. The archive file is never scanned by `init`/`import` (it lives under the archive-path exclusion rule in `reference/surfaces.md`), so archived rows do not re-enter the active backlog.
+
+### The archive file
+
+Every command that moves rows out of a ledger (`archive`, `promote`, and `init` when it imports already-resolved items) writes to the **same file**, so a ledger's history lives in one place. This section is the only definition; the other references point here.
+
+- **Name and place:** the ledger's own name with `-archive` added, in the same directory. `UNFORGET.md` archives to `UNFORGET-archive.md`; a child ledger `SITE-UNFORGET.md` archives to `SITE-UNFORGET-archive.md`. Each ledger has exactly one.
+- **Created on first use**, with a short header: `# <ledger name> archive` and a line saying the rows are finished work kept for history, not action.
+- **One dated block per run, appended at the end:** `## Archived YYYY-MM-DD (<command>)`, for example `## Archived 2026-11-18 (promote)`. Rows keep their exact text, including the `@status` token. Earlier blocks are never rewritten.
+- **Never read as active work.** Its `-archive` name puts it outside `init`/`import` (the archive rule in `reference/surfaces.md`) and outside the ledger-discovery check (`scripts/import_drift.py`), so archived rows do not come back into the backlog.
+- **Older archive files stay where they are.** A ledger set up by an earlier version may also have dated files such as `UNFORGET-archive-2026-05-02.md` or an `archive/` folder. They are left untouched and remain valid history; new runs append to the single file above.
 
 ### The archive nudge (surfaced by `list` and `add`)
 

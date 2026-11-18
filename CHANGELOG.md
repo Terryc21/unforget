@@ -1,5 +1,29 @@
 # Changelog
 
+### v2.12.2: one archive file per ledger, and escaped pipes (2026-11-18) · patch
+
+- An escaped pipe (`\|`) inside a table cell no longer splits the row. `verify`'s cell-count
+  error told authors to escape a stray `|`, but `parse_status.data_cells` split on `\|`
+  anyway, so an escaped row kept failing (found on a real ledger). The HTML report already
+  honored the escape, so the two disagreed. All row splitters now share
+  `parse_status.split_row`, which follows GitHub-flavored Markdown (GFM spec, Tables,
+  Example 200). `reference/verify.md` used to advise against escaping, saying renderers split
+  on `\|`; it now says to escape, and the error message says the same.
+- `row_budget.py split` keeps an escaped pipe inside its cell and stays lossless.
+- Tests: an escaped pipe inside and outside backticks adds no cell, `verify` and the HTML
+  report split the same row identically, an unescaped pipe is still caught, and a split
+  keeps the escape.
+
+- `init`, `archive` and `promote` named three different places for archived rows: an
+  `archive/` subfolder, a dated `UNFORGET-archive-<date>.md`, and `UNFORGET-archive.md`.
+  Now every command writes to one file beside the ledger, named after it
+  (`UNFORGET-archive.md`; `SITE-UNFORGET-archive.md` for a child ledger), one dated
+  `## Archived YYYY-MM-DD (<command>)` block per run. The definition lives only in
+  `reference/commands.md` § The archive file; `init.md` and `promotion.md` point to it.
+- Older dated archive files and `archive/` folders from earlier versions are left untouched.
+- New test `tests/test_archive_file.py` keeps the definition in one place, rejects a second
+  destination in the docs, and checks that archive files never count as active ledgers.
+
 ### v2.12.1: the release check can no longer miss a row (2026-11-18) · patch
 
 - Fixes a release check that could report "ready to ship" over a blocker. `verify`,

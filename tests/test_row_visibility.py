@@ -68,7 +68,7 @@ LEDGER = """# t
 | # | Target | Finding | Urgency | Risk: Fix | Risk: No Fix | ROI | Blast Radius | Fix Effort | Status |
 |---|---|---|---|---|---|---|---|---|---|
 | A1 | SOMEDAY | clean row | LOW | Low | Low | Good | 1 file | Small | `@status:open` |
-| A2 | SOMEDAY | broken by grep 'a\\|b' | LOW | Low | Low | Good | 1 file | Small | `@status:open` |
+| A2 | SOMEDAY | broken by grep 'a|b' | LOW | Low | Low | Good | 1 file | Small | `@status:open` |
 | A3a | SOMEDAY | suffixed id, clean | LOW | Low | Low | Good | 1 file | Small | `@status:open` |
 
 | # | Finding | Phase | Model | Status |
@@ -287,6 +287,31 @@ with tempfile.TemporaryDirectory() as _d:
     _rows, _src, _warn = html_report.read_ledger(_p)
 check("the HTML report warns about a row it could not read",
       any("'X.12' was not read" in w for w in _warn), True)
+
+# --- an escaped pipe is cell text, not a column break (2026-11-18) ---------
+# verify told authors to escape a stray '|', but data_cells split on '\|' anyway,
+# so an escaped row still reported a cell-count error (found on Stuffolio's
+# A135b-P2). html_report.py already honored the escape, so the two disagreed.
+print("\nescaped pipes:")
+import row_budget  # noqa: E402
+
+ESCAPED = ("| E1 | NEXT | key is `<itemID>\\|<taskName>` and a\\|b outside code | HIGH | Low "
+           "| High | Good | 1 file | Small | `@status:open` · open |")
+check("an escaped pipe does not add a cell (inside and outside backticks)",
+      len(parse_status.data_cells(ESCAPED)), 10)
+check("verify reports no cell-count error for an escaped row",
+      any(f["check"] == "cell-count" for f in _checks(ESCAPED)), False)
+check("the status cell is still found", parse_status.status_cell(ESCAPED).startswith("`@status:open`"), True)
+check("verify and the HTML report split the row the same way",
+      parse_status.data_cells(ESCAPED), html_report.cells(ESCAPED))
+UNESCAPED = ESCAPED.replace("\\|", "|")
+check("an unescaped pipe is still caught",
+      any(f["check"] == "cell-count" for f in _checks(UNESCAPED)), True)
+LONG_ESC = ("| E2 | NEXT | " + "long finding with a\\|b pipe " * 20 + "| HIGH | Low | High | Good "
+            "| 1 file | Small | `@status:open` · open |")
+_plan = row_budget.split_row(HDR + LONG_ESC + "\n", "E2", 400, "short headline")
+check("a row split keeps the escaped pipe and stays lossless",
+      bool(_plan.get("lossless")) and "a\\|b" in _plan.get("detail_bullet", ""), True)
 
 PROSE = "| Step two | the build runs | done |"
 check("a prose table row is not reported as unidentified",

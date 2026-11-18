@@ -40,7 +40,7 @@ E = html.escape
 
 
 def cells(line):
-    return [c.strip() for c in re.split(r'(?<!\\)\|', line.strip().strip('|'))]
+    return [c.strip() for c in parse_status.split_row(line.strip().strip('|'))]  # shared escape-aware splitter
 
 
 def plain(text):

@@ -261,6 +261,11 @@ if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_set_aside.py; then
   FAILED=1
 fi
 
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_archive_file.py; then
+  echo "FAIL: archive destination drifted (one archive file per ledger)"
+  FAILED=1
+fi
+
 if [[ "$FAILED" == 1 ]]; then
   echo
   echo "One or more tests failed."

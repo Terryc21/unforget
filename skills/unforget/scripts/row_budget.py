@@ -77,7 +77,7 @@ DETAIL_HEADER_RE = re.compile(r"^###\s+Detail\b", re.IGNORECASE)
 
 
 def cells_of(row: str) -> list[str]:
-    return [c.strip() for c in row.strip().strip("|").split("|")]
+    return [c.strip() for c in parse_status.split_row(row.strip().strip("|"))]
 
 
 def finding_cell(row: str) -> str:
@@ -183,7 +183,7 @@ def build_index_row(orig_row: str, rid: str, headline: str, headers=None) -> str
     detail block. We only trim the Status narration, never the token.
     """
     # Split the row into leading '', cells..., trailing ''.
-    parts = orig_row.rstrip("\n").split("|")
+    parts = parse_status.split_row(orig_row.rstrip("\n"))  # an escaped \| stays inside its cell
     # parts[0] is '' (leading pipe), parts[-1] is '' (trailing pipe).
     if len(parts) < 5:
         return orig_row  # not a well-formed row; leave untouched

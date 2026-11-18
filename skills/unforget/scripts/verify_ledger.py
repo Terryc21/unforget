@@ -239,9 +239,10 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None,
         rid = parsed["id"] or "?"
 
         # Check 10 (U5): cell count != the enclosing table's declared width.
-        # Root cause is almost always an unescaped `|` inside cell prose — a
-        # `grep -c 'a\|b'` recipe, a regex alternation, a table drawn in a
-        # detail note. The damage is silent: every positional column read
+        # Root cause is almost always an unescaped `|` inside cell prose: a
+        # `grep -c 'a|b'` recipe, a regex alternation, a table drawn in a
+        # detail note. An escaped `\|` is cell text (GFM spec, Example 200) and
+        # does not count; parse_status.split_row honors it. The damage is silent: every positional column read
         # (Target, Urgency, Status) shifts by one, so a status token can land
         # in a rating cell and a ship-blocker can be misread as a rating.
         # Error severity: it corrupts data the other checks depend on.
@@ -254,8 +255,9 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None,
                     "id": rid,
                     "message": (
                         f"row has {actual} cells; the table declares {declared}. "
-                        "Almost always an unescaped '|' in cell prose — every column "
-                        "read past that point is shifted."
+                        "Almost always an unescaped '|' in cell prose, so every column "
+                        "read past that point is shifted. Escape it as \\| (it still "
+                        "renders as | on GitHub) or reword it."
                     ),
                 })
 

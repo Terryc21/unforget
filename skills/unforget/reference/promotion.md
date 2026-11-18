@@ -2,7 +2,7 @@
 
 This file holds the release-time promote ritual, the post-fix-sweep workflow that closure recommendations point at, and the backup/recovery contract. Read it on `/unforget promote`, when discussing closure recommendations, or when recovering a broken UNFORGET.md.
 
-**`promote` vs `archive`:** `/unforget promote` is the heavyweight release ritual documented below (verify 🔴 THIS, roll 🔵 NEXT → 🔴 THIS, re-rank ⚪ SOMEDAY, stamp the release line). If all you want is to clear completed rows out of the active view *between* releases, use the lightweight `/unforget archive` instead (spec in `reference/commands.md`) — it relocates finished rows without any release-cycle re-triage. Route day-to-day cleanup through `archive`; reserve `promote` for the release boundary. (`promote` still archives completed 🔴 THIS/🔵 NEXT rows as part of its ritual — the two share the same archive file and the same "don't archive Done-but-owed rows" safety rule.)
+**`promote` vs `archive`:** `/unforget promote` is the heavyweight release ritual documented below (verify 🔴 THIS, roll 🔵 NEXT → 🔴 THIS, re-rank ⚪ SOMEDAY, stamp the release line). If all you want is to clear completed rows out of the active view *between* releases, use the lightweight `/unforget archive` instead (spec in `reference/commands.md`) — it relocates finished rows without any release-cycle re-triage. Route day-to-day cleanup through `archive`; reserve `promote` for the release boundary. (`promote` still archives completed 🔴 THIS/🔵 NEXT rows as part of its ritual. The two write to the same file, the ledger's `<name>-archive.md` beside it, defined in `reference/commands.md` § The archive file, and share the same "don't archive Done-but-owed rows" safety rule.)
 
 ---
 
@@ -78,6 +78,8 @@ Release-time ritual. Run at every release submission.
 4. **Re-rank `⚪ SOMEDAY`** items 180 days or older: prompt user for promote / demote / archive.
 5. **Stamp** the "Last promoted" line at the top of UNFORGET.md with new build/version + date.
 6. **Ship-risk handoff (format v2+, optional).** A 🔴 THIS row nearing release is the earned transition for the `ship-risk-scoring` companion function (default: one-star-risk — score what a shaky release risks). Resolve it against what's invocable — `python3 scripts/companions.py resolve --function ship-risk-scoring --invocable "<names>"` — and say the resolver's one-line expression. Governance per `reference/skill-handoffs.md` §5: advisory, once/session, never blocking, and never a way to defer the actual release check. Full mechanic in `reference/skill-handoffs.md`.
+
+Every row `promote` archives (completed rows in step 1, LATER rows no longer relevant in step 3, SOMEDAY rows the user chooses to archive in step 4) goes to the ledger's archive file in one `## Archived <date> (promote)` block. See `reference/commands.md` § The archive file.
 
 This command DOES modify UNFORGET.md (unlike `/unforget scan`), so the user is shown a preview of every change before it's applied.
 

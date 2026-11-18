@@ -80,8 +80,8 @@ its own answer instead of borrowing the archive gate's.*
 ## The `cell-count` check (§4d)
 
 A ledger row must have exactly as many cells as its table's header declares. When it
-does not, the cause is almost always an unescaped `|` inside cell prose — a
-`grep -c 'a\|b'` verify recipe, a regex alternation, a nested table in a detail note.
+does not, the cause is almost always an unescaped `|` inside cell prose: a
+`grep -c 'a|b'` verify recipe, a regex alternation, a nested table in a detail note.
 
 The damage is silent and total: every positional column read past the stray pipe shifts
 by one, so a Status token can land in a rating cell, a Target badge can be read as a
@@ -92,9 +92,12 @@ The declared width is read from the nearest preceding header row, so a ledger ho
 several tables of different widths (a 10-column Standard section beside a 5-column sprint
 table) is handled correctly — the width is per-table, never a global constant.
 
-**Writing a recipe that contains a pipe:** do not backslash-escape it. `\|` is itself
-what Markdown splits on in most renderers. Phrase it as prose ("grep for BOTH terms") or
-use `grep -E` with the alternation described rather than literal.
+**Writing a pipe inside a cell:** escape it as `\|`. GitHub-flavored Markdown treats an
+escaped pipe as cell text, inside or outside backticks (GFM spec, Tables, Example 200), and
+renders it as `|`. Every unforget helper splits rows the same way (`split_row` in
+`scripts/parse_status.py`), so `verify` and the HTML report agree. A verify recipe that needs
+a regex alternation can keep `\|` in the file; the recipe runner reads the raw text, while
+GitHub shows the command with a plain `|`. Rewording ("grep for BOTH terms") also works.
 
 ## Char-budget severity escalation (§4e)
 

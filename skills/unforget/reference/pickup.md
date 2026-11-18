@@ -223,7 +223,7 @@ also shows up in `verify` as `set-aside-likelihood`, which puts it in front of t
 ### Not yet
 
 Retiring long-set-aside rows out of the active ledger (planned through `promote`'s existing
-SOMEDAY review, only on the user's yes) and a scripted sweep that detects new evidence are
+SOMEDAY review, only on the user's yes, into the ledger's one archive file) and a scripted sweep that detects new evidence are
 planned for a later release. Until then, set-aside rows stay in the active file.
 
 **Algorithm fallback** (Python unavailable): a candidate is an open or blocked row whose
