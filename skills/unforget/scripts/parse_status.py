@@ -131,12 +131,23 @@ VERIFIED_RE = re.compile(r"@verified:\s*([a-z-]+)")
 #   A48a, A48b  — a finding split into sub-rows by a letter suffix
 #   MI-08       — a hyphenated prefix used by a scoped sibling ledger
 #   **S12**     — an id wrapped in bold
+#   A135b-P2c   — a sub-item of a row, with its own sub-id (found 2026-11-18:
+#                 three such rows, one owing verification, were invisible)
 # Missing A48a/A48b hid two 🔴 THIS ship-blockers from the gate (2026-07-31).
-# Grammar: optional bold, an OPTIONAL 1-3 letter prefix (with optional hyphen),
-# digits, optional letter suffix. The prefix stays optional so bare-numeric ids
-# (`| 1 |`, used by the roadmap rating tables) keep matching as they did before.
+# Grammar: optional bold, an OPTIONAL 1-8 letter prefix (with optional hyphen),
+# digits, optional letter suffix of either case, and an optional sub-id
+# (`-P2`, `-P2b`: a hyphen, 1-3 letters, digits, optional letter). The prefix stays optional so
+# bare-numeric ids (`| 1 |`, used by the roadmap rating tables) keep matching.
 # Header (`| # |`) and separator (`|---|`) rows still fail to match.
-ROW_ID_RE = re.compile(r"^\|\s*\*{0,2}((?:[A-Za-z]{1,3}-?)?\d+[a-z]?)\*{0,2}\s*\|")
+#
+# ROW_ID_PATTERN is the ONE id grammar. recipe.py and html_report.py import it
+# rather than keeping their own: three diverging copies once let a `QARE-12`
+# THIS row be invisible to verify (ship_ready true) while the HTML report counted
+# it as a blocker (fixed 2026-11-18). verify_ledger.py also reports any
+# ledger-shaped row this grammar still cannot identify, so a new id shape fails
+# loudly instead of disappearing.
+ROW_ID_PATTERN = r"(?:[A-Za-z]{1,8}-?)?\d+[A-Za-z]?(?:-[A-Za-z]{1,3}\d+[A-Za-z]?)?"
+ROW_ID_RE = re.compile(rf"^\|\s*\*{{0,2}}({ROW_ID_PATTERN})\*{{0,2}}\s*\|")
 
 
 def status_cell(row: str) -> str:

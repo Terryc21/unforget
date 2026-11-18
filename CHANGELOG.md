@@ -1,5 +1,20 @@
 # Changelog
 
+### v2.12.1: the release check can no longer miss a row (2026-11-18) · patch
+
+- Fixes a release check that could report "ready to ship" over a blocker. `verify`,
+  `recipe.py` and the HTML report each kept their own pattern for reading row IDs. A row
+  named `QARE-12` targeted THIS was skipped by `verify` (`ship_ready: true`) while the
+  report counted it as a blocker. There is now one ID pattern (`ROW_ID_PATTERN` in
+  `parse_status.py`) that every helper imports. It also accepts uppercase letter suffixes,
+  longer prefixes and sub-IDs such as `A135b-P2c`, a shape found in real use whose rows
+  were invisible to every check.
+- `verify` adds an `unidentified-row` error for any ledger-shaped row whose ID still can't
+  be read, and counts it as a release blocker when it is an unfinished THIS row. The HTML
+  report warns instead of silently dropping such a row.
+- Tests check that all three readers agree on 16 sample IDs, that a `QARE-12` THIS row
+  blocks release, and that an unreadable THIS row still does.
+
 ### v2.12.0: surface, don't start (2026-11-18) · minor
 
 - New governing rule (`reference/pickup.md`, summarized in SKILL.md): a session may read a

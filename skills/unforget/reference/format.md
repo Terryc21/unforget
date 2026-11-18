@@ -23,7 +23,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a **1
 
 | Column | Meaning |
 |---|---|
-| **#** | Stable ID (P1, S2, A3, U4). Never reuse. |
+| **#** | Stable ID (P1, S2, A3, U4). Never reuse. Format: optional letters (up to 8) and an optional hyphen, then digits, then an optional letter, then an optional sub-ID such as `-P2`. So `A12`, `A48b`, `MI-08`, `QARE-12` and `A135b-P2c` all work; `X.12` does not. Every helper reads IDs with one shared pattern (`ROW_ID_PATTERN` in `scripts/parse_status.py`), and `verify` reports any ledger row whose ID it can't read. |
 | **Target** | Release-cycle commitment (see "Target values" below) |
 | **Finding** | One-clause description. Multi-line OK. |
 | **Urgency** | 🔴 CRITICAL / 🟡 HIGH / 🟢 MEDIUM / ⚪ LOW |

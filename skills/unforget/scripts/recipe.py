@@ -56,6 +56,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import parse_status  # noqa: E402  (the shared row-id grammar)
+
 # --- grammar ---------------------------------------------------------------
 
 # The command, then the assertion. Both the em-dash and ASCII arrow forms are
@@ -70,7 +73,7 @@ RECIPE_RE = re.compile(
     re.IGNORECASE,
 )
 
-ROW_ID_RE = re.compile(r"^\|\s*\*{0,2}([A-Za-z]{0,3}-?\d+[a-z]?)\*{0,2}\s*\|")
+ROW_ID_RE = parse_status.ROW_ID_RE  # the one shared id grammar
 
 # Only count searches: grep/rg -c [-i] [-F|-E] [-e] PATTERN [--] FILE...
 # No shell, recursive search, preprocessors, config, or executable wrappers.

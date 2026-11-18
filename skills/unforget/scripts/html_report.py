@@ -35,7 +35,7 @@ ROI = {'excellent': 0, 'good': 1, 'fair': 2, 'marginal': 3, 'poor': 4, 'unrated'
 ROI_WORDS = {'excel': 'excellent', 'excellent': 'excellent', 'good': 'good', 'fair': 'fair',
              'marginal': 'marginal', 'poor': 'poor'}
 DELIMITER = re.compile(r'^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$')
-ID = re.compile(r'(?:[A-Za-z]+-?)?\d+[a-z]?$', re.I)
+ID = re.compile(parse_status.ROW_ID_PATTERN)  # the one shared id grammar (fullmatch)
 E = html.escape
 
 
@@ -162,7 +162,13 @@ def read_ledger(path):
         if n < len(lines) and DELIMITER.match(lines[n]):
             headers = [plain(v).lower() for v in values]
             continue
-        if 'status' not in headers or headers[0] not in ('#', 'id') or not ID.fullmatch(plain(values[0])):
+        if 'status' not in headers or headers[0] not in ('#', 'id'):
+            continue
+        if not ID.fullmatch(plain(values[0])):
+            # A ledger row whose id can't be read would silently drop out of the
+            # report (and out of its blocker count). Say so instead.
+            if plain(values[0]):
+                warnings.append(f'{path.name}:{n}: row {plain(values[0])!r} was not read: its ID does not match the ledger ID format (verify reports it as unidentified-row).')
             continue
         if len(values) != len(headers):
             raise ValueError(f'{path}:{n}: {len(values)} cells, expected {len(headers)}. Resolve the malformed row before exporting.')

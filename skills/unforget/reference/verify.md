@@ -32,6 +32,7 @@ contradictions, tiers, or any other finding. See `reference/commands.md` §
 | **stale-recipe** — a row whose Finding cites a file path but carries no verify recipe (still-open or still-DONE) | warn | a premise that may have silently decayed as code moved |
 | **detail-pointer** — a row's cell claims `→ (see) detail block **<ID>**` but no matching bullet exists in the file's Detail sections | warn | a promised split that never happened, or a Detail bullet that was later deleted out from under a live pointer |
 | **registry / registry-drift** — no registry block, or the `.unforget.json` cache disagrees with the README | warn | a stranded/mis-registered ledger; cache drift |
+| **unidentified-row**: a ledger-shaped row (4+ cells with an `@status:` token, or a THIS/NEXT/LATER/SOMEDAY Target in column 2) whose ID doesn't match the ID format in `reference/format.md` | error (an unfinished THIS one also counts in `this_open`) | a row every other check skips, including the release gate |
 | **set-aside-unaccepted**: a row set aside for likelihood (`@parked:likelihood`) whose Risk: No Fix is High/Critical or whose text names a protected class, with no `Accepted-risk: "<the user's words>"` | error | a serious risk set aside without the user ever accepting it |
 | **set-aside-still-this**: a set-aside row still targeted 🔴 THIS | warn | a set-aside that never left the release gate |
 | **set-aside-unrated** / **set-aside-likelihood**: a set-aside row with no `@likelihood:` token, or rated something other than rare/improbable | warn | a set-aside with no basis, or one whose rating has since been raised |
@@ -219,7 +220,8 @@ row with no verify recipe (`Verify-still-open` or `Verify-still-DONE` both
 satisfy it), a row whose cell contains `detail block **<ID>**` (either pointer
 phrasing) with no matching `- **<ID>** -` bullet under any `### Detail -
 <section>` heading in the file, and (if a registry exists) a cache that
-disagrees with the README. For a row set aside for likelihood (`@parked:likelihood`),
+disagrees with the README. Flag as ERROR any ledger-shaped row whose ID doesn't match the
+ID format, and count it as a release blocker if it is an unfinished THIS row. For a row set aside for likelihood (`@parked:likelihood`),
 flag as ERROR a High/Critical Risk: No Fix or a protected-class mention with no quoted
 `Accepted-risk:`, and as WARN a THIS target, a missing `@likelihood:` token, or a rating
 other than rare/improbable. Gate fails if any ERROR is present.

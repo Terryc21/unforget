@@ -26,6 +26,9 @@ Checks (§4a):
                                                    quoted Accepted-risk; set-aside-still-this,
                                                    set-aside-unrated, set-aside-likelihood and
                                                    likelihood-value: warn)
+ 13. unidentified-row                              (error: a ledger-shaped row whose id the
+                                                   shared grammar can't read; an unfinished
+                                                   THIS one still counts in this_open)
 
 Findings are returned most-severe first. This command NEVER edits — fixes are the
 user's call (a future `verify --fix` proposes edits with approval).
@@ -209,6 +212,26 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None,
             continue
 
         if not parse_status.ROW_ID_RE.match(line):
+            # Check 13: a ledger-shaped row whose id the shared grammar can't read.
+            # Every other check skips such a row, so without this it is invisible,
+            # including to ship_ready. Report it, and if it is an unfinished THIS
+            # row, count it as a blocker: the gate must never say "ready" over a
+            # row it could not read.
+            label = unidentified_row(line)
+            if label is not None:
+                parsed_unread = parse_status.parse_row(line)
+                findings.append({
+                    "severity": "error",
+                    "check": "unidentified-row",
+                    "id": label,
+                    "message": (
+                        f"row id {label!r} does not match the ledger id format "
+                        "(optional letters and hyphen, digits, optional letter: A12, MI-08, A48b), "
+                        "so every check skips it, including the release gate. Rename the id."
+                    ),
+                })
+                if parsed_unread["blocks_release"]:
+                    blockers.append({"id": label, "status": parsed_unread["status"]})
             prev_line = line
             continue
         prev_line = line
@@ -350,6 +373,30 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None,
         findings.extend(check_likelihood(parsed, rid, line, details.get(rid, ""), protected_classes))
 
     return findings, blockers
+
+
+UNREAD_TARGET_RE = re.compile(r"\b(THIS|NEXT|LATER|SOMEDAY)\b")
+
+
+def unidentified_row(line: str) -> str | None:
+    """The first-cell label of a ledger row the id grammar can't read, else None.
+
+    Ledger-shaped means: a table data row of at least 4 cells (the narrowest
+    preset, Lean, has 6) that carries an `@status:` token after its first two
+    cells, or whose second cell is a short Target badge (THIS/NEXT/LATER/SOMEDAY).
+    Prose tables and legends (a 2-column table that lists the status tokens
+    themselves) are ignored, so this does not fire on the ordinary tables a
+    ledger also holds.
+    """
+    if not line.lstrip().startswith("|"):
+        return None
+    cells = parse_status.data_cells(line)
+    if len(cells) < 4 or not cells[0].strip(" *`"):
+        return None
+    target_cell = cells[1].strip(" *`")
+    ledger_shaped = (any(parse_status.STATUS_RE.search(c) for c in cells[2:])
+                     or (len(target_cell) <= 40 and UNREAD_TARGET_RE.search(target_cell)))
+    return cells[0].strip(" *`")[:40] if ledger_shaped else None
 
 
 def check_likelihood(parsed: dict, rid: str, line: str, detail: str, classes) -> list[dict]:

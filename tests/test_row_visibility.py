@@ -251,6 +251,47 @@ OPEN_NEXT = ("| B4 | NEXT | open but targeted at a later release | HIGH | Low "
 check("an open row targeted NEXT (not THIS) is NOT a ship blocker",
       "B4" in _blockers(OPEN_NEXT), False)
 
+# --- one id grammar, and no silently unread rows (2026-11-18) ----------------
+# Three scripts once kept their own id regexes. A `QARE-12` 🔴 THIS row was
+# invisible to verify (ship_ready true) while the HTML report counted it as a
+# blocker, and three real `A135b-P2*` rows were invisible to every check.
+print("\nshared id grammar + unidentified rows:")
+import html_report  # noqa: E402
+import recipe  # noqa: E402
+
+SAMPLES = ["A1", "A48a", "A48B", "MI-08", "QARE-12", "SPRINT-3", "A135b-P2", "A135b-P2c",
+           "**S12**", "12", "X.12", "#", "id", "Total", "-12", "A1-"]
+for sample in SAMPLES:
+    line = f"| {sample} | NEXT | x | `@status:open` |"
+    readers = (bool(parse_status.ROW_ID_RE.match(line)),
+               bool(recipe.ROW_ID_RE.match(line)),
+               bool(html_report.ID.fullmatch(sample.strip("*"))))
+    check(f"all three readers agree on id {sample!r}", len(set(readers)), 1)
+for sample in ("QARE-12", "A48B", "A135b-P2c"):
+    check(f"id {sample!r} is readable",
+          bool(parse_status.ROW_ID_RE.match(f"| {sample} | NEXT | x | `@status:open` |")), True)
+
+QARE = ("| QARE-12 | THIS | a blocker with a 4-letter prefix | HIGH | Low | High "
+        "| Good | 1 file | Small | `@status:open` · open |")
+check("a QARE-12 THIS row is a ship blocker", "QARE-12" in _blockers(QARE), True)
+
+ODD = ("| X.12 | THIS | a blocker whose id no grammar reads | HIGH | Low | High "
+       "| Good | 1 file | Small | `@status:open` · open |")
+check("an unreadable THIS row is still counted as a ship blocker",
+      "X.12" in _blockers(ODD), True)
+check("...and reported as an unidentified-row error",
+      any(f["check"] == "unidentified-row" and f["severity"] == "error" for f in _checks(ODD)), True)
+with tempfile.TemporaryDirectory() as _d:
+    _p = Path(_d) / "UNFORGET.md"
+    _p.write_text("<!-- unforget-format: v2 -->\n\n" + HDR + ODD + "\n", encoding="utf-8")
+    _rows, _src, _warn = html_report.read_ledger(_p)
+check("the HTML report warns about a row it could not read",
+      any("'X.12' was not read" in w for w in _warn), True)
+
+PROSE = "| Step two | the build runs | done |"
+check("a prose table row is not reported as unidentified",
+      any(f["check"] == "unidentified-row" for f in _checks(PROSE)), False)
+
 print()
 if FAILURES:
     print(f"FAIL — {len(FAILURES)} assertion(s): {', '.join(FAILURES)}")
