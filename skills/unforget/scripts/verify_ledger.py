@@ -24,8 +24,9 @@ Checks (§4a):
  12. likelihood set-aside                          (set-aside-unaccepted: error, a high-risk or
                                                    protected-class row set aside without the user's
                                                    quoted Accepted-risk; set-aside-still-this,
-                                                   set-aside-unrated, set-aside-likelihood and
-                                                   likelihood-value: warn)
+                                                   set-aside-unrated, set-aside-likelihood,
+                                                   likelihood-value, basis-value and
+                                                   basis-without-likelihood: warn)
  13. unidentified-row                              (error: a ledger-shaped row whose id the
                                                    shared grammar can't read; an unfinished
                                                    THIS one still counts in this_open)
@@ -408,6 +409,13 @@ def check_likelihood(parsed: dict, rid: str, line: str, detail: str, classes) ->
         out.append({"severity": "warn", "check": "likelihood-value", "id": rid,
                     "message": f"unknown @likelihood value {lk!r} (expected one of "
                                f"{', '.join(parse_status.LIKELIHOOD_VALUES)})"})
+    if not parsed.get("basis_valid", True):
+        out.append({"severity": "warn", "check": "basis-value", "id": rid,
+                    "message": f"unknown @basis value {parsed.get('basis')!r} (expected one of "
+                               f"{', '.join(parse_status.BASIS_VALUES)})"})
+    if parsed.get("basis") and lk is None:
+        out.append({"severity": "warn", "check": "basis-without-likelihood", "id": rid,
+                    "message": "carries @basis: but no @likelihood: token to qualify"})
     if not parsed.get("set_aside") or parsed.get("completed"):
         return out
     if lk is None:

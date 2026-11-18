@@ -138,11 +138,27 @@ the actionable views until the user picks it.
 
 ### Rating likelihood
 
-Add `@likelihood:<value>` to the Status cell, after the status token(s). The scale and its
-definitions are in `reference/format.md` § Likelihood token. Rate rows as they come up;
-there is no backfill pass, and an unrated row behaves exactly as before. The narration
-says who rated it and on what basis ("rated by the session from reading the code, not
-reproduced"), the same way a `@verified` tier names how a fix was checked.
+Add `@likelihood:<value>` and `@basis:<how>` to the Status cell, after the status token(s).
+The scale, the bases and their definitions are in `reference/format.md` § Likelihood token.
+Rate rows as they come up; there is no backfill pass, and an unrated row behaves exactly as
+before. The basis does for a rating what `@verified` does for a fix: it says how the claim
+was checked. Most ratings are one session's judgment from reading code (`reasoned`), and
+the policy treats that as the weakest basis. The narration still names who rated it.
+
+**Converting ratings already written as prose.** A ledger that records likelihood as text
+("Likelihood: Rare (…)") can turn it into tokens with
+`python3 scripts/set_aside.py convert --file <ledger> --dir <ledger-dir>`. It previews by
+default. For each unfinished row whose rating names exactly one value on the scale, it
+proposes `@likelihood:` plus a `@basis:` read from the same text: `measured` for words such
+as census, telemetry or crash data; `reproduced` when the text says reproduced (and not "not
+reproduced"); `reviewed` for the project's reviewer words; otherwise `reasoned`. The
+registry keys `likelihood_reviewed_words` and `likelihood_measured_words` set those words; a
+project adds its reviewers' names (for example `astra, fresh-context, reviewed`). Rows that
+name several values, none, or have no status token are listed for a person; when every part
+is on the frequency scale it also suggests the most likely part's value, the rule above.
+`--apply` writes a timestamped backup, inserts only the tokens, and refuses if any row's
+status, completion or release gating would change. Converting never sets a row aside and
+never changes a Target.
 
 ### What setting aside does
 
@@ -166,9 +182,10 @@ Run `python3 scripts/set_aside.py classify --file <ledger> --dir <ledger-dir>`. 
 every open or blocked row rated rare or improbable that is not already set aside, and
 sorts each into one of two groups:
 
-- **Needs the user** when any of these holds: its Target is THIS; its Risk: No Fix is
-  🟡 High or 🔴 Critical; the table has no Risk: No Fix column, so risk cannot be checked;
-  or its text mentions a protected class.
+- **Needs the user** when any of these holds: its Target is THIS; its rating has no
+  `@basis:` or only `@basis:reasoned`; its Risk: No Fix is 🟡 High or 🔴 Critical; the table
+  has no Risk: No Fix column, so risk cannot be checked; or its text mentions a protected
+  class.
 - **Policy-eligible** otherwise.
 
 The registry key `park_policy` (`reference/registry.md`) turns that into an action:
@@ -228,7 +245,8 @@ planned for a later release. Until then, set-aside rows stay in the active file.
 
 **Algorithm fallback** (Python unavailable): a candidate is an open or blocked row whose
 Status cell carries `@likelihood:rare` or `@likelihood:improbable` and no `@parked:`
-reason. It needs the user if its Target is THIS, its Risk: No Fix cell holds 🟡/🔴 or the
+reason. It needs the user if its Target is THIS, its basis is missing or `reasoned`, its
+Risk: No Fix cell holds 🟡/🔴 or the
 words High/Critical, there is no Risk: No Fix column, or the row or its detail bullet
 contains a protected-class phrase. Otherwise it is policy-eligible.
 

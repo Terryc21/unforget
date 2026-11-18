@@ -37,6 +37,7 @@ contradictions, tiers, or any other finding. See `reference/commands.md` §
 | **set-aside-still-this**: a set-aside row still targeted 🔴 THIS | warn | a set-aside that never left the release gate |
 | **set-aside-unrated** / **set-aside-likelihood**: a set-aside row with no `@likelihood:` token, or rated something other than rare/improbable | warn | a set-aside with no basis, or one whose rating has since been raised |
 | **likelihood-value**: an `@likelihood:` value not on the scale | warn | typos in the rating vocabulary |
+| **basis-value** / **basis-without-likelihood**: an `@basis:` value not on the list, or a basis with no rating | warn | typos, or a basis left behind when a rating was removed |
 
 **Errors fail the gate; warnings do not.** Warnings are hygiene the user should
 address but that don't block a ship decision.

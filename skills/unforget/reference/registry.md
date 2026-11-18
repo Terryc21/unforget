@@ -83,6 +83,8 @@ and never touches the surrounding human prose:
 | `report_effort_column` | extra header names for the effort column, comma-separated (tried after `Fix Effort`, `Effort`, `Est`). Optional |
 | `park_policy` | `off` (default) \| `ask` \| `auto`; whether sessions offer, or apply, setting rows aside by likelihood. See `reference/pickup.md` § Setting rows aside by likelihood |
 | `park_protected_classes` | comma-separated phrases; rows mentioning one always need the user's decision before being set aside. When set, replaces the defaults (data loss, corruption, privacy, security, payments, billing, money, credentials) |
+| `likelihood_reviewed_words` | comma-separated words that mark a written likelihood rating as `reviewed` when `set_aside.py convert` reads it (default: reviewed, reviewer, second opinion, fresh-context). Add the names of the project's reviewers |
+| `likelihood_measured_words` | comma-separated words that mark a written rating as `measured` (default: measured, census, telemetry, crash report, crash data, analytics, sentry) |
 | `report_roi_column` | extra header names for the ROI column, comma-separated (tried after `ROI`). Optional |
 
 **Migration note (2026-08-13).** `archive_nudge_threshold` and the four `stale_days_*` keys were

@@ -1,7 +1,7 @@
 ---
 name: unforget
 metadata:
-  version: "2.12.2"
+  version: "2.13.0"
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -187,7 +187,7 @@ Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verif
 
 **Rows a session logs on its own initiative land parked:** `@status:open` `@parked`, with a `Parked:` line and a concrete `Revisit:` point in the detail block. A parked row can be started only when the user names it, never under (b), and only the user unparks it. The marker is narration to every helper script, so existing ledgers and the release gate are unchanged.
 
-**Rows rated rare or improbable can be set aside** (`@likelihood:rare` `@parked:likelihood`, Target ⚪ SOMEDAY): kept and searchable, but left out of actionable views until the user picks one. A set-aside is a named accepted risk, never a fix. A THIS row, a High/Critical Risk: No Fix row or a protected-class row (data loss, privacy, security, money) is never set aside without the user's own yes, quoted in an `Accepted-risk:` line; `verify` errors when that line is missing. The registry's `park_policy` (default `off`) decides whether sessions offer this unprompted.
+**Ratings carry a basis** (`@basis:measured|reproduced|reviewed|reasoned`), and a standing policy never sets a row aside on `reasoned` alone; `scripts/set_aside.py convert` turns ratings already written as prose into tokens, previewing first. **Rows rated rare or improbable can be set aside** (`@likelihood:rare` `@parked:likelihood`, Target ⚪ SOMEDAY): kept and searchable, but left out of actionable views until the user picks one. A set-aside is a named accepted risk, never a fix. A THIS row, a High/Critical Risk: No Fix row or a protected-class row (data loss, privacy, security, money) is never set aside without the user's own yes, quoted in an `Accepted-risk:` line; `verify` errors when that line is missing. The registry's `park_policy` (default `off`) decides whether sessions offer this unprompted.
 
 **Why.** A ledger lists real work, and every row reads like an invitation. Sessions picked rows up on their own, or followed one that caught the user's eye, and the task they were opened for receded. The ledger's job is to remember; choosing the work stays with the user.
 

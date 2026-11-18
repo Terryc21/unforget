@@ -37,6 +37,8 @@ Output per row (stdout, JSON):
     "narration": "<prose after the token, trimmed>",
     "likelihood": "rare"|...|null,        # optional @likelihood: token (filtering only)
     "likelihood_valid": true|false,
+    "basis": "measured"|"reproduced"|"reviewed"|"reasoned"|null,  # optional @basis:
+    "basis_valid": true|false,
     "parked": true|false,                 # @parked or @parked:<reason> present
     "parked_reason": "likelihood"|null,   # null = bare @parked (awaiting the user)
     "set_aside": true|false,              # @parked:likelihood
@@ -86,6 +88,12 @@ LIKELIHOOD_VALUES = ("certain", "probable", "likely", "unlikely", "rare",
 # Only these may be set aside for likelihood. `uncertain` never qualifies.
 SET_ASIDE_LIKELIHOODS = {"rare", "improbable"}
 LIKELIHOOD_RE = re.compile(r"@likelihood:\s*([a-z/-]+)")
+# What a likelihood rating rests on, strongest first (reference/format.md §
+# Likelihood token). Like @verified for fixes: a rating reasoned out by one
+# session is the weakest basis, so a standing policy never sets a row aside on it.
+BASIS_VALUES = ("measured", "reproduced", "reviewed", "reasoned")
+POLICY_BASES = {"measured", "reproduced", "reviewed"}
+BASIS_RE = re.compile(r"@basis:\s*([a-z-]+)")
 # `@parked` (awaiting the user) or `@parked:<reason>` (a decision, e.g.
 # `@parked:likelihood`, set aside as unlikely to happen).
 PARKED_RE = re.compile(r"@parked(?::([a-z-]+))?(?![\w-])")
@@ -465,6 +473,8 @@ def parse_row(row: str, headers=None, detail: str = "", fields=None) -> dict:
     # Likelihood and parking: reported only, never fed into the decisions above.
     likelihood_match = LIKELIHOOD_RE.search(cell)
     likelihood = likelihood_match.group(1) if likelihood_match else None
+    basis_match = BASIS_RE.search(cell)
+    basis = basis_match.group(1) if basis_match else None
     parked_match = PARKED_RE.search(cell)
     parked_reason = parked_match.group(1) if parked_match else None
     if fields is not None:
@@ -493,6 +503,8 @@ def parse_row(row: str, headers=None, detail: str = "", fields=None) -> dict:
         "narration": narration[:200],
         "likelihood": likelihood,
         "likelihood_valid": likelihood is None or likelihood in LIKELIHOOD_VALUES,
+        "basis": basis,
+        "basis_valid": basis is None or basis in BASIS_VALUES,
         "parked": parked_match is not None,
         "parked_reason": parked_reason,
         "set_aside": parked_reason == "likelihood",

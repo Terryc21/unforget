@@ -24,7 +24,7 @@ URGENCY = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'unrated': 4}
 IMPACT = {'severe': 0, 'high': 1, 'moderate': 2, 'low': 3, 'indirect': 4, 'unrated': 5}
 TARGET = {'THIS': 0, 'NEXT': 1, 'LATER': 2, 'SOMEDAY': 3, 'Unassigned': 4}
 DEFAULT_COLUMNS = ['id', 'finding', 'target', 'status', 'ux', 'owner', 'next']
-COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'roi', 'owner', 'next', 'verification', 'last_checked', 'reconciliation', 'readiness']
+COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'roi', 'owner', 'next', 'verification', 'last_checked', 'reconciliation', 'readiness', 'likelihood']
 OWNER_KINDS = {'user', 'assistant', 'person', 'team', 'unassigned'}
 OWNER_SOURCES = {'recorded', 'explicit', 'suggested'}
 SORTS = ['blocker', 'urgency', 'ux', 'target', 'effort', 'roi', 'id', 'ledger', 'status']
@@ -197,7 +197,7 @@ def read_ledger(path):
         rows.append(dict(id=ident, ledger=path.name, source=str(path), line=n, section=section,
                          finding=finding, status=status, target=target, urgency=urgency,
                          blocker=evaluated['blocks_release'], completed=evaluated['completed'],
-                         set_aside=evaluated['set_aside'], likelihood=evaluated['likelihood'] or '',
+                         set_aside=evaluated['set_aside'], likelihood=evaluated['likelihood'] or '', basis=evaluated.get('basis') or '',
                          integrity_issues=evaluated['issues'],
                          ux='unrated', ux_basis='', owner='', next='', effort=column(data, ('fix effort', 'effort', 'est'), 'effort') or 'Unrated',
                          roi=column(data, ('roi',), 'roi'), vocab_key=str(path), original=data, notes=[], detail=details.get(ident,''),
@@ -401,7 +401,7 @@ def render(rows, sources, warnings, args, total_blockers):
     template=(Path(__file__).resolve().parent.parent/'assets/html-report.html').read_text(encoding='utf-8')
     labels={'id':'ID','finding':'Item','ux':'User impact','blocker':'Release gate','effort':'Fix effort',
             'roi':'Value (ROI)', 'target':'Release target','owner':'Who acts next','next':'Next action','last_checked':'Last checked',
-            'verification':'Verification needed','reconciliation':'Needs reconciliation'}
+            'verification':'Verification needed','reconciliation':'Needs reconciliation','likelihood':'Likelihood'}
     statuses={'done-unverified':'Awaiting verification','done-verified':'Verified complete','in-progress':'In progress',
               'legacy-complete':'Completed (legacy claim)','open':'Open','blocked':'Blocked','withdrawn':'Withdrawn','unknown':'Needs review'}
     heads=''.join(f'<th scope="col"><button data-col="{n}">{E(labels.get(k,k.title()))} ↕</button></th>' for n,k in enumerate(args.columns))
@@ -438,6 +438,7 @@ def render(rows, sources, warnings, args, total_blockers):
                     text={'suggested':'Suggested','recorded':'Recorded assignment','explicit':'Explicitly assigned'}[r['owner_source']]
                     value+=f'<small class="assignment {E(r["owner_source"])}">{text}</small>'
             elif col=='status':value=E(statuses[r['status']])
+            elif col=='likelihood':value=E((r['likelihood'].title()+(f" ({r['basis']})" if r.get('basis') else '')) if r['likelihood'] else 'Not rated')
             else:value=E(value or 'Not recorded')
             sortvalue=sort_key(r,[col])[0] if col in SORTS else r.get(col,'')
             if isinstance(sortvalue,bool):sortvalue=int(sortvalue)

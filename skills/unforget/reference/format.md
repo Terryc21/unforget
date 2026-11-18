@@ -64,6 +64,17 @@ read instead of parsing prose. Full spec: `reference/status.md`. In brief:
 | `uncertain` | No basis for a rating yet. Never set aside. |
 | `n/a` | Likelihood does not apply (a feature request, a documentation change). |
 
+**Basis token (`@basis:`).** Says what the rating rests on, strongest first, the way `@verified` says how a fix was checked:
+
+| Basis | Means |
+|---|---|
+| `measured` | Counted in real data: crash reports, telemetry, a census of affected users. |
+| `reproduced` | Someone made it happen. Shows it can occur, not how often. |
+| `reviewed` | A second, independent reviewer agreed with the rating. |
+| `reasoned` | One judgment from reading the code. The weakest basis, and the common one. |
+
+A standing policy sets a row aside only on `measured`, `reproduced` or `reviewed`; a `reasoned` rating, or a rating with no basis, always goes to the user. The HTML report can show both as a column (`--columns …,likelihood`).
+
 A row with several parts takes the rating of its **most likely** part, so a row with one probable part is never set aside as rare. Only `rare` and `improbable` rows may be set aside, which writes `@parked:likelihood` after the tokens, an `Accepted-risk: "<the user's words>" (MM/DD/YYYY)` line when the row is protected, and a `Parked:` line in the detail block. `verify` checks these (`reference/verify.md`).
 
 **Optional on legacy, expected on new.** Rows written before v2 have no token and

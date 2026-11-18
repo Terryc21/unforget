@@ -1,5 +1,28 @@
 # Changelog
 
+### v2.13.0: rating basis, and converting written ratings (2026-11-18) · minor
+
+- Likelihood ratings now carry a basis, `@basis:measured|reproduced|reviewed|reasoned`, the
+  way `@verified` records how a fix was checked. Most ratings are one session's judgment
+  from reading code (`reasoned`). A standing `park_policy` now sets a row aside only on a
+  measured, reproduced or reviewed rating; a reasoned or unbased rating always goes to the
+  user. `verify` warns on an unknown basis or a basis with no rating.
+- New `set_aside.py convert` turns ratings already written as prose ("Likelihood: Rare (…)")
+  into `@likelihood:` and `@basis:` tokens. It previews by default and converts only rows
+  that name exactly one value; rows with several parts are listed for a person, with the
+  most likely part suggested when every part is on the frequency scale. `--apply` writes a
+  timestamped backup, inserts only the tokens, and refuses any change to a row's status,
+  completion or release gating. It never sets a row aside or changes a Target. Two
+  registry keys, `likelihood_reviewed_words` and `likelihood_measured_words`, teach it a
+  project's reviewer names and evidence words.
+- The HTML report can show a Likelihood column (`--columns …,likelihood`), for example
+  "Rare (reviewed)". No ledger column is added: the tokens stay in the Status cell, so
+  existing ledgers and every preset are unaffected.
+- Tests: the basis rule, conversion of single, multi-part, legacy, already-tokened and
+  closed rows, backup and token-only writes, an unchanged file on preview, idempotence,
+  and the report column. On a copy of a real 633-row ledger, conversion added 38 tokens
+  and `verify` reported identical results before and after.
+
 ### v2.12.2: one archive file per ledger, and escaped pipes (2026-11-18) · patch
 
 - An escaped pipe (`\|`) inside a table cell no longer splits the row. `verify`'s cell-count

@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -42,8 +43,8 @@ def row(rid, target, finding, risk_no_fix, status):
 
 LEDGER = (
     "# UNFORGET\n\n<!-- unforget-format: v2 -->\n\n## 3. Audit findings\n\n" + HEADER
-    + row("A1", "🔵 NEXT", "Tooltip flickers on resize", "⚪ Low", "`@status:open` `@likelihood:rare`")
-    + row("A2", "🔵 NEXT", "Restore can cause data loss on retry", "⚪ Low", "`@status:open` `@likelihood:rare`")
+    + row("A1", "🔵 NEXT", "Tooltip flickers on resize", "⚪ Low", "`@status:open` `@likelihood:rare` `@basis:reviewed`")
+    + row("A2", "🔵 NEXT", "Restore can cause data loss on retry", "⚪ Low", "`@status:open` `@likelihood:rare` `@basis:reviewed`")
     + row("A3", "🔴 THIS", "Badge shows stale count", "⚪ Low", "`@status:open` `@likelihood:improbable`")
     + row("A4", "🟡 LATER", "Sync stalls on airplane mode", "🟡 High", "`@status:open` `@likelihood:rare`")
     + row("A5", "🔵 NEXT", "Unrated cosmetic glitch", "⚪ Low", "`@status:open`")
@@ -134,8 +135,9 @@ class VerifyTests(unittest.TestCase):
 
     def test_protected_set_aside_without_acceptance_is_an_error(self):
         text = LEDGER.replace(
-            "`@status:open` `@likelihood:rare` |\n| A3",
-            "`@status:open` `@likelihood:rare` `@parked:likelihood` |\n| A3", 1)
+            "`@status:open` `@likelihood:rare` `@basis:reviewed` |\n| A3",
+            "`@status:open` `@likelihood:rare` `@basis:reviewed` `@parked:likelihood` |\n| A3", 1)
+        self.assertIn("@parked:likelihood` |\n| A3", text)  # guard: the edit above must apply
         self.assertIn(("set-aside-unaccepted", "A2", "error"), self.checks(text))
 
     def test_bare_acceptance_does_not_count_but_quoted_words_do(self):
@@ -181,6 +183,17 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(shown["set_aside_hidden"], {})
         self.assertEqual(shown["rows"], data["rows"] + 1)
 
+    def test_likelihood_column_shows_value_and_basis(self):
+        with tempfile.TemporaryDirectory() as d:
+            ledger, out = Path(d) / "UNFORGET.md", Path(d) / "r.html"
+            ledger.write_text(LEDGER, encoding="utf-8")
+            subprocess.run([sys.executable, str(SCRIPTS / "html_report.py"), "--file", str(ledger),
+                            "--output", str(out), "--columns", "id,finding,likelihood"],
+                           capture_output=True, text=True, check=True)
+            page = out.read_text(encoding="utf-8")
+            self.assertIn(">Rare (reviewed)<", page)
+            self.assertIn(">Not rated<", page)
+
     def test_set_aside_blocker_is_never_hidden(self):
         text = "# U\n\n<!-- unforget-format: v2 -->\n\n" + HEADER + row(
             "A9", "🔴 THIS", "Glitch", "⚪ Low", "`@status:open` `@likelihood:rare` `@parked:likelihood`")
@@ -197,6 +210,104 @@ class TallyTests(unittest.TestCase):
             defer_tally.record(Path(d), "set-aside", "policy")
             out = defer_tally.record(Path(d), "set-aside", "user")
             self.assertTrue(out["readout"].endswith("· 2 set aside (policy 1, you 1)."))
+
+
+
+class BasisTests(unittest.TestCase):
+    def test_policy_needs_a_basis_stronger_than_reasoning(self):
+        for status, expected in (("`@status:open` `@likelihood:rare` `@basis:reviewed`", "auto"),
+                                 ("`@status:open` `@likelihood:rare` `@basis:measured`", "auto"),
+                                 ("`@status:open` `@likelihood:rare` `@basis:reasoned`", "ask"),
+                                 ("`@status:open` `@likelihood:rare`", "ask")):
+            text = "# U\n\n" + HEADER + row("B1", "🔵 NEXT", "Tooltip flickers", "⚪ Low", status)
+            found, _ = candidates(text)
+            self.assertEqual(found["B1"]["action"], expected, status)
+
+    def test_basis_tokens_do_not_change_status(self):
+        r = parse_status.parse_row("| B1 | NEXT | x | `@status:open` `@likelihood:rare` `@basis:reviewed` |")
+        self.assertEqual((r["status"], r["basis"], r["issues"]), ("open", "reviewed", []))
+
+    def test_unknown_basis_warns(self):
+        text = "# U\n\n" + HEADER + row("B2", "🔵 NEXT", "x", "⚪ Low",
+                                        "`@status:open` `@likelihood:rare` `@basis:vibes`")
+        findings, _ = verify_ledger.check_rows(text, 400)
+        self.assertIn("basis-value", {f["check"] for f in findings})
+
+
+CONVERT_LEDGER = (
+    "# U\n\n<!-- unforget-format: v2 -->\n\n## 3. Audit\n\n" + HEADER
+    + row("C1", "🔵 NEXT", "Glitch one", "⚪ Low", "`@status:open` Likelihood: Rare (Claude; from code). More text")
+    + row("C2", "🔵 NEXT", "Glitch two", "⚪ Low", "`@status:open` Likelihood: Improbable (Astra and Claude). x")
+    + row("C3", "🔵 NEXT", "Glitch three", "⚪ Low", "`@status:open` Likelihood: (a) Rare; (b) uncertain. x")
+    + row("C4", "🔵 NEXT", "Glitch four", "⚪ Low", "`@status:open` Likelihood: Rare, measured in the crash census. x")
+    + row("C5", "🔵 NEXT", "Glitch five", "⚪ Low", "`@status:open` Likelihood: Rare, not reproduced. x")
+    + row("C6", "🔵 NEXT", "Glitch six", "⚪ Low", "`@status:open` `@likelihood:rare` Likelihood: Rare. x")
+    + row("C7", "🔵 NEXT", "Glitch seven", "⚪ Low", "Open, Likelihood: Rare. legacy")
+    + row("C8", "🔵 NEXT", "Glitch eight", "⚪ Low", "`@status:done-verified` `@verified:user` Likelihood: Rare. done")
+    + row("C9", "🔵 NEXT", "Pipe a\\|b glitch", "⚪ Low", "`@status:open` Likelihood: Not applicable (feature). x")
+)
+
+
+class ConvertTests(unittest.TestCase):
+    def plan(self, reviewed=None):
+        return set_aside.plan_conversion(CONVERT_LEDGER,
+                                         reviewed or set_aside.DEFAULT_REVIEWED_WORDS,
+                                         set_aside.DEFAULT_MEASURED_WORDS)
+
+    def test_plan_reads_one_value_and_its_basis(self):
+        add = {a["id"]: (a["value"], a["basis"]) for a in self.plan()["add"]}
+        self.assertEqual(add["C1"], ("rare", "reasoned"))
+        self.assertEqual(add["C4"], ("rare", "measured"))
+        self.assertEqual(add["C5"], ("rare", "reasoned"))  # "not reproduced" is not reproduced
+        self.assertEqual(add["C9"], ("n/a", "reasoned"))
+        # A reviewer's name counts only when the project lists it.
+        self.assertEqual(add["C2"], ("improbable", "reasoned"))
+        named = {a["id"]: a["basis"] for a in self.plan(["astra"])["add"]}
+        self.assertEqual(named["C2"], "reviewed")
+
+    def test_ambiguous_tokenless_tokened_and_closed_rows_are_not_converted(self):
+        plan = self.plan()
+        add = {a["id"] for a in plan["add"]}
+        people = {p["id"]: p["reason"] for p in plan["needs_person"]}
+        self.assertEqual(people["C3"], "names several values")
+        suggested = {p["id"]: p.get("suggested") for p in plan["needs_person"]}
+        self.assertIsNone(suggested["C3"])  # one part is uncertain: no suggestion
+        both = set_aside.plan_conversion(
+            CONVERT_LEDGER.replace("(a) Rare; (b) uncertain", "(a) Rare; (b) Likely"),
+            set_aside.DEFAULT_REVIEWED_WORDS, set_aside.DEFAULT_MEASURED_WORDS)
+        self.assertEqual({p["id"]: p.get("suggested") for p in both["needs_person"]}["C3"], "likely")
+        self.assertEqual(people["C7"], "no @status token to place it after")
+        self.assertEqual(plan["already_tokened"], ["C6"])
+        self.assertFalse({"C3", "C6", "C7", "C8"} & add)
+
+    def test_apply_inserts_only_tokens_and_keeps_a_backup(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "UNFORGET.md"
+            path.write_text(CONVERT_LEDGER, encoding="utf-8")
+            r = subprocess.run([sys.executable, str(SCRIPTS / "set_aside.py"), "convert",
+                                "--file", str(path), "--apply"], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            data = json.loads(r.stdout)
+            self.assertTrue(data["applied"])
+            self.assertEqual(Path(data["backup"]).read_text(encoding="utf-8"), CONVERT_LEDGER)
+            after = path.read_text(encoding="utf-8")
+            self.assertIn("| `@status:open` `@likelihood:rare` `@basis:reasoned` Likelihood: Rare (Claude", after)
+            self.assertEqual(re.sub(r"`@likelihood:[a-z/-]+` `@basis:[a-z-]+` ", "", after), CONVERT_LEDGER)
+            before_rows = {x["id"]: x["status"] for x in parse_status.parse_file(CONVERT_LEDGER)}
+            after_rows = {x["id"]: x["status"] for x in parse_status.parse_file(after)}
+            self.assertEqual(before_rows, after_rows)
+            again = json.loads(subprocess.run([sys.executable, str(SCRIPTS / "set_aside.py"), "convert",
+                                               "--file", str(path)], capture_output=True, text=True).stdout)
+            self.assertEqual(again["counts"]["add"], 0)  # idempotent
+
+    def test_preview_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "UNFORGET.md"
+            path.write_text(CONVERT_LEDGER, encoding="utf-8")
+            subprocess.run([sys.executable, str(SCRIPTS / "set_aside.py"), "convert", "--file", str(path)],
+                           capture_output=True, text=True)
+            self.assertEqual(path.read_text(encoding="utf-8"), CONVERT_LEDGER)
+            self.assertEqual(sorted(p.name for p in Path(d).iterdir()), ["UNFORGET.md"])
 
 
 if __name__ == "__main__":

@@ -217,7 +217,8 @@ key, preserving the source spelling and stable ties.
 
 The default columns are **ID · Item · Release target · Status · User impact · Who acts next · Next action**.
 `--columns` can also show rank, ledger, release gate, urgency, effort, verification,
-last_checked, reconciliation and readiness. Original ratings, dependencies,
+last_checked, reconciliation, readiness and likelihood (the `@likelihood:` rating with its
+`@basis:`, or "Not rated"). Original ratings, dependencies,
 verification procedure, check evidence, source link/line, and ledger detail history
 remain expandable. Missing information stays **Not recorded** (owner: **Unassigned**).
 
