@@ -1,5 +1,18 @@
 # Changelog
 
+### Unreleased: tokens don't count toward the row-length budget
+
+- The row-length budget (400 characters soft, 1,600 hard) now measures a cell's prose only.
+  Machine tokens (`@status:`, `@verified:`, `@likelihood:`, `@basis:`, `@parked`) are left
+  out, in `verify` and in `row_budget.py` alike (`parse_status.budget_length`).
+  Converting a real ledger's written ratings had added about 40 characters of tokens per
+  row: 4 rows crossed the soft budget, every converted row's reported length grew, and one
+  row reached 1,507 of the 1,600 hard limit, so a conversion could have tipped a row into an
+  error. Measured on that ledger with the new count: the conversion changes no finding, and
+  15 existing warnings disappear for rows that were over only because of their tokens.
+- Tests: tokens never push a row over the budget, prose over the budget still warns, and
+  `row_budget.py` agrees with `verify`.
+
 ### v2.13.0: rating basis, and converting written ratings (2026-11-18) · minor
 
 - Likelihood ratings now carry a basis, `@basis:measured|reproduced|reviewed|reasoned`, the

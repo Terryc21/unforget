@@ -28,6 +28,7 @@ SCRIPTS = ROOT / "skills" / "unforget" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
 import defer_tally  # noqa: E402
+import row_budget  # noqa: E402
 import parse_status  # noqa: E402
 import set_aside  # noqa: E402
 import verify_ledger  # noqa: E402
@@ -308,6 +309,34 @@ class ConvertTests(unittest.TestCase):
                            capture_output=True, text=True)
             self.assertEqual(path.read_text(encoding="utf-8"), CONVERT_LEDGER)
             self.assertEqual(sorted(p.name for p in Path(d).iterdir()), ["UNFORGET.md"])
+
+
+
+class BudgetTests(unittest.TestCase):
+    """Machine tokens don't count toward the row-length budget (2026-11-18: converting
+    a real ledger's ratings pushed 4 rows over the soft budget, one to 1,507 of 1,600)."""
+
+    def status_len_findings(self, status):
+        text = "# U\n\n" + HEADER + row("D1", "🔵 NEXT", "Short finding", "⚪ Low", status)
+        findings, _ = verify_ledger.check_rows(text, 400)
+        return [f for f in findings if f["check"] == "char-budget"]
+
+    def test_tokens_do_not_push_a_row_over_the_budget(self):
+        prose = "x" * 390
+        self.assertEqual(self.status_len_findings("`@status:open` " + prose), [])
+        tokened = "`@status:open` `@likelihood:rare` `@basis:reviewed` `@parked:likelihood` " + prose
+        self.assertGreater(len(tokened), 400)
+        self.assertEqual(self.status_len_findings(tokened), [])
+
+    def test_prose_still_counts(self):
+        found = self.status_len_findings("`@status:open` `@likelihood:rare` " + "x" * 420)
+        self.assertEqual([f["severity"] for f in found], ["warn"])
+        self.assertIn("420 chars", found[0]["message"])
+
+    def test_row_budget_check_agrees(self):
+        text = "# U\n\n" + HEADER + row("D2", "🔵 NEXT", "Short", "⚪ Low",
+                                        "`@status:open` `@likelihood:rare` `@basis:reviewed` " + "x" * 380)
+        self.assertEqual(row_budget.check(text, 400), [])
 
 
 if __name__ == "__main__":

@@ -165,6 +165,20 @@ ROW_ID_RE = re.compile(rf"^\|\s*\*{{0,2}}({ROW_ID_PATTERN})\*{{0,2}}\s*\|")
 CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
 
 
+# Machine tokens a cell is REQUIRED or allowed to carry. They are structure, not
+# prose, so the row-length budget (reference/format.md § Row-length discipline)
+# does not count them: the budget exists to stop narration piling up in a cell,
+# and adding a token must never push a row over it (found 2026-11-18, when
+# converting written likelihood ratings added ~40 characters to each row).
+BUDGET_EXEMPT_TOKEN_RE = re.compile(
+    r"`?@(?:status|verified|likelihood|basis):[a-z/-]+`?[ \t]*|`?@parked(?::[a-z-]+)?`?[ \t]*")
+
+
+def budget_length(cell: str) -> int:
+    """Length of a cell as the row-length budget counts it (machine tokens excluded)."""
+    return len(BUDGET_EXEMPT_TOKEN_RE.sub("", cell))
+
+
 def split_row(row: str) -> list[str]:
     """Split a table row on its unescaped pipes, keeping each piece's text as-is."""
     return CELL_SPLIT_RE.split(row)

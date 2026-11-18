@@ -102,6 +102,11 @@ GitHub shows the command with a plain `|`. Rewording ("grep for BOTH terms") als
 
 ## Char-budget severity escalation (§4e)
 
+**What counts.** Both budgets measure a cell's prose. Machine tokens (`@status:`, `@verified:`,
+`@likelihood:`, `@basis:`, `@parked`) are left out of the count, so adding a token, for
+example when `set_aside.py convert` rates a row, never moves a row across either budget.
+`row_budget.py` counts the same way (`budget_length` in `scripts/parse_status.py`).
+
 **Why a warning wasn't enough.** The soft budget (400 chars, `reference/format.md` § Row-length
 discipline) has existed since format v2, with `--fix` able to split any over-budget row
 losslessly. Despite that, a real ledger (Stuffolio, 2026-08-13) carried a row at **3,707

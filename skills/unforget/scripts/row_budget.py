@@ -117,8 +117,9 @@ def check(text: str, budget: int) -> list[dict]:
             continue
         rid = (parse_status.ROW_ID_RE.match(line).group(1))
         for name, val in (("finding", finding_cell(line)), ("status", status_cell(line))):
-            if len(val) > budget:
-                over.append({"id": rid, "cell": name, "chars": len(val)})
+            n = parse_status.budget_length(val)  # machine tokens don't count
+            if n > budget:
+                over.append({"id": rid, "cell": name, "chars": n})
     return over
 
 
@@ -273,9 +274,10 @@ def split_row(text: str, rid: str, budget: int, headline: str | None) -> dict:
     headers = next(h for line, h in parse_status.row_contexts(text) if line == row)
     finding = parse_status.named_cell(row, headers, "finding", finding_cell)
     status_val = parse_status.named_cell(row, headers, "status", status_cell)
-    if len(finding) <= budget and len(status_val) <= budget:
+    f_len, s_len = parse_status.budget_length(finding), parse_status.budget_length(status_val)
+    if f_len <= budget and s_len <= budget:
         result["refusal"] = (f"row {rid} is within budget "
-                             f"(finding {len(finding)}, status {len(status_val)} ≤ {budget}); "
+                             f"(finding {f_len}, status {s_len} ≤ {budget}); "
                              "nothing to split")
         return result
 

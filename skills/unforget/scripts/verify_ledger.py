@@ -329,7 +329,7 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None,
         # detail block wearing a table cell, not "a bit long", and gates the
         # same way a contradiction or unproven THIS-blocker does.
         for cell_name, cell_val in (("status", status_cell(line)), ("finding", finding_cell(line))):
-            n = len(cell_val)
+            n = parse_status.budget_length(cell_val)  # machine tokens don't count
             if n > char_budget_hard:
                 findings.append({
                     "severity": "error",
