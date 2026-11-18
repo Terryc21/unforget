@@ -88,6 +88,14 @@ is supposed to be authoritative. The verify pass (Phase 3) flags it. Note a
 `done-unverified` row saying "owed"/"unverified" is NOT a contradiction — that
 is the honest meaning of the state.
 
+## Other tokens in the Status cell
+
+`@likelihood:<value>` (how likely the problem is to happen) and `@parked` /
+`@parked:<reason>` (waiting for the user, or set aside) may follow the status token.
+They are not statuses: they never change `completed`, `archivable` or
+`blocks_release`. A set-aside row stays `@status:open`. See `reference/format.md`
+§ Likelihood token and `reference/pickup.md`.
+
 ## Archive & release invariants (§1c)
 
 - `archive` moves **only clean** `done-verified` and `withdrawn` (valid evidence, no contradiction). **`done-unverified`

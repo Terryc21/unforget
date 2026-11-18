@@ -1,5 +1,48 @@
 # Changelog
 
+### v2.12.0: surface, don't start (2026-11-18) · minor
+
+- New governing rule (`reference/pickup.md`, summarized in SKILL.md): a session may read a
+  ledger and report from it at any time, but starts work on a row only when the user named
+  it, it blocks the current release, or it sits directly in the path of the task in
+  progress. Every other row is mentioned in one line and left alone. "What's deferred?" asks
+  for a report, not for work, and a session names the row and the reason before starting one.
+- Rows a session logs on its own initiative land parked: `@parked` after the status token,
+  plus `Parked:` and `Revisit:` lines in the detail block. A parked row is never started as
+  a release blocker on the session's say-so, and only the user unparks it. A parked THIS row
+  still blocks release, so it cannot be shipped past unseen.
+- `Revisit:` is a new optional detail-block line naming a concrete event at which a row is
+  worth raising again. Its arrival is mentioned, never acted on.
+- No format change. Helpers read `@parked` and `Revisit:` as narration; existing ledgers,
+  `verify_ledger.py`, `parse_status.py` and the HTML report behave exactly as before. A new
+  test (`tests/test_parked_marker.py`) holds that promise.
+- The maintained Deferred Work Index block (`scripts/recall_block.py`) now carries the rule in
+  one sentence, so sessions that never load the skill still see it. Projects with a
+  maintained block will see `recall_block.py check` report it as stale until the next
+  `init`, `import` or `branch` rewrites it (or run `recall_block.py write` yourself). Manual
+  blocks are unchanged; paste the new sentence from `recall_block.py render` if you want it.
+- Rows rated rare or improbable can be set aside. A new optional `@likelihood:` token rates
+  how likely a problem is (certain, probable, likely, unlikely, rare, improbable, uncertain,
+  n/a). A rare or improbable row can be set aside with `@parked:likelihood` and a move to
+  SOMEDAY: it stays in the ledger and searchable, but `list`, `--view=next` and HTML reports
+  leave it out and print a count instead (`list --parked`, `--include-set-aside` show it).
+  A set-aside is a named accepted risk, never a fix, and the status stays open.
+- A session's own rating can't take a row off the release gate. The new
+  `scripts/set_aside.py classify` sends every THIS row, every High or Critical Risk: No Fix
+  row, every row in a table without that column, and every row mentioning a protected class
+  (data loss, privacy, security, money and similar, configurable) to the user in one batched
+  question. Only the rest may be set aside by a standing policy. The registry's
+  `park_policy` (`off` by default, `ask`, `auto`) and `park_protected_classes` control it.
+- `verify` adds an error for a protected row set aside without the user's quoted
+  `Accepted-risk:` line, and warnings for a set-aside row still on THIS, with no rating, with
+  a rating other than rare or improbable, or with an unknown likelihood value.
+- The session readout counts rows set aside, by policy and by the user
+  (`defer_tally.py record --outcome set-aside`).
+- `add` now writes a `@status:open` token on v2 ledgers instead of the legacy word, and
+  `--view=next` presents its pick as a proposal and never picks a parked row.
+- Retiring long-set-aside rows and a scripted check for new evidence are planned for a later
+  release. Tests: `tests/test_set_aside.py` (17 tests).
+
 ### v2.11.0 — actionable HTML reports (2026-10-12) · minor
 
 - Default reports show ID, item, release target, status, user impact, who acts next, and next

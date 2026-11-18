@@ -251,6 +251,16 @@ if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_review_regressions.py;
   FAILED=1
 fi
 
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_parked_marker.py; then
+  echo "FAIL: @parked marker changed status, gating or verify output"
+  FAILED=1
+fi
+
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_set_aside.py; then
+  echo "FAIL: setting rows aside by likelihood"
+  FAILED=1
+fi
+
 if [[ "$FAILED" == 1 ]]; then
   echo
   echo "One or more tests failed."

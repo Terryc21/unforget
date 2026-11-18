@@ -86,6 +86,8 @@ GLOBAL_KEYS = [
     "stale_days_next",
     "stale_days_later",
     "stale_days_someday",
+    "park_policy",
+    "park_protected_classes",
 ]
 
 LEDGER_COLUMNS = ["name", "path", "role", "axis", "discipline", "parent", "death"]

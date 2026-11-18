@@ -1,7 +1,7 @@
 ---
 name: unforget
 metadata:
-  version: "2.11.0"
+  version: "2.12.0"
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
@@ -88,7 +88,9 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **A new audit / plan / memory file appeared since init** → `/unforget import`
 - **The user wants an HTML ledger table or custom ranked report** → `/unforget report` (read `reference/html-report.md`; default unfinished, current ledger, blockers → urgency → user impact; open the finished page in the user's browser unless they said not to, step 8).
 - **The user wants a cut of the ledger** ("top ten most urgent", "quick wins", "only trivial fixes") → `/unforget report` with `--limit`, `--effort`, `--roi` and `--sort` (read `reference/html-report.md`); state the "Showing N of M" line and any unclassified-row count the report prints, then open the page in the user's browser unless they said not to (`reference/html-report.md` step 8).
-- **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only)
+- **The user just asked "what's deferred?"** → `/unforget list` (or `/unforget list --target=THIS` for ship-blockers only). This asks for a report; start no row until the user picks one (`reference/pickup.md`).
+- **The user wants rare or improbable problems out of the way** ("set these aside", "stop showing me the rare ones") → rate them with `@likelihood:` and follow `reference/pickup.md` § Setting rows aside by likelihood (`scripts/set_aside.py classify` sorts which rows need the user's own decision).
+- **You read the ledger and saw rows nobody asked you about** → mention them in one line each and keep going. Start one only if the user named it, it blocks the current release, or it sits directly in the path of your task (`reference/pickup.md`).
 - **You've picked one row to actually work on and want its current state, not its whole history** → `/unforget show <ID>` (add `--full` for the complete raw history)
 - **You want to find rows that have aged past their thresholds** → `/unforget scan`
 - **The user wants to change how `list`/`scan` display by default, or says "run fresh" / "ask me what I want to see"** → `/unforget list --fresh` (depth-gated interview, saved per-project; see `reference/commands.md` § Display-preference interview)
@@ -116,6 +118,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance, and close-on-report (update the row in the same turn a fix is reported) | Reading/writing a row's status; running `archive`/`list`/`edit`; reporting a fix |
 | `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
 | `reference/verify.md` | (format v2+) the `verify`/doctor integrity lint: the checks, read-only rule, archive/promote gating, enforceable verify-still-open recipe | Running `/unforget verify`; before `archive`/`promote` |
+| `reference/pickup.md` | Surface, don't start: when a session may start work on a row it read (user named it, it blocks the release, or it is in the path of the current task), the `@parked` marker for rows a session logs on its own initiative, `Revisit:` points, and setting rare or improbable rows aside (`@likelihood:`, `@parked:likelihood`, `park_policy`) | Any session that reads a ledger; `/unforget add` of an out-of-scope finding |
 | `reference/deferral-gate.md` | (format v2+) the deferral gate at `add`: the trivial tripwire, the "why not now?" allow-list, and the session defer/fix accounting that backs it | Running `/unforget add`; showing the session readout on `list` |
 | `reference/branching.md` | (format v2+) the branching model: the three axes (actor / lifespan / domain), the decision cascade, parent/child conventions, and the atomic `branch` command | Deciding whether work earns a child ledger; running `/unforget branch` |
 | `reference/skill-handoffs.md` | (format v2+) companion skill handoffs: the 5 functions, the global manifest, install-state detection by invocable name, frequency governance, the shipped-default disclosure | Firing a companion recommendation at a done/promote/verify transition |
@@ -138,6 +141,8 @@ Read this file when:
 - The user asks "what's deferred?", "what's the backlog?", "prioritize my plans," or any variant.
 - Before suggesting a release / submission, to check 🔴 THIS rows for unresolved blockers.
 - When a task in the current session needs to be deferred, log a row here. Do NOT create a new tracking file unless the entry needs detail beyond one row.
+
+Surface, don't start: report rows freely, but start one only when the user names it, it blocks the current release, or it sits directly in the path of the task in progress. Mention every other row in one line.
 
 **Format:** 10-column rating table per section. **Sections:** Paused plans / Session spillover / Audit findings / User-reported.
 
@@ -167,6 +172,26 @@ Every read operation (`add`, `list`, `promote`, `scan`, `edit`, `import`, `verif
 - **Marker is a future version (`v3` or higher).** The skill prints: "this file declares unforget format vN, but this skill version supports up to v2. Operating in read-only mode; writes are refused." Read-only operations (`list`, `scan`, `verify`, and `promote --dry-run`) still work. Write operations (`add`, `edit`, `import`, and `promote` without `--dry-run`) refuse with a one-line error pointing to the version mismatch and recommending a skill upgrade.
 
 **Preferred implementation:** delegate the marker read to `python3 scripts/check_format_version.py <path-to-UNFORGET.md>` (returns JSON). Algorithm fallback if Python is unavailable: read the first 30 lines of the file, grep for `<!-- unforget-format: v` (case sensitive), parse the version digit, compare against supported.
+
+---
+
+## 🛑 Working from a ledger: surface, don't start
+
+**A session may read a ledger and report from it at any time. It starts work on a row only when:**
+
+- **(a)** the user named that row (in their own words this session, by accepting a proposal for it, or as the task of a handoff they started the session with);
+- **(b)** the row blocks the current release (`blocks_release` is true; `verify_ledger.py` lists it in `this_open`) and is not `@parked`; or
+- **(c)** the row sits directly in the path of the task in progress: its defect is in the same function or is the same bug, so the task cannot be finished correctly without it. "Same file" and "while I'm here" do not count.
+
+**Every other row is mentioned in one line, once, and left alone.** "What's deferred?" asks for a report, not for work. When a session does start a row under (b) or (c), it names the row and the condition in one line first.
+
+**Rows a session logs on its own initiative land parked:** `@status:open` `@parked`, with a `Parked:` line and a concrete `Revisit:` point in the detail block. A parked row can be started only when the user names it, never under (b), and only the user unparks it. The marker is narration to every helper script, so existing ledgers and the release gate are unchanged.
+
+**Rows rated rare or improbable can be set aside** (`@likelihood:rare` `@parked:likelihood`, Target ⚪ SOMEDAY): kept and searchable, but left out of actionable views until the user picks one. A set-aside is a named accepted risk, never a fix. A THIS row, a High/Critical Risk: No Fix row or a protected-class row (data loss, privacy, security, money) is never set aside without the user's own yes, quoted in an `Accepted-risk:` line; `verify` errors when that line is missing. The registry's `park_policy` (default `off`) decides whether sessions offer this unprompted.
+
+**Why.** A ledger lists real work, and every row reads like an invitation. Sessions picked rows up on their own, or followed one that caught the user's eye, and the task they were opened for receded. The ledger's job is to remember; choosing the work stays with the user.
+
+Full spec, including what counts as naming a row and the anti-patterns: `reference/pickup.md`. A project can make the rule stricter in its instruction file; the stricter rule wins.
 
 ---
 

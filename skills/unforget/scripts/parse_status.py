@@ -34,8 +34,17 @@ Output per row (stdout, JSON):
     "archivable": true|false,             # §1c: done-verified or withdrawn only
     "blocks_release": true|false,         # §1c: THIS-target still-a-blocker
     "issues": ["<one-line problem>", ...], # empty when clean
-    "narration": "<prose after the token, trimmed>"
+    "narration": "<prose after the token, trimmed>",
+    "likelihood": "rare"|...|null,        # optional @likelihood: token (filtering only)
+    "likelihood_valid": true|false,
+    "parked": true|false,                 # @parked or @parked:<reason> present
+    "parked_reason": "likelihood"|null,   # null = bare @parked (awaiting the user)
+    "set_aside": true|false,              # @parked:likelihood
+    "accepted_risk": "<quoted user words>"|"",
+    "risk_no_fix": "<Risk: No Fix cell>"|null   # null when the column is unknown
   }
+  The likelihood/parking fields never change status, completion, archivability
+  or blocks_release.
 
 Exit codes:
   0  parsed; no integrity issues found across the parsed row(s)
@@ -68,6 +77,18 @@ VERIFIED_VALUES = {"code", "device", "session-claimed", "user"}
 # allowed only with an explicit code-is-sufficient note (pure-logic changes);
 # the shared evaluator checks the item-local declaration for every caller.
 DONE_VERIFIED_OK_TIERS = {"device", "user", "code"}
+
+# Optional likelihood token (reference/pickup.md § Setting rows aside by
+# likelihood). Read for filtering only: it never changes status, completion,
+# archiving or release gating, so a ledger without it behaves exactly as before.
+LIKELIHOOD_VALUES = ("certain", "probable", "likely", "unlikely", "rare",
+                     "improbable", "uncertain", "n/a")
+# Only these may be set aside for likelihood. `uncertain` never qualifies.
+SET_ASIDE_LIKELIHOODS = {"rare", "improbable"}
+LIKELIHOOD_RE = re.compile(r"@likelihood:\s*([a-z/-]+)")
+# `@parked` (awaiting the user) or `@parked:<reason>` (a decision, e.g.
+# `@parked:likelihood`, set aside as unlikely to happen).
+PARKED_RE = re.compile(r"@parked(?::([a-z-]+))?(?![\w-])")
 
 # Narration phrases that contradict a "done"/closed token (§1b). These are the
 # exact shapes that produced the U5 failure: a token saying closed/verified over
@@ -265,6 +286,21 @@ def code_note(cell: str, detail: str = '') -> str:
     return match[1].strip(" *` ") if match and match[1].strip(" *`.;—") else ''
 
 
+def accepted_risk_note(cell: str, detail: str = '') -> str:
+    """The user's recorded acceptance of a set-aside risk, or ''.
+
+    Valid only when it quotes the user's own words (straight or curly quotes), so
+    a bare "Accepted-risk: yes" written by a session does not count. Accepted in
+    the Status narration or on a dedicated line of this item's detail bullet.
+    """
+    for source, pattern in ((cell, r"Accepted-risk:\s*([^\n|]*)"),
+                            (detail, r"^\s*(?:\*\*)?Accepted-risk:(?:\*\*)?[ \t]*([^\n]*)")):
+        match = re.search(pattern, source, re.I | re.M)
+        if match and re.search(r'["“][^"”]+["”]', match[1]):
+            return match[1].strip(" *` ")
+    return ''
+
+
 def legacy_state(cell: str) -> str:
     text = re.sub(r"[*`~]", "", cell).strip().lower()
     if re.search(r"\b(not (?:yet )?(?:fixed|done|closed)|open|reopened|re-opened|deferred|still broken|still failing)\b", text):
@@ -403,6 +439,18 @@ def parse_row(row: str, headers=None, detail: str = "", fields=None) -> dict:
             target = match[1].split()[-1] if match else ""
     blocks_release = target == "THIS" and not completed
 
+    # Likelihood and parking: reported only, never fed into the decisions above.
+    likelihood_match = LIKELIHOOD_RE.search(cell)
+    likelihood = likelihood_match.group(1) if likelihood_match else None
+    parked_match = PARKED_RE.search(cell)
+    parked_reason = parked_match.group(1) if parked_match else None
+    if fields is not None:
+        risk_no_fix = fields.get("risk: no fix")
+    elif headers is not None and "risk: no fix" in headers:
+        risk_no_fix = named_cell(row, headers, "risk: no fix", lambda r: "")
+    else:
+        risk_no_fix = None  # unknown column layout: callers must treat as unknown
+
     return {
         "id": row_id,
         "effective_status": effective_status,
@@ -420,6 +468,13 @@ def parse_row(row: str, headers=None, detail: str = "", fields=None) -> dict:
         "blocks_release": blocks_release,
         "issues": issues,
         "narration": narration[:200],
+        "likelihood": likelihood,
+        "likelihood_valid": likelihood is None or likelihood in LIKELIHOOD_VALUES,
+        "parked": parked_match is not None,
+        "parked_reason": parked_reason,
+        "set_aside": parked_reason == "likelihood",
+        "accepted_risk": accepted_risk_note(cell, detail),
+        "risk_no_fix": risk_no_fix,
     }
 
 

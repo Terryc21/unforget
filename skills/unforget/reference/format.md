@@ -49,6 +49,23 @@ read instead of parsing prose. Full spec: `reference/status.md`. In brief:
 - **`done-unverified`** is the "done-but-owed" state: fixed, not yet ground-truth-checked. `archive` moves only `done-verified`/`withdrawn`; `done-unverified` is held back.
 - A token that **contradicts its own narration** (says `done-verified` over prose that says "re-opened"/"still owed") is a lint error the verify pass flags.
 
+**Parked marker (`@parked`, `@parked:<reason>`).** Bare `@parked` means the row awaits the user's triage; `@parked:likelihood` means the row was set aside as unlikely (next paragraph). A row a session logged on its own initiative carries `@parked` directly after its status token(s): `` `@status:open` `@parked` <narration> ``. It is not a status value and not a column; every helper reads it as narration, so status, release gating and archiving are unchanged. Its detail block carries a `Parked:` line and a `Revisit:` line (a concrete event, never "later"), both inside the body (part 2 below). Only the user unparks a row. Full rule: `reference/pickup.md`.
+
+**Likelihood token (`@likelihood:`).** An optional token in the Status cell, after the status token(s), rating how likely the problem is to happen. Scripts read it for filtering and for setting rows aside (`reference/pickup.md` § Setting rows aside by likelihood); it never changes status, archiving or release gating. Rate rows as they come up: no backfill. The narration says who rated it and on what basis.
+
+| Value | Means |
+|---|---|
+| `certain` | Happens every time, or is already happening. |
+| `probable` | Expected in ordinary use for many users. |
+| `likely` | Expected in ordinary use for some users or some setups. |
+| `unlikely` | Needs an uncommon but plausible combination of conditions. |
+| `rare` | Happens in real use, but only to a few users or under narrow conditions. |
+| `improbable` | Needs a condition nobody has shown occurs in real use. |
+| `uncertain` | No basis for a rating yet. Never set aside. |
+| `n/a` | Likelihood does not apply (a feature request, a documentation change). |
+
+A row with several parts takes the rating of its **most likely** part, so a row with one probable part is never set aside as rare. Only `rare` and `improbable` rows may be set aside, which writes `@parked:likelihood` after the tokens, an `Accepted-risk: "<the user's words>" (MM/DD/YYYY)` line when the row is protected, and a `Parked:` line in the detail block. `verify` checks these (`reference/verify.md`).
+
 **Optional on legacy, expected on new.** Rows written before v2 have no token and
 still work (a tokenless row is never auto-archived). New v2 rows and explicit
 Status edits get a token. Target-only or rating-only edits preserve Status

@@ -39,6 +39,7 @@ Usage:
   python3 defer_tally.py record --dir <ledger-dir> \
       --outcome deferred --reason external-block
   python3 defer_tally.py record --dir <ledger-dir> --outcome fixed-now
+  python3 defer_tally.py record --dir <ledger-dir> --outcome set-aside --reason policy|user
 
   # Read the current session readout (for `list` / session-end summary):
   python3 defer_tally.py readout --dir <ledger-dir>
@@ -175,7 +176,7 @@ def run_gate(effort: str, blast: str, destructive: bool,
 # --- session tally ---------------------------------------------------------
 
 def _empty_tally() -> dict:
-    return {"fixed_now": 0, "deferred": 0, "reasons": {}}
+    return {"fixed_now": 0, "deferred": 0, "reasons": {}, "set_aside": {}}
 
 
 def load_state(dir_path: Path) -> dict:
@@ -191,6 +192,7 @@ def load_state(dir_path: Path) -> dict:
         "fixed_now": int(obj.get("fixed_now", 0) or 0),
         "deferred": int(obj.get("deferred", 0) or 0),
         "reasons": dict(obj.get("reasons", {})),
+        "set_aside": dict(obj.get("set_aside", {})),
     }
 
 
@@ -226,14 +228,26 @@ def summarize(tally: dict, threshold: int) -> dict:
     reason_bits = ", ".join(f"{n} {k}" for k, n in sorted(reasons.items())) or "none"
     readout = (f"This session: {fixed} fixed inline · {deferred} deferred "
                f"(reasons: {reason_bits}).")
+    # Rows set aside by likelihood (reference/pickup.md). Shown only when there
+    # are any, so the readout is unchanged for sessions that set none aside.
+    aside = tally.get("set_aside") or {}
+    by_policy, by_user = int(aside.get("policy", 0)), int(aside.get("user", 0))
+    if by_policy or by_user:
+        readout = readout[:-1] + (f" · {by_policy + by_user} set aside "
+                                  f"(policy {by_policy}, you {by_user}).")
     advisory = ""
     if flag and deferred > 0:
         advisory = (f"{deferred} deferred vs {fixed} fixed this session — worth a pass "
                     f"to see if any are actually do-now? (advisory, not blocking)")
+    aside_flag = by_policy >= 2 * threshold
+    if aside_flag:
+        advisory = (advisory + " " if advisory else "") + (
+            f"{by_policy} rows set aside by policy this session: worth a look at "
+            f"whether each rating holds? (advisory, not blocking)")
     return {
         "session": tally,
         "ratio": round(ratio, 2) if ratio is not None else None,
-        "flag": bool(flag and deferred > 0),
+        "flag": bool(flag and deferred > 0) or aside_flag,
         "threshold": threshold,
         "readout": readout,
         "advisory": advisory,
@@ -248,6 +262,9 @@ def record(dir_path: Path, outcome: str, reason: str | None) -> dict:
         tally["deferred"] += 1
         key = (reason or "unspecified").strip().lower()
         tally["reasons"][key] = tally["reasons"].get(key, 0) + 1
+    elif outcome == "set-aside":
+        key = "user" if (reason or "").strip().lower() == "user" else "policy"
+        tally["set_aside"][key] = tally["set_aside"].get(key, 0) + 1
     save_state(dir_path, tally)
     return summarize(tally, read_ratio_threshold(dir_path))
 
@@ -272,8 +289,9 @@ def main() -> int:
 
     r = sub.add_parser("record", help="record an outcome into the session tally")
     r.add_argument("--dir", required=True, help="ledger directory (holds the session state file)")
-    r.add_argument("--outcome", required=True, choices=["fixed-now", "deferred"])
-    r.add_argument("--reason", default=None, help="allow-list reason (required for deferred)")
+    r.add_argument("--outcome", required=True, choices=["fixed-now", "deferred", "set-aside"])
+    r.add_argument("--reason", default=None,
+                   help="allow-list reason (required for deferred); for set-aside: policy or user")
 
     ro = sub.add_parser("readout", help="print the current session tally readout")
     ro.add_argument("--dir", required=True, help="ledger directory")

@@ -51,6 +51,11 @@ Its *strictness* is **Policy 1** (§5), read from the registry global block
 where it surfaces; the write path never hard-blocks (the gate redirects and
 counts — it never *refuses* a deferral; see Anti-patterns).
 
+**Fresh findings, not existing rows.** The gate governs a finding at the moment it is
+found, before it becomes a row. Rows already in the ledger fall under
+`reference/pickup.md` (surface, don't start): a trivial existing row is mentioned like
+any other, and the tripwire's do-now never reaches back into the ledger to start one.
+
 ## §2 — The trivial tripwire (cheapest, highest-value)
 
 **Rule:** a would-be row that is **Fix Effort = Trivial** AND **Blast Radius =

@@ -81,6 +81,8 @@ and never touches the surrounding human prose:
 | `report_effort_words` | `WORD=level, …` (levels `trivial` \| `small` \| `medium` \| `large`); project words for `html_report.py --effort`, added to the built-in ones and winning over them. Optional. See `reference/html-report.md` § Project vocabulary |
 | `report_roi_words` | `WORD=level, …` (levels `excellent` \| `good` \| `fair` \| `marginal` \| `poor`); project words for `--roi` and the `roi` sort. Optional |
 | `report_effort_column` | extra header names for the effort column, comma-separated (tried after `Fix Effort`, `Effort`, `Est`). Optional |
+| `park_policy` | `off` (default) \| `ask` \| `auto`; whether sessions offer, or apply, setting rows aside by likelihood. See `reference/pickup.md` § Setting rows aside by likelihood |
+| `park_protected_classes` | comma-separated phrases; rows mentioning one always need the user's decision before being set aside. When set, replaces the defaults (data loss, corruption, privacy, security, payments, billing, money, credentials) |
 | `report_roi_column` | extra header names for the ROI column, comma-separated (tried after `ROI`). Optional |
 
 **Migration note (2026-08-13).** `archive_nudge_threshold` and the four `stale_days_*` keys were

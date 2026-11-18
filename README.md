@@ -1,6 +1,6 @@
 # unforget
 
-![Version](https://img.shields.io/github/v/tag/Terryc21/unforget?label=version&cacheSeconds=3600&v=2.11.0) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget?cacheSeconds=3600) ![Stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat&cacheSeconds=3600) ![Issues](https://img.shields.io/github/issues/Terryc21/unforget?cacheSeconds=3600) ![License](https://img.shields.io/github/license/Terryc21/unforget?cacheSeconds=3600) ![Codex + Claude Code](https://img.shields.io/badge/Codex%20%2B%20Claude%20Code-Skill-blueviolet)
+![Version](https://img.shields.io/github/v/tag/Terryc21/unforget?label=version&cacheSeconds=3600&v=2.12.0) ![Last commit](https://img.shields.io/github/last-commit/Terryc21/unforget?cacheSeconds=3600) ![Stars](https://img.shields.io/github/stars/Terryc21/unforget?style=flat&cacheSeconds=3600) ![Issues](https://img.shields.io/github/issues/Terryc21/unforget?cacheSeconds=3600) ![License](https://img.shields.io/github/license/Terryc21/unforget?cacheSeconds=3600) ![Codex + Claude Code](https://img.shields.io/badge/Codex%20%2B%20Claude%20Code-Skill-blueviolet)
 
 > **One file. Four sections. Nothing slips.**
 
@@ -155,7 +155,7 @@ or after a session changed your list, instead of waiting to be asked. The plan i
 
 ## Install for Codex or Claude Code
 
-Version 2.11.0 uses **one shared skill**, including the same report generator. Choose
+Version 2.12.0 uses **one shared skill**, including the same report generator. Choose
 one installation method per host. Python 3.9 or later runs the bundled helpers.
 
 The skill itself lives in `skills/unforget/` (its `SKILL.md`, `scripts/`, `reference/` and
@@ -297,6 +297,12 @@ work that crosses teams.
 - **It knows about shipping.** One column says when, and one moment each release moves everything
   forward.
 - **Your AI reads it without being asked.** Setup wires it into your AGENTS.md or CLAUDE.md.
+- **Your AI doesn't wander into it.** A session reports rows freely but starts one only when you
+  name it, it blocks the release, or it sits directly in the path of the task at hand. Rows a
+  session logs on its own stay parked until you look at them.
+- **Rare problems can wait without being lost.** Rate a row rare or improbable and set it
+  aside: it stays in the file, but views and release counts leave it out until you pick it.
+  Anything touching data loss, privacy, security or money waits for your own yes first.
 - **You see it the way you want.** The ten most urgent, the quick wins, or only the ship
   blockers, with a clear count of anything left out, even when older rows use other words.
 - **It notices things going stale.** `/unforget scan` finds rows sitting far longer than their
@@ -385,6 +391,7 @@ table survived, because a misplaced `|` breaks a table quietly.
 | **[Reports](skills/unforget/reference/html-report.md)** | Views, filters, row limits, and reading other rating words |
 | **[Setup](skills/unforget/reference/init.md)** | What `init` does, step by step |
 | **[Settings](skills/unforget/reference/registry.md)** | The settings table in your ledger folder's README |
+| **[Surface, don't start](skills/unforget/reference/pickup.md)** | When your AI may start a row it read, parked rows, and revisit points |
 | **[Release ritual](skills/unforget/reference/promotion.md)** | What `promote` checks before letting you ship |
 | **[Splitting the file](skills/unforget/reference/branching.md)** | When a sprint or someone else's list earns its own |
 | **[Recovery](docs/RECOVERY.md)** | Repairing a broken file |

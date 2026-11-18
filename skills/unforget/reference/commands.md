@@ -83,8 +83,9 @@ blocks the write path — it redirects and counts, never refuses (see
    - ROI: `🟢 Good`
    - Blast Radius: `⚪ 1 file`
    - Fix Effort: `Small`
-   - Status: `Open`
+   - Status: `` `@status:open` `` (format v2+; a v1 ledger keeps the word `Open`). Steps 4b and the status-token rule both build on this token, so never write a tokenless row into a v2 ledger.
 4. **Ask the user to override any defaults** (single AskUserQuestion with all relevant fields, or accept the defaults to skip ahead).
+4b. **Park it if the session, not the user, decided to log it** (`reference/pickup.md` § Parked rows). An out-of-scope finding noticed during other work, or a follow-up the session thought of, gets `@parked` right after its status token and two detail-block lines: `Parked: logged by a session on <MM/DD/YYYY> during <task>; not triaged by the user.` and `Revisit: <a concrete event>`. A row the user asked to log is not parked. Never use the Target to get around parking: a parked 🔴 THIS row still blocks release, but no session may start it until the user unparks it.
 5. **Append the row** to the chosen section (only reached when the gate routed to `defer`).
 6. **Record the tally (format v2+):** `python3 scripts/defer_tally.py record --dir <ledger-dir> --outcome deferred --reason <tag>`. (A gate that routed to do-now instead records `--outcome fixed-now` — that path never reaches step 5.)
 7. **Echo back** the new row ID and a one-line confirmation.
@@ -270,6 +271,7 @@ Show current state. Default view is sorted by Target (🔴 THIS first), then Urg
 /unforget list --section=audit        ·  only Section 3
 /unforget list --status=open          ·  filter by @status value (open/in-progress/done-verified/done-unverified/blocked/withdrawn)
 /unforget list --stale                ·  only rows past their staleness threshold
+/unforget list --parked               ·  include rows set aside by likelihood (left out by default; see § Output format)
 /unforget list --age=30+              ·  only rows older than 30 days
 /unforget list --view=<mode>          ·  all | open | done | split | next (see § View modes)
 /unforget list --group-by=<axis>      ·  target | section | none (see § Grouping)
@@ -290,6 +292,8 @@ The skill renders the matching rows in the same 10-column format as UNFORGET.md,
 > "12 rows total: 2 🔴 THIS (release blockers), 5 🔵 NEXT, 5 ⚪ SOMEDAY. Stale: 1."
 
 For the simplest case (`/unforget list` alone), this is the answer the user was actually looking for when they asked "what's deferred?"
+
+**Set-aside rows (format v2+):** rows set aside by likelihood (`@parked:likelihood`) are not actionable work, so `list` leaves them out unless `--parked` is given, and prints the classifier's one line in their place, from `python3 scripts/set_aside.py classify --file <ledger> --dir <ledger-dir>` (`summary_line`, e.g. `Set aside: 9 (rare 5, improbable 4)`). A set-aside row that still blocks release is never left out. When `park_policy` is `ask` or `auto` and the classifier returns candidates, follow `reference/pickup.md` § Who decides. See `reference/pickup.md` § Setting rows aside by likelihood.
 
 **Archive nudge:** after the list output, if 5 or more Fixed/Done rows are sitting in the active tables, append the one-line archive nudge (see `/unforget archive` § The archive nudge). This is the moment the user is already looking at the ledger, so it is where accumulated-completed-row clutter is most usefully surfaced.
 
@@ -326,7 +330,7 @@ For the simplest case (`/unforget list` alone), this is the answer the user was 
 
 Each heading carries its own count so `--view=split` alone answers "how much is actually left" without the reader counting rows. The one-line summary and archive nudge (see § Output format above) still print once, above all tables.
 
-**`--view=next`**: no table. A single recommended row plus a one-line reason, drawn from the Open bucket only (a Completed row is never "next"). Ranking is a **composite score**, shown in the reason so the pick is inspectable rather than a black box:
+**`--view=next`**: no table. A single **proposed** row plus a one-line reason, drawn from the Open bucket only (a Completed row is never "next"). Parked rows, bare or set aside, are never the pick. The pick is a report, not an instruction: under `reference/pickup.md` the session starts it only when the user says so, so end the line by asking rather than starting (`"…Want me to start on it?"`). Ranking is a **composite score**, shown in the reason so the pick is inspectable rather than a black box:
 
 - **Ship-risk** — Target (🔴 THIS weighted highest) × Urgency × Risk:No-Fix severity.
 - **Closest-to-done** — `done-unverified` rows need one verification step, not new code; weighted up when the remaining work is a device/build/Sentry check rather than implementation.

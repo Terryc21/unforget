@@ -21,6 +21,11 @@ Checks (§4a):
  10. cell-count != the table's declared width     (an unescaped '|' shifting every column)
  11. detail-pointer                                (a "→ detail block **<ID>**" pointer with
                                                    no matching bullet under a Detail heading)
+ 12. likelihood set-aside                          (set-aside-unaccepted: error, a high-risk or
+                                                   protected-class row set aside without the user's
+                                                   quoted Accepted-risk; set-aside-still-this,
+                                                   set-aside-unrated, set-aside-likelihood and
+                                                   likelihood-value: warn)
 
 Findings are returned most-severe first. This command NEVER edits — fixes are the
 user's call (a future `verify --fix` proposes edits with approval).
@@ -75,6 +80,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import parse_status  # noqa: E402
 import registry  # noqa: E402
+import set_aside  # noqa: E402
 
 DEFAULT_CHAR_BUDGET = 400  # per-cell soft budget; Phase 7 formalizes/《configures》 this
 DEFAULT_CHAR_BUDGET_HARD_MULTIPLE = 4  # hard threshold = this × the soft budget (§4e)
@@ -158,7 +164,8 @@ def _declared_width(line: str) -> int:
     return len(parse_status.data_cells(line))
 
 
-def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None):
+def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None,
+               protected_classes: list[str] | None = None):
     """Return (findings, blockers).
 
     `blockers` is the list of every 🔴 THIS row that still blocks release —
@@ -176,6 +183,9 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
     findings = []
     blockers = []  # every blocks_release row, for the caller's ship_ready/this_open
     evaluations = iter(parse_status.parse_file(text))
+    details = parse_status.detail_blocks(text)
+    if protected_classes is None:
+        protected_classes = set_aside.parse_classes(None)
     declared = 0  # width of the most recent header row; 0 = unknown
     prev_line = ""  # previous line, so a delimiter row can read its header
     for line in text.splitlines():
@@ -333,7 +343,45 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None)
                     "message": "row cites a file path but has no verify recipe (still-open or still-done); premise may have decayed",
                 })
 
+        # Check 12: rows set aside by likelihood (reference/pickup.md § Setting rows
+        # aside by likelihood). A set-aside is a decision to stop treating a row as
+        # work, so the checks guard the two ways it goes wrong: a risk the user never
+        # accepted, and a set-aside that didn't actually leave the release gate.
+        findings.extend(check_likelihood(parsed, rid, line, details.get(rid, ""), protected_classes))
+
     return findings, blockers
+
+
+def check_likelihood(parsed: dict, rid: str, line: str, detail: str, classes) -> list[dict]:
+    out = []
+    lk = parsed.get("likelihood")
+    if not parsed.get("likelihood_valid", True):
+        out.append({"severity": "warn", "check": "likelihood-value", "id": rid,
+                    "message": f"unknown @likelihood value {lk!r} (expected one of "
+                               f"{', '.join(parse_status.LIKELIHOOD_VALUES)})"})
+    if not parsed.get("set_aside") or parsed.get("completed"):
+        return out
+    if lk is None:
+        out.append({"severity": "warn", "check": "set-aside-unrated", "id": rid,
+                    "message": "set aside for likelihood (@parked:likelihood) but carries no @likelihood: token"})
+    elif lk not in parse_status.SET_ASIDE_LIKELIHOODS:
+        out.append({"severity": "warn", "check": "set-aside-likelihood", "id": rid,
+                    "message": f"set aside for likelihood but rated {lk!r}; only rare or improbable rows may be set aside"})
+    if parsed.get("blocks_release"):
+        out.append({"severity": "warn", "check": "set-aside-still-this", "id": rid,
+                    "message": "set aside for likelihood but still targeted THIS, so it still blocks release; "
+                               "move it to SOMEDAY or remove @parked:likelihood"})
+    # A missing Risk: No Fix column alone does not make this an error: the user
+    # was asked (the classifier routes such rows to them), and Lean ledgers have
+    # no such column. High risk or a protected class does.
+    reasons = [r for r in set_aside.protection_reasons(parsed, line + "\n" + detail, classes)
+               if not r.startswith("no Risk")]
+    if reasons and not parsed.get("accepted_risk"):
+        out.append({"severity": "error", "check": "set-aside-unaccepted", "id": rid,
+                    "message": "set aside for likelihood without the user's quoted acceptance "
+                               f"({'; '.join(reasons)}); add Accepted-risk: \"<the user's words>\" (MM/DD/YYYY) "
+                               "or restore the row"})
+    return out
 
 
 def check_detail_pointers(text: str) -> list[dict]:
@@ -423,7 +471,9 @@ def main() -> int:
         return 2
 
     text = target.read_text(encoding="utf-8", errors="replace")
-    findings, blockers = check_rows(text, args.char_budget, char_budget_hard)
+    classes = set_aside.parse_classes(
+        set_aside.registry_settings(Path(args.dir) if args.dir else None).get("park_protected_classes"))
+    findings, blockers = check_rows(text, args.char_budget, char_budget_hard, classes)
     rows_checked = sum(1 for ln in text.splitlines() if parse_status.ROW_ID_RE.match(ln))
 
     pointer_findings, bullet_ids, pointer_ids = check_detail_pointers(text)

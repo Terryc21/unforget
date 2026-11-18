@@ -121,6 +121,10 @@ def render_block(global_cfg: dict, ledgers: list[dict], home: str | None) -> str
         "Read the ledgers when the user asks \"what's deferred?\" / \"backlog?\" / \"prioritize,\" "
         "and before suggesting a release (check 🔴 THIS rows). Log new deferrals via the deferral "
         "gate — an item lives in exactly ONE ledger; siblings get a pointer row, not a copy.",
+        "",
+        "Surface, don't start: report rows freely, but start work on one only when the user names "
+        "it, it blocks the current release, or it sits directly in the path of the task in "
+        "progress; mention every other row in one line.",
         END,
     ]
     return "\n".join(lines)

@@ -191,6 +191,7 @@ def read_ledger(path):
         rows.append(dict(id=ident, ledger=path.name, source=str(path), line=n, section=section,
                          finding=finding, status=status, target=target, urgency=urgency,
                          blocker=evaluated['blocks_release'], completed=evaluated['completed'],
+                         set_aside=evaluated['set_aside'], likelihood=evaluated['likelihood'] or '',
                          integrity_issues=evaluated['issues'],
                          ux='unrated', ux_basis='', owner='', next='', effort=column(data, ('fix effort', 'effort', 'est'), 'effort') or 'Unrated',
                          roi=column(data, ('roi',), 'roi'), vocab_key=str(path), original=data, notes=[], detail=details.get(ident,''),
@@ -297,7 +298,7 @@ def sort_key(row, fields):
 
 def select(rows, args):
     """Filter, sort, then cap. Records what it did in args.select_info for the report notes."""
-    result, unclassified = [], dict(effort=0, roi=0)
+    result, unclassified, hidden = [], dict(effort=0, roi=0), {}
     for r in rows:
         key=r['ledger']+'::'+r['id']
         if args.id and key not in args.id and r['id'] not in args.id: continue
@@ -307,6 +308,13 @@ def select(rows, args):
         elif args.view == 'unfinished' and r['completed']: continue
         elif args.view == 'completed' and not r['completed']: continue
         if args.blockers_only and not r['blocker']: continue
+        # Rows set aside by likelihood are not actionable work (reference/pickup.md):
+        # left out unless asked for, named by --id, or still a release blocker (a
+        # report never hides a blocker). They are counted, never silently dropped.
+        if (r.get('set_aside') and not r['completed'] and not r['blocker']
+                and not getattr(args, 'include_set_aside', False) and not args.id):
+            hidden[r['likelihood'] or 'unrated'] = hidden.get(r['likelihood'] or 'unrated', 0) + 1
+            continue
         if args.target and r['target'] not in args.target: continue
         if args.urgency and r['urgency'] not in args.urgency: continue
         if args.ledger and r['ledger'] not in args.ledger: continue
@@ -331,7 +339,7 @@ def select(rows, args):
         extra = len(beyond)
         result = head + beyond
     for n,r in enumerate(result,1):r['rank']=n
-    args.select_info = dict(matched=matched, shown=len(result), extra_blockers=extra, unclassified=unclassified)
+    args.select_info = dict(matched=matched, shown=len(result), extra_blockers=extra, unclassified=unclassified, set_aside_hidden=hidden)
     return result
 
 
@@ -341,6 +349,10 @@ def selection_notes(args):
     if args.limit and info['matched'] > args.limit:
         tail = f"; {info['extra_blockers']} more release blocker(s) are shown beyond the limit." if info['extra_blockers'] else '.'
         notes.append(f"Showing {info['shown'] - info['extra_blockers']} of {info['matched']} matching rows (limit {args.limit}, ties broken by lowest fix effort){tail}")
+    hidden = info.get('set_aside_hidden') or {}
+    if hidden:
+        parts = ', '.join(f'{k} {n}' for k, n in sorted(hidden.items()))
+        notes.append(f"Set aside as unlikely and left out: {sum(hidden.values())} ({parts}); rerun with --include-set-aside to see them.")
     for field, flag in (('effort', args.effort), ('roi', args.roi)):
         if flag and info['unclassified'][field]:
             notes.append(f"{info['unclassified'][field]} row(s) that passed every other filter have no recognizable {field} and are excluded by --{field}; rerun with --{field} unrated to see them, or map their words with report_{field}_words in the ledger README's registry block.")
@@ -354,6 +366,7 @@ def parser():
     p.add_argument('--title',default='Unfinished ledger')
     p.add_argument('--view',choices=['unfinished','all','completed'],default='unfinished')
     p.add_argument('--blockers-only',action='store_true')
+    p.add_argument('--include-set-aside',action='store_true',help='Include rows set aside by likelihood (@parked:likelihood); they are left out and counted by default.')
     p.add_argument('--status',action='append',choices=sorted(STATES|{'unknown','legacy-complete'}))
     p.add_argument('--target',action='append',choices=list(TARGET))
     p.add_argument('--urgency',action='append',choices=list(URGENCY))
@@ -429,7 +442,7 @@ def render(rows, sources, warnings, args, total_blockers):
                'verification':r['verification_owed'],'reconciliation':bool(r['reconciliation'])}
         attrs=' '.join(f'data-{k}="{str(v).lower()}"' for k,v in flags.items())
         body.append(f'<tr data-source-order="{source_order[(r["ledger"], r["line"])]}" data-rank="{r["rank"]}" data-blocker="{str(r["blocker"]).lower()}" data-status="{E(r["status"])}" data-ledger="{E(r["ledger"])}" data-search="{E(search,quote=True)}" {attrs}>'+''.join(vals)+'</tr>')
-    criteria={k:getattr(args,k) for k in ['view','id','exclude_id','status','target','urgency','ledger','section','query','effort','roi','limit','blockers_only','sort','columns'] if getattr(args,k)}
+    criteria={k:getattr(args,k) for k in ['view','id','exclude_id','status','target','urgency','ledger','section','query','effort','roi','limit','blockers_only','include_set_aside','sort','columns'] if getattr(args,k,None)}
     options=lambda key: '<option value="">All</option>'+''.join(f'<option value="{E(v,quote=True)}">{E(statuses.get(v,v) if key=="status" else v)}</option>' for v in sorted({str(r[key]) for r in rows}))
     now=dt.datetime.now().astimezone()
     if getattr(args,'timezone',None):
@@ -477,7 +490,7 @@ def main():
         report=render(selected,sources,warnings,args,sum(r['blocker'] for r in rows))
         warnings=warnings+selection_notes(args)   # still reported to the caller on stdout
         output.parent.mkdir(parents=True,exist_ok=True);output.write_text(report,encoding='utf-8')
-        print(json.dumps(dict(output=str(output),rows=len(selected),matched=args.select_info['matched'],unclassified=args.select_info['unclassified'],blockers_in_report=sum(r['blocker'] for r in selected),blockers_in_inputs=sum(r['blocker'] for r in rows),warnings=warnings)))
+        print(json.dumps(dict(output=str(output),rows=len(selected),matched=args.select_info['matched'],unclassified=args.select_info['unclassified'],set_aside_hidden=args.select_info['set_aside_hidden'],blockers_in_report=sum(r['blocker'] for r in selected),blockers_in_inputs=sum(r['blocker'] for r in rows),warnings=warnings)))
     except (ValueError,OSError,TypeError,KeyError) as e:p.error(str(e))
 
 if __name__=='__main__':main()
