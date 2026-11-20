@@ -1,6 +1,6 @@
 # Changelog
 
-### Unreleased: tokens don't count toward the row-length budget
+### v2.13.1: tokens don't count toward the row-length budget (2026-11-19) · patch
 
 - The row-length budget (400 characters soft, 1,600 hard) now measures a cell's prose only.
   Machine tokens (`@status:`, `@verified:`, `@likelihood:`, `@basis:`, `@parked`) are left
