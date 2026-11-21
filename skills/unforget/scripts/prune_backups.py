@@ -22,6 +22,11 @@ Output (stdout, JSON):
     "pruned": [...filenames sorted newest first...]
   }
 
+--keep must be at least 1. A rotation that keeps zero backups is a deletion of
+every backup, which is never what a rotation means; a typo (`--keep 0`, or an
+empty variable) must not erase the only restore point. Delete backups by hand
+if that is really the intent.
+
 Exit codes: 0 on success, 2 on usage error / directory not found.
 """
 
@@ -43,7 +48,7 @@ def main() -> int:
         "--keep",
         type=int,
         default=5,
-        help="Number of most-recent backups to retain (default: 5).",
+        help="Number of most-recent backups to retain, at least 1 (default: 5).",
     )
     parser.add_argument(
         "--dir",
@@ -65,8 +70,16 @@ def main() -> int:
         )
         return 2
 
-    if args.keep < 0:
-        print(json.dumps({"error": "--keep must be >= 0"}), file=sys.stderr)
+    if args.keep < 1:
+        print(
+            json.dumps(
+                {
+                    "error": "--keep must be at least 1; keeping 0 would delete "
+                    "every backup. Nothing was deleted."
+                }
+            ),
+            file=sys.stderr,
+        )
         return 2
 
     backups = sorted(

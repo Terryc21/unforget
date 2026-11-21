@@ -1,5 +1,12 @@
 # Changelog
 
+### Unreleased: review follow-ups
+
+- `prune_backups.py --keep 0` is refused, and nothing is deleted. Keeping zero backups
+  deleted every backup, so a typo or an empty variable could erase the only restore point.
+  `--keep` must now be at least 1. New `tests/test_prune_backups.py` covers rotation order
+  (same-day backups by time), `--dry-run`, look-alike files left alone, and the refusal.
+
 ### v2.14.1: likelihood bar direction, the ship rule in the docs, and the gallery (2026-11-21) · patch
 
 - The example gallery shows the strips. All six report pages in `examples/` now include the
