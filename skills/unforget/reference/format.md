@@ -97,7 +97,7 @@ Detection and validation delegate to `scripts/parse_status.py` (see `reference/s
 
 **The word is the Target; the marker in front of it is decoration.** Every helper reads `THIS`, `NEXT`, `LATER` or `SOMEDAY` and ignores the emoji. The shipped dots reuse the Urgency column's colors (🟡 is LATER here but HIGH in Urgency), so a ledger may use other markers instead, for example 🚢 THIS, 🚢+1 NEXT, 🚢+2 LATER and 🌫️ SOMEDAY, which read as "which release". Use one style per ledger. The four words themselves never change: tools and every existing ledger depend on them.
 
-**Invariant:** `🔴 THIS` is the only Target that blocks shipping. At submission time, every `🔴 THIS` row must be Status = Fixed or have been demoted with a one-line reason.
+**Invariant:** `🔴 THIS` is the only Target that blocks shipping. At submission time, every `🔴 THIS` row must be cleanly `@status:done-verified` or `@status:withdrawn`, or have been demoted with a one-line reason. A `done-unverified` THIS row still blocks: it is fixed but not proven. A tokenless legacy row counts only when its Status is a clear completion word (Fixed, Done, Closed, Withdrawn) with nothing owed. Full rule: `reference/status.md` § Archive & release invariants; `verify_ledger.py` reports what still blocks as `this_open`.
 
 ### Detail blocks
 

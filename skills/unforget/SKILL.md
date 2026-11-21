@@ -54,7 +54,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 
 **Target values:** 🔴 THIS (blocks current release) · 🔵 NEXT (next post-release update) · 🟡 LATER (two cycles out) · ⚪ SOMEDAY (no commitment)
 
-**Invariant:** `🔴 THIS` is the only Target that blocks shipping. At submission time, every `🔴 THIS` row must be Status = Fixed or have been demoted with a one-line reason.
+**Invariant:** `🔴 THIS` is the only Target that blocks shipping. At submission time, every `🔴 THIS` row must be cleanly `@status:done-verified` or `@status:withdrawn`, or have been demoted with a one-line reason. A `done-unverified` THIS row still blocks: it is fixed but not proven. A tokenless legacy row counts only when its Status is a clear completion word (Fixed, Done, Closed, Withdrawn) with nothing owed. Full rule: `reference/status.md` § Archive & release invariants; `verify_ledger.py` reports what still blocks as `this_open`.
 
 **Full format spec lives in `reference/format.md`:** column meanings, Status enum, detail-block format (closure pointer → body → verify-still-open recipe → spawn links), Standard / Compact / Lean / Continuous presets, and anti-patterns. Read that file when writing or validating a row.
 
@@ -77,7 +77,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
 | `/unforget verify` | (format v2+) Integrity lint: contradictions, unproven "done", bloat, dangling detail-block pointers, stale recipes, registry drift; read-only; gates `archive`/`promote` | `reference/verify.md` |
 | `/unforget archive` | Move completed (Done/Fixed) rows out of the active tables into an archive file; lightweight, run anytime; holds back "Done-but-owed" rows | `reference/commands.md` |
-| `/unforget promote` | Release-time ritual: verify 🔴 THIS rows fixed, promote 🔵 NEXT to 🔴 THIS | `reference/promotion.md` (with backups in same file) |
+| `/unforget promote` | Release-time ritual: check every 🔴 THIS row is cleanly `done-verified` or `withdrawn` (or demoted), then promote 🔵 NEXT to 🔴 THIS | `reference/promotion.md` (with backups in same file) |
 | `/unforget --version` | Print version, install path, supported format-version; install-verification | `reference/commands.md` |
 
 **Decision flowchart: which subcommand do I run?**
