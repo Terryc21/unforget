@@ -156,6 +156,8 @@ The registry (README-canonical) holds the *thresholds*; the state file holds the
 
 - On **`list`** and at **session end / summary**: a one-line readout —
   `This session: 2 fixed inline · 7 deferred (reasons: 3 user-decision, 2 external-block, 2 scope).`
+- When the session started rows (`record --outcome started`, `reference/pickup.md`), the
+  readout adds `started N (X you named, Y you didn't: <IDs and why>)`.
 - The **reason breakdown matters.** 7 deferrals all `user-decision` is legitimate
   (genuinely can't act); 7 all `scope` is a tell.
 

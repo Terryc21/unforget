@@ -40,6 +40,9 @@ Usage:
       --outcome deferred --reason external-block
   python3 defer_tally.py record --dir <ledger-dir> --outcome fixed-now
   python3 defer_tally.py record --dir <ledger-dir> --outcome set-aside --reason policy|user
+  # A session starting work on a row (reference/pickup.md § The rule): say why.
+  python3 defer_tally.py record --dir <ledger-dir> --outcome started \
+      --id A12 --condition named|this|in-path
 
   # Read the current session readout (for `list` / session-end summary):
   python3 defer_tally.py readout --dir <ledger-dir>
@@ -175,8 +178,14 @@ def run_gate(effort: str, blast: str, destructive: bool,
 
 # --- session tally ---------------------------------------------------------
 
+# Why a session started a row (reference/pickup.md § The rule): (a) the user named
+# it, (b) it blocks the current release, (c) it sits in the path of the task.
+START_CONDITIONS = ("named", "this", "in-path")
+
+
 def _empty_tally() -> dict:
-    return {"fixed_now": 0, "deferred": 0, "reasons": {}, "set_aside": {}}
+    return {"fixed_now": 0, "deferred": 0, "reasons": {}, "set_aside": {},
+            "started": {}, "started_unnamed": []}
 
 
 def load_state(dir_path: Path) -> dict:
@@ -193,6 +202,9 @@ def load_state(dir_path: Path) -> dict:
         "deferred": int(obj.get("deferred", 0) or 0),
         "reasons": dict(obj.get("reasons", {})),
         "set_aside": dict(obj.get("set_aside", {})),
+        "started": dict(obj.get("started", {})),
+        "started_unnamed": [list(x) for x in obj.get("started_unnamed", [])
+                            if isinstance(x, (list, tuple)) and len(x) == 2],
     }
 
 
@@ -235,6 +247,20 @@ def summarize(tally: dict, threshold: int) -> dict:
     if by_policy or by_user:
         readout = readout[:-1] + (f" · {by_policy + by_user} set aside "
                                   f"(policy {by_policy}, you {by_user}).")
+    # Rows started this session, by why (reference/pickup.md). Starts the user did
+    # not name are listed by ID, so work the user did not choose is countable,
+    # not just announced in a line that scrolls away.
+    started = tally.get("started") or {}
+    named = int(started.get("named", 0))
+    unnamed_list = tally.get("started_unnamed") or []
+    unnamed = int(started.get("this", 0)) + int(started.get("in-path", 0))
+    if named or unnamed:
+        label = {"this": "release blocker", "in-path": "in the path"}
+        ids = ", ".join(f"{rid} {label.get(cond, cond)}" for rid, cond in unnamed_list)
+        readout = readout[:-1] + (f" · started {named + unnamed} "
+                                  f"({named} you named, {unnamed} you didn't"
+                                  + (f": {ids}" if ids else "") + ").")
+    start_flag = unnamed >= 2 and unnamed > named
     advisory = ""
     if flag and deferred > 0:
         advisory = (f"{deferred} deferred vs {fixed} fixed this session — worth a pass "
@@ -244,17 +270,23 @@ def summarize(tally: dict, threshold: int) -> dict:
         advisory = (advisory + " " if advisory else "") + (
             f"{by_policy} rows set aside by policy this session: worth a look at "
             f"whether each rating holds? (advisory, not blocking)")
+    if start_flag:
+        advisory = (advisory + " " if advisory else "") + (
+            f"{unnamed} rows started this session that you didn't name, vs {named} you did: "
+            f"worth checking each really was a release blocker or in the path? "
+            f"(advisory, not blocking)")
     return {
         "session": tally,
         "ratio": round(ratio, 2) if ratio is not None else None,
-        "flag": bool(flag and deferred > 0) or aside_flag,
+        "flag": bool(flag and deferred > 0) or aside_flag or start_flag,
         "threshold": threshold,
         "readout": readout,
         "advisory": advisory,
     }
 
 
-def record(dir_path: Path, outcome: str, reason: str | None) -> dict:
+def record(dir_path: Path, outcome: str, reason: str | None,
+           row_id: str | None = None, condition: str | None = None) -> dict:
     tally = load_state(dir_path)
     if outcome == "fixed-now":
         tally["fixed_now"] += 1
@@ -265,6 +297,12 @@ def record(dir_path: Path, outcome: str, reason: str | None) -> dict:
     elif outcome == "set-aside":
         key = "user" if (reason or "").strip().lower() == "user" else "policy"
         tally["set_aside"][key] = tally["set_aside"].get(key, 0) + 1
+    elif outcome == "started":
+        if condition not in START_CONDITIONS:
+            raise ValueError(f"--condition must be one of {', '.join(START_CONDITIONS)}")
+        tally["started"][condition] = tally["started"].get(condition, 0) + 1
+        if condition != "named":
+            tally["started_unnamed"].append([row_id or "?", condition])
     save_state(dir_path, tally)
     return summarize(tally, read_ratio_threshold(dir_path))
 
@@ -289,9 +327,13 @@ def main() -> int:
 
     r = sub.add_parser("record", help="record an outcome into the session tally")
     r.add_argument("--dir", required=True, help="ledger directory (holds the session state file)")
-    r.add_argument("--outcome", required=True, choices=["fixed-now", "deferred", "set-aside"])
+    r.add_argument("--outcome", required=True,
+                   choices=["fixed-now", "deferred", "set-aside", "started"])
     r.add_argument("--reason", default=None,
                    help="allow-list reason (required for deferred); for set-aside: policy or user")
+    r.add_argument("--id", default=None, help="(started) the row ID")
+    r.add_argument("--condition", default=None, choices=list(START_CONDITIONS),
+                   help="(started) why: named by the user, a release blocker (this), or in-path")
 
     ro = sub.add_parser("readout", help="print the current session tally readout")
     ro.add_argument("--dir", required=True, help="ledger directory")
@@ -314,7 +356,11 @@ def main() -> int:
         return 2
 
     if args.action == "record":
-        result = record(dir_path, args.outcome, args.reason)
+        if args.outcome == "started" and (not args.id or not args.condition):
+            print(json.dumps({"error": "--outcome started needs --id and --condition"}),
+                  file=sys.stderr)
+            return 2
+        result = record(dir_path, args.outcome, args.reason, args.id, args.condition)
         json.dump(result, sys.stdout); sys.stdout.write("\n")
         return 1 if result["flag"] else 0
 

@@ -57,6 +57,8 @@ Output (stdout, JSON):
     "gate_pass": true|false,   # ARCHIVE/PROMOTE question: false when any error-severity finding exists
     "ship_ready": true|false,  # SHIP question: false when any 🔴 THIS row still blocks release
     "this_open": ["<row id>", ...],  # the THIS rows behind a false ship_ready (empty when ship_ready)
+    "parked_waiting": ["<row id>", ...],  # open rows a session logged (bare @parked): the user has not triaged them
+    "set_aside": ["<row id>", ...],       # open rows set aside by likelihood (@parked:likelihood): already decided
     "advisory": "<one-line summary>"
   }
 
@@ -554,6 +556,15 @@ def main() -> int:
     this_open = [b["id"] for b in blockers]
     ship_ready = not this_open
 
+    # The two kinds of parked (reference/pickup.md § Parked rows), kept apart so a
+    # count of rows waiting for the user never includes rows already set aside.
+    # Closed rows are left out: a done or withdrawn row waits for no one.
+    parked_waiting, set_aside_ids = [], []
+    for row in parse_status.parse_file(text):
+        if row.get("completed") or not row.get("parked"):
+            continue
+        (set_aside_ids if row.get("parked_reason") else parked_waiting).append(row["id"])
+
     advisory = (
         f"{error_count} error(s), {warn_count} warning(s); "
         + ("gate PASSES" if gate_pass else "gate FAILS — archive/promote should refuse")
@@ -561,6 +572,9 @@ def main() -> int:
         + ("READY" if ship_ready
            else f"BLOCKED — {len(this_open)} THIS row(s): {', '.join(this_open)}")
     )
+    if parked_waiting:
+        advisory += (f"; {len(parked_waiting)} row(s) logged by a session are waiting for "
+                     f"you: {', '.join(parked_waiting)}")
     if orphan_bullets:
         # Informational only (§4f): a Detail bullet with no pointer usually means
         # the row was written with full detail from the start. Not a finding, not
@@ -580,6 +594,8 @@ def main() -> int:
         "gate_pass": gate_pass,
         "ship_ready": ship_ready,
         "this_open": this_open,
+        "parked_waiting": parked_waiting,
+        "set_aside": set_aside_ids,
         "advisory": advisory,
     }
     json.dump(result, sys.stdout)

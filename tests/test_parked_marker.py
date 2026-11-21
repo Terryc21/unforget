@@ -15,6 +15,7 @@ Run:  python3 -m unittest discover -s tests -p test_parked_marker.py
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -81,7 +82,17 @@ class ParkedMarkerTests(unittest.TestCase):
         parked = run("verify_ledger.py", self.parked)
         base.pop("file")
         parked.pop("file")
+        # Parking is reported (parked_waiting, and a clause on the advisory), but
+        # changes no finding, count, gate or blocker list.
+        waiting = parked.pop("parked_waiting")
+        self.assertEqual(base.pop("parked_waiting"), [])
+        self.assertEqual(base.pop("set_aside"), parked.pop("set_aside"))
+        self.assertEqual(base.pop("advisory"),
+                         re.sub(r"; \d+ row\(s\) logged by a session are waiting for you: [^;(]*?(?= \(|$)",
+                                "", parked.pop("advisory")))
         self.assertEqual(base, parked)
+        open_ids = {r["id"] for r in run("parse_status.py", self.parked) if not r["completed"]}
+        self.assertEqual(set(waiting), set(self.ids) & open_ids)
         self.assertTrue(set(self.ids) & set(parked["this_open"]),
                         "a parked THIS row must still block release")
 

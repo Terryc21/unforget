@@ -50,6 +50,18 @@ naming the row and the condition: *"A544 is in the path: this fix changes
 `pruneConflicts`, where its defect lives."* Work the user did not choose is never mistaken
 for work they did.
 
+Then it records the start, so the session's starts are counted, not only announced:
+
+```
+python3 scripts/defer_tally.py record --dir <ledger-dir> --outcome started --id A544 --condition in-path
+```
+
+`--condition` is `named` (a), `this` (b) or `in-path` (c). Record (a) starts too, so the
+readout can set them against the others. The session readout then ends with, for example,
+`started 3 (1 you named, 2 you didn't: A544 in the path, A3 release blocker)`, and flags
+the session (advisory, never blocking) when two or more unnamed starts outnumber the named
+ones: that is the pattern of a session choosing its own work.
+
 ### What counts as starting
 
 Starting is anything beyond reading the ledger and reporting on it: reading the code to
@@ -214,6 +226,15 @@ and its detail bullet, so it errs toward asking.
 `python3 scripts/defer_tally.py record --dir <ledger-dir> --outcome set-aside --reason policy`
 (or `--reason user`). The session readout then shows how many rows were set aside and by
 whom, and flags a session that set many aside by policy.
+
+### How parked rows appear
+
+`python3 scripts/verify_ledger.py --file <ledger>` returns `parked_waiting` (open rows with
+bare `@parked`: logged by a session, never triaged by the user) and `set_aside` (open rows
+with `@parked:likelihood`) as separate lists, and its advisory names the waiting rows.
+`list` prints the waiting rows as one line ahead of the table, `4 rows logged by a session
+are waiting for you: S41, S42, A90, A91`, so the user sees what they have not looked at.
+Closed rows are never counted as waiting.
 
 ### How set-aside rows appear
 

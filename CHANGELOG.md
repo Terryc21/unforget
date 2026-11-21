@@ -2,6 +2,15 @@
 
 ### Unreleased: review follow-ups
 
+- Starts are counted. A session may start a row the user did not name when it blocks the
+  release or sits in the path of the task, but it only said so in one line. Now it records
+  each start (`defer_tally.py record --outcome started --id <ID> --condition
+  named|this|in-path`), the session readout ends with `started 3 (1 you named, 2 you
+  didn't: A12 in the path, A3 release blocker)`, and two or more unnamed starts outnumbering
+  the named ones raise an advisory flag.
+- Rows waiting for you are listed by script. `verify_ledger.py` returns `parked_waiting`
+  (open rows a session logged with bare `@parked`) apart from `set_aside`
+  (`@parked:likelihood`), and `list` prints the waiting rows as one line above the table.
 - Ledger moves are checked by a script, not by the model's say-so. `init`'s migration step
   removed an original ledger after a comparison only the model claimed to have made. New
   `scripts/move_ledger.py` copies the ledger, reads the copy back, compares bytes and
