@@ -70,6 +70,19 @@ page you can search, sort, filter and print, in light or dark mode. It opens in 
 soon as it's ready, and you're told where it's saved so you can open it again later. (Say "don't
 open it" if you'd rather it didn't.) Making a view never changes your ledger.
 
+Here is the default view (`/unforget report`), made from the bundled sample ledger:
+
+[![Default unfinished-work view of the sample ledger: summary counts, action filters, a search box, and a table whose column titles each carry a sort control](examples/unfinished-ledger.png)](examples/README.md)
+
+**[Open the live table in your browser](https://terryc21.github.io/unforget/examples/unfinished-ledger.html)**
+to try the sorting, filters and search yourself. It runs on the sample ledger, so nothing you
+click there changes anything.
+
+**Sort by any column.** Click a column title (ID, Item, Release target, Status, User impact and
+the rest) to sort the table by it, and click the same title again to reverse the order.
+**Reset filters & ranking** puts the report's own ranking back. To narrow the rows instead, type
+in the search box, or set the **Release status** menu to **Blockers only**.
+
 The default table puts **who acts next** and **the next action** beside each item's release
 target, status and user impact. Assignments inferred from the work are marked **Suggested**;
 confirmed assignments show their source in the expandable details. If responsibility is
