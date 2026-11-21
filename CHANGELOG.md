@@ -1,6 +1,6 @@
 # Changelog
 
-### Unreleased: review follow-ups
+### v2.15.0: verified moves, one backup contract, measured row ages, a split command spec (2026-11-21) · minor
 
 - HTML reports show the Likelihood and 1-Star Risk columns as a colored dot and a word
   only ("🟢 Rare (reviewed)", "🟡 Watch (mid)"); unrated rows read "Not rated" or "n/a".
