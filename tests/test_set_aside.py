@@ -193,8 +193,8 @@ class ReportTests(unittest.TestCase):
                            capture_output=True, text=True, check=True)
             page = out.read_text(encoding="utf-8")
             # Drawn like the 1-Star Risk strip: bar with a star, then band glyph + word.
-            self.assertIn('<span class="strip">often‹────────★──›seldom</span><br>🟢 Rare (reviewed)', page)
-            self.assertIn('<span class="strip">often‹───────────›seldom</span><br>⚪ Not rated', page)
+            self.assertIn('<span class="strip">seldom‹──★────────›often</span><br>🟢 Rare (reviewed)', page)
+            self.assertIn('<span class="strip">seldom‹───────────›often</span><br>⚪ Not rated', page)
 
     def test_onestar_column_keeps_the_ledger_strip(self):
         import html_report

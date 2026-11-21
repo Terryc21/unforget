@@ -1,5 +1,14 @@
 # Changelog
 
+### Unreleased: likelihood bar direction, and the ship rule in the docs
+
+- The HTML report's likelihood bar now reads `seldom‹──★────────›often`: often on the right,
+  so a rarer rating sits further left. Sorting is unchanged (most likely first).
+- `SKILL.md` and `format.md` stated the ship rule as "every THIS row must be Status = Fixed".
+  They now match what `promote` and `verify` enforce: a THIS row clears only when it is
+  cleanly `done-verified` or `withdrawn`, or demoted with a reason; a `done-unverified` row
+  still blocks.
+
 ### v2.14.0: Target markers, and strips in HTML reports (2026-11-21) · minor
 
 - The Target word is what counts; the marker before it is decoration. The Compact layout's

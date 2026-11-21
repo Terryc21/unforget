@@ -41,8 +41,10 @@ E = html.escape
 
 # Strips: the same look as the ledger's 1-Star Risk column (reference/format.md §
 # Optional column: 1-Star Risk): a one-line monospace bar with a star, and below it
-# the band glyph and the word, so color is never the only cue. Left is the worse
-# side in both. Likelihood is an ordinal scale, so each value has a fixed position.
+# the band glyph and the word, so color is never the only cue. Likelihood is an
+# ordinal scale, so each value has a fixed position: seldom on the left, often on
+# the right (Terry's call, 11/21/2026). LIKELIHOOD_POS is the rank, most likely
+# first, used for sorting; the bar position is its mirror.
 LIKELIHOOD_POS = {'certain': 0, 'probable': 2, 'likely': 4, 'unlikely': 6, 'rare': 8, 'improbable': 10}
 LIKELIHOOD_BAND = {'certain': '🔴', 'probable': '🔴', 'likely': '🟡', 'unlikely': '🟡',
                    'rare': '🟢', 'improbable': '🟢'}
@@ -52,14 +54,14 @@ ONESTAR_ORDER = (('🔴', 0), ('🟡', 1), ('🟢', 2), ('⚪', 3))
 def likelihood_strip(value, basis):
     """HTML for a likelihood rating, drawn like the 1-Star Risk strip."""
     pos = LIKELIHOOD_POS.get(value)
-    bar = ''.join('★' if i == pos else '─' for i in range(11))
+    bar = ''.join('★' if pos is not None and i == 10 - pos else '─' for i in range(11))
     if pos is not None:
         label = f"{LIKELIHOOD_BAND[value]} {value.title()}" + (f" ({basis})" if basis else '')
     elif value:
         label = f"⚪ {value if value == 'n/a' else value.title()}"
     else:
         label = '⚪ Not rated'
-    return f'<span class="strip">often‹{bar}›seldom</span><br>{html.escape(label)}'
+    return f'<span class="strip">seldom‹{bar}›often</span><br>{html.escape(label)}'
 
 
 def ledger_strip(text):
