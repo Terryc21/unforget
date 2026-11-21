@@ -116,6 +116,9 @@ REQUIRED_COMPANIONS = [
     "scripts/import_drift.py",
     "scripts/row_budget.py",
     "scripts/companions.py",
+    "scripts/set_aside.py",
+    "scripts/ledger_backup.py",
+    "scripts/move_ledger.py",
 ]
 
 VERSION_RE = re.compile(r"^version:[ \t]*[\"']?([0-9]+\.[0-9]+\.[0-9]+)(?=[\"' \t\r\n]|$)", re.MULTILINE)

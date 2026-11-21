@@ -73,7 +73,7 @@ Release-time ritual. Run at every release submission.
 
 0. **Integrity gate (format v2+).** Run `/unforget verify` first (`python3 scripts/verify_ledger.py --file <UNFORGET.md> --dir <ledger-dir>`). If it reports any **error-severity** finding — a self-contradicting row, a `done-verified` with no device/user tier or backed only by `session-claimed`, an unknown status value, or a 🔴 THIS row that *claims* done but isn't cleanly `done-verified` — **STOP.** You cannot make a release decision over a ledger whose "done" claims aren't trustworthy. Report the findings and require they be resolved before promotion continues. Warnings (bloat, stale-recipe, registry drift) do not block. On a v1 (tokenless) ledger this gate produces no errors and promotion proceeds normally.
 1. **Verify** every `🔴 THIS` row is resolved. With tokens (v2+): the row's `@status` must be `done-verified` (clean) or `withdrawn`, or the row must be explicitly demoted. A `done-unverified` THIS row is NOT resolved: it still owes a check and remains a blocker. Without tokens (v1): Status is a clear completion word (Fixed, Done, Closed, Withdrawn) with nothing owed. List any that don't qualify and require an explicit demotion or fix.
-2. **Promote** all `🔵 NEXT` rows to `🔴 THIS` (they are now the next release's blockers).
+2. **Back up, then promote.** Run `python3 scripts/ledger_backup.py backup --file <UNFORGET.md>` before the first write (§ Backups and recovery; skipped on `--dry-run`). Then promote all `🔵 NEXT` rows to `🔴 THIS` (they are now the next release's blockers).
 3. **Re-triage** all `🟡 LATER` rows that are still relevant to `🔵 NEXT`. Items no longer relevant get archived.
 4. **Re-rank `⚪ SOMEDAY`** items 180 days or older: prompt user for promote / demote / archive.
 5. **Stamp** the "Last promoted" line at the top of UNFORGET.md with new build/version + date.
@@ -97,54 +97,55 @@ To abandon the changes, the user replies `cancel` or anything else that is not a
 
 ## Backups and recovery
 
-Every `/unforget promote` (without `--dry-run`) writes a timestamped backup of the current UNFORGET.md before applying changes. Backups make destructive operations safe to refine: if a promote produces unexpected output, the previous file is one rename away.
+**One contract, every command that rewrites a ledger.** Before a ledger file is rewritten, its current bytes are copied beside it as a stamped backup, and that ledger's backups are pruned to the newest 5. The helper is `scripts/ledger_backup.py`; no command invents its own backup.
+
+| Command | How it backs up |
+|---|---|
+| `/unforget promote` (not `--dry-run`) | Run `python3 scripts/ledger_backup.py backup --file <ledger>` before writing. |
+| `/unforget archive` (not `--dry-run`) | Same command, before moving rows out. |
+| `/unforget verify --fix` | `row_budget.py split --apply` backs up on its own before each split. |
+| `set_aside.py convert --apply` | Backs up on its own before inserting tokens. |
+| `init` migration (`move_ledger.py --apply`) | Backs up the source before removing it or turning it into a redirect. |
+
+`add` and `edit` change one row in view of the user and are not backed up; git, or the last backup above, covers them. Dry runs never write a backup.
 
 ### Naming
 
-Backups land in the same directory as UNFORGET.md, named `UNFORGET.md.bak-YYYY-MM-DD-HHMMSS`. The timestamp uses local time. Example: `UNFORGET.md.bak-2026-05-02-143027`.
+Backups sit beside the ledger, named `<ledger name>.bak-YYYY-MM-DD-HHMMSS` in local time: `UNFORGET.md.bak-2026-05-02-143027`, or `SITE-UNFORGET.md.bak-2026-05-02-143027` for a child ledger. An existing backup is never overwritten. Two rewrites in the same second reuse the backup when the bytes are identical, and otherwise wait for the next second.
 
 ### Retention
 
-The skill keeps the 5 most recent backups. During each `promote`, backups older than the 5 most recent are pruned silently. The retention count is fixed in v1.0 and is not user-configurable.
+Each ledger keeps its own 5 most recent backups; `ledger_backup.py backup` prunes after writing, so retention needs no separate step. To prune without backing up, run `python3 scripts/ledger_backup.py prune --file <ledger> --keep 5`. Both refuse `--keep 0`, which would delete every backup. (`scripts/prune_backups.py --dir <dir>` still prunes `UNFORGET.md` backups only, for older callers.)
 
-**Preferred implementation:** delegate retention to the helper script:
-
-```
-python3 scripts/prune_backups.py --keep 5 --dir <directory-containing-UNFORGET.md>
-```
-
-The script lists files matching `UNFORGET.md.bak-YYYY-MM-DD-HHMMSS`, sorts by timestamp, deletes any beyond the most recent N. Returns JSON `{"kept": [...], "pruned": [...]}` so the skill can surface the action in its post-promote summary.
-
-If a user wants to preserve a specific backup beyond the 5-deep window, they should rename it to remove the `.bak-` infix (for example, `UNFORGET.md.bak-2026-05-02-143027` to `UNFORGET-pre-build33.md`). Renamed files are no longer recognized as backups and will not be pruned.
+To keep a backup past the 5-deep window, rename it so it no longer ends in `.bak-<stamp>` (for example, `UNFORGET.md.bak-2026-05-02-143027` to `UNFORGET-pre-build33.md`). Renamed files are not recognized as backups and are never pruned.
 
 ### `.gitignore` recommendation
 
-Backup files are local recovery artifacts, not project history, and should not be committed. The recommended `.gitignore` line is:
+Backup files are local recovery artifacts, not project history, and should not be committed. The recommended `.gitignore` line, which covers child ledgers too, is:
 
 ```
-UNFORGET.md.bak-*
+*.md.bak-*
 ```
 
 The init flow can offer to add this entry when the project is first wired up.
 
-### Recovering from a broken UNFORGET.md
+### Recovering from a broken ledger
 
-If UNFORGET.md becomes unparseable (manual edit error, merge conflict left in place, mistaken structural change), the user has two paths:
+If a ledger becomes unparseable (manual edit error, merge conflict left in place, mistaken structural change), the user has two paths:
 
-1. Rename the most recent backup back to `UNFORGET.md`, replacing the broken file. This restores the state from before the most recent `promote`.
-2. Follow the "Recovering a broken UNFORGET.md" section in the project's `README.md`, which covers manual repair when no backup is available.
+1. Rename the most recent backup back to the ledger's name, replacing the broken file. This restores the state from before the most recent rewrite listed above.
+2. Follow unforget's [`docs/RECOVERY.md`](https://github.com/Terryc21/unforget/blob/main/docs/RECOVERY.md), which covers manual repair when no backup is available.
 
-Path 1 is fastest when the break happened during or after the most recent `promote`. Path 2 is the fallback when the break predates the oldest retained backup.
-
-`--dry-run` mode never creates a backup, so dry-runs cannot be used as an explicit checkpoint. Use the inline diff output of `--dry-run` for review; rely on the auto-backup written by the real `promote` for rollback.
+Path 1 is fastest when the break happened during or after the most recent backed-up command. Path 2 is the fallback when the break predates the oldest retained backup.
 
 ---
 
 ## Algorithm fallback (Python unavailable)
 
-When `python3` is not on PATH, the skill performs backup pruning manually:
+When `python3` is not on PATH, the skill backs up and prunes by hand:
 
-1. List files in the UNFORGET.md directory matching `UNFORGET.md.bak-*`.
+0. Copy the ledger to `<ledger name>.bak-<YYYY-MM-DD-HHMMSS>` beside it, and confirm the copy is the same size as the ledger before rewriting anything.
+1. List files in the ledger's directory matching `<ledger name>.bak-*`.
 2. Sort lexicographically (the `YYYY-MM-DD-HHMMSS` format sorts identically to chronological order).
 3. Keep the 5 most recent. Delete the rest.
 

@@ -1110,7 +1110,7 @@ Read-only integrity lint (format v2+). Audits the ledger for the decay failures 
 2. For each over-budget row, run `python3 scripts/row_budget.py split --file <UNFORGET.md> --id <ID>` (dry-run) and show the plan: the proposed bounded index row and the detail-block bullet.
 3. **Confirm per row** (the split moves history; the user should see it). Optionally pass a `--headline "<summary>"` for a better one-line index than the mechanical derivation.
 4. On approval, apply with `--apply`. The helper returns `lossless:true` only when every character of the original cells is provably preserved in the detail block, and **refuses** otherwise — so an approved split can never silently drop history.
-5. Back up UNFORGET.md before the first split (same discipline as `archive`/`promote`).
+5. No separate backup step: `row_budget.py split --apply` backs the ledger up before each split (`reference/promotion.md` § Backups and recovery).
 
 `--fix` is strictly additive: without it, `verify` is read-only exactly as before. It exists only because a row-length split is mechanical and lossless-verifiable — the one integrity finding safe to auto-resolve with approval. See `reference/format.md` § Row-length discipline.
 
@@ -1159,7 +1159,7 @@ Archiving a row that still owes work hides real remaining work — the exact fai
 2. **Split** into `archive` (archivable) vs `keep` (`done-unverified`, owed-signal legacy rows, and everything not done). `--all-done` also archives `done-unverified`.
 3. **Preview** — show the two lists (IDs + one-line title) and counts: "Archive N clean-Done rows; keep M Done-but-owed rows active." On `--dry-run`, stop here and write nothing.
 4. **Confirm** with the user (single AskUserQuestion: proceed / show-full-rows / cancel).
-5. **Back up first** — copy UNFORGET.md to a temp path before editing, so a mis-classification is recoverable.
+5. **Back up first:** `python3 scripts/ledger_backup.py backup --file <ledger>`, so a mis-classification is recoverable (the contract is `reference/promotion.md` § Backups and recovery).
 6. **Write:** move the archived rows to the ledger's archive file (§ The archive file), in a new dated block. Remove those rows from the active tables. Preserve table structure — section headers and separator rows stay intact.
 7. **Report** the before/after active row count and the archive-file path.
 

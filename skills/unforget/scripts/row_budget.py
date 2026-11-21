@@ -66,6 +66,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import parse_status  # type: ignore  # noqa: E402
+import ledger_backup  # type: ignore  # noqa: E402
 try:
     import registry  # type: ignore
 except ImportError:  # registry is optional for the budget read
@@ -317,7 +318,10 @@ def split_row(text: str, rid: str, budget: int, headline: str | None) -> dict:
 def apply_split(path: Path, text: str, rid: str, plan: dict) -> bool:
     """Write the split: replace the row in place, append the bullet under the
     matching '### Detail - <section>' block (create it if absent). Idempotent enough
-    for a one-shot apply; the caller has already validated losslessness."""
+    for a one-shot apply; the caller has already validated losslessness.
+
+    Backs the ledger up first (ledger_backup: `<name>.bak-<stamp>`, newest 5 kept)
+    and writes atomically; the backup path goes into plan["backup"]."""
     if plan.get("refusal") or not plan.get("lossless") or not plan.get("semantics_preserved"):
         return False
     if path.read_text(encoding="utf-8") != text:
@@ -350,7 +354,12 @@ def apply_split(path: Path, text: str, rid: str, plan: dict) -> bool:
             insert_at -= 1
         lines.insert(insert_at, plan["detail_bullet"])
 
-    path.write_text("\n".join(lines) + ("\n" if text.endswith("\n") else ""), encoding="utf-8")
+    try:
+        plan["backup"] = ledger_backup.write_backup(path)["backup"]
+    except ledger_backup.BackupRefused as e:
+        plan["backup_error"] = str(e)
+        return False
+    ledger_backup.atomic_write(path, "\n".join(lines) + ("\n" if text.endswith("\n") else ""))
     return True
 
 
@@ -400,7 +409,8 @@ def main() -> int:
         ok = apply_split(target, text, args.id, plan)
         plan["applied"] = ok
         if not ok:
-            plan["refusal"] = "apply failed (row vanished between plan and write)"
+            plan["refusal"] = ("apply failed: " + plan["backup_error"] if plan.get("backup_error")
+                               else "apply failed (row vanished between plan and write)")
             json.dump(plan, sys.stdout); sys.stdout.write("\n")
             return 1
         plan["advisory"] += " (applied)"

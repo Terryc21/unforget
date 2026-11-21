@@ -6,7 +6,7 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 
 1. **Python standard library only.** No `pip install` required. Scripts import only standard-library modules and the sibling helpers in this directory (`parse_status`, `registry`, `managed_block`, and so on). Helpers support **Python 3.9+** with postponed annotations, including the format-v2 scripts.
 2. **JSON in / JSON out.** Each script reads a path or stdin and writes structured JSON to stdout. The LLM parses the JSON; it does not re-derive the algorithm.
-3. **Pure where possible.** No global state, no side effects beyond what each CLI advertises. `prune_backups.py` deletes backups; registry/recall/branch/tally helpers write their documented artifacts, and row_budget writes only with `--apply`. Read/verify/scan modes are read-only.
+3. **Pure where possible.** No global state, no side effects beyond what each CLI advertises. `prune_backups.py` and `ledger_backup.py` delete old backups; `move_ledger.py --apply` removes a source ledger only after a verified copy; registry/recall/branch/tally helpers write their documented artifacts, and row_budget writes only with `--apply`. Read/verify/scan modes are read-only.
 4. **Algorithm fallback in prose.** When Python is unavailable, each `reference/*.md` file that delegates to a script keeps an "Algorithm fallback" paragraph. The fallback is functional but slower and non-deterministic.
 
 ## Scripts
@@ -18,6 +18,8 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 | `dedup_findings.py` | Fuzzy-merge duplicate candidate findings across surfaces (Jaccard on tokenized headlines). | `reference/surfaces.md` § Cross-surface deduplication |
 | `check_format_version.py` | Read `<!-- unforget-format: vN -->` marker; report whether the skill can write or must operate read-only. | `SKILL.md` § Format-version contract |
 | `prune_backups.py` | Backup rotation. Lists `UNFORGET.md.bak-YYYY-MM-DD-HHMMSS`, sorts by timestamp, deletes any beyond the most recent N (default 5). | `reference/promotion.md` § Retention |
+| `ledger_backup.py` | The one backup contract: `backup --file <ledger>` copies the ledger to `<name>.bak-<stamp>` and keeps that ledger's newest 5; `atomic_write` for rewrites. Used by promote, archive, `row_budget.py --apply`, `set_aside.py convert --apply` and `move_ledger.py`. | `reference/promotion.md` § Backups and recovery |
+| `move_ledger.py` | Moves a ledger for `init`'s migration: copies, proves the copy byte-identical (bytes and SHA-256), and only then backs up and removes the source or leaves a MOVED pointer. Dry run by default. | `reference/init.md` § Phase 6b |
 | `verify_install.py` | Verify companion-file integrity (all `reference/*.md` + `scripts/*.py` reachable) and report recall-trigger status. | `reference/commands.md` § `/unforget --version` |
 | `check_header_order.py` | Lint every UNFORGET-ledger table header in a tree for canonical core-column order (Target before Finding before …). Read-only. Tolerates abbreviations, appended extra columns, and preset omissions; skips non-ledger tables (roadmap/feedback docs). | `tests/run.sh` (repo invariant) |
 | `parse_status.py` | (format v2+) Parse a row's `@status`/`@verified` tokens; validate the tier rule and detect a token↔narration contradiction; report `archivable`/`blocks_release`. Read-only. | `reference/status.md`; `list`/`archive`/`edit` |

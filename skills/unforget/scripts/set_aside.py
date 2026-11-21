@@ -65,15 +65,14 @@ Exit codes: 0 ok · 2 usage error / file not found.
 from __future__ import annotations
 
 import argparse
-import datetime as dt
 import json
-import os
 import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import parse_status  # noqa: E402
+import ledger_backup  # noqa: E402
 
 POLICIES = ("off", "ask", "auto")
 DEFAULT_POLICY = "off"
@@ -314,15 +313,14 @@ def apply_conversion(path: Path, text: str, plan: dict) -> dict:
     if len(before) != len(after) or any(
             a[k] != b[k] for a, b in zip(before, after) for k in NEUTRAL_KEYS):
         return {"applied": False, "error": "refused: a row's status, completion or release gating would change"}
-    stamp = dt.datetime.now().strftime("%Y-%m-%d-%H%M%S")
-    backup = path.with_name(f"{path.name}.bak-{stamp}")
-    if backup.exists():
-        return {"applied": False, "error": f"refused: backup {backup.name} already exists"}
-    backup.write_text(text, encoding="utf-8")
-    tmp = path.with_name(f".{path.name}.convert-tmp")
-    tmp.write_text(new_text, encoding="utf-8")
-    os.replace(tmp, path)
-    return {"applied": True, "backup": str(backup), "refused": refused}
+    if path.read_text(encoding="utf-8") != text:
+        return {"applied": False, "error": "refused: the ledger changed since it was read"}
+    try:
+        backup = ledger_backup.write_backup(path)
+    except ledger_backup.BackupRefused as e:
+        return {"applied": False, "error": f"refused: {e}"}
+    ledger_backup.atomic_write(path, new_text)
+    return {"applied": True, "backup": backup["backup"], "refused": refused}
 
 
 def main() -> int:

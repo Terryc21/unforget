@@ -37,7 +37,10 @@
     "scripts/recall_block.py",
     "scripts/import_drift.py",
     "scripts/row_budget.py",
-    "scripts/companions.py"
+    "scripts/companions.py",
+    "scripts/set_aside.py",
+    "scripts/ledger_backup.py",
+    "scripts/move_ledger.py"
   ],
   "declared_versions": {
     "changelog": "2.14.1",

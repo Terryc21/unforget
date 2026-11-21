@@ -2,6 +2,21 @@
 
 ### Unreleased: review follow-ups
 
+- Ledger moves are checked by a script, not by the model's say-so. `init`'s migration step
+  removed an original ledger after a comparison only the model claimed to have made. New
+  `scripts/move_ledger.py` copies the ledger, reads the copy back, compares bytes and
+  SHA-256, and only then backs up the source and removes it (or, with `--redirect`, leaves a
+  MOVED pointer the survey won't re-import). On a mismatch it deletes its own copy and leaves
+  the source alone. It never overwrites a different file at the destination, and a re-run
+  after an interrupted move finishes the job. Dry run by default.
+- One backup contract. Backups used to work differently in each command: `promote` wrote
+  `UNFORGET.md.bak-<stamp>` and kept 5, `archive` copied "to a temp path", `verify --fix`
+  wrote with no backup at all, and `set_aside.py convert` backed up child ledgers that were
+  then never pruned. New `scripts/ledger_backup.py` is the one path: it writes
+  `<ledger>.bak-<stamp>` beside any ledger, never overwrites an existing backup, keeps each
+  ledger's newest 5, and rewrites through a temp file so a crash can't leave half a ledger.
+  `row_budget.py split --apply` and `set_aside.py convert --apply` now use it, and
+  `promote`/`archive` call it. The recommended `.gitignore` line is now `*.md.bak-*`.
 - The GitHub issue survey finds labeled issues again. `scan_surfaces.py` told the model to
   run `gh issue list --label deferred,wontfix-for-now,post-release,backlog`, but `--label`
   with several values matches only issues carrying **all** of them, so the survey reported
