@@ -114,6 +114,26 @@ class LedgerBackupTests(TempDirCase):
         self.assertEqual(self.ledger.read_text(), 'new\n')
         self.assertEqual(self.names(), ['TERRY.md'])
 
+    def test_atomic_write_keeps_the_file_mode(self):
+        self.ledger.chmod(0o644)
+        ledger_backup.atomic_write(self.ledger, 'new\n')
+        self.assertEqual(self.ledger.stat().st_mode & 0o777, 0o644)
+
+    def test_atomic_write_ignores_a_planted_symlink_at_the_old_temp_name(self):
+        victim = self.dir / 'victim.txt'
+        victim.write_text('keep me')
+        (self.dir / '.TERRY.md.unforget-tmp').symlink_to(victim)
+        ledger_backup.atomic_write(self.ledger, 'new\n')
+        self.assertEqual(victim.read_text(), 'keep me')
+        self.assertEqual(self.ledger.read_text(), 'new\n')
+
+    def test_atomic_write_failure_leaves_ledger_and_no_temp(self):
+        with mock.patch.object(ledger_backup.os, 'replace', side_effect=OSError('disk full')):
+            with self.assertRaises(OSError):
+                ledger_backup.atomic_write(self.ledger, 'new\n')
+        self.assertEqual(self.ledger.read_text(encoding='utf-8'), LEDGER)
+        self.assertEqual(self.names(), ['TERRY.md'])
+
 
 class CommandsUseTheContractTests(TempDirCase):
     """set_aside convert --apply and row_budget split --apply both back up through ledger_backup."""

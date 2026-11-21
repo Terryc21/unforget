@@ -29,7 +29,9 @@ import datetime as dt
 import json
 import os
 import re
+import stat
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -101,10 +103,24 @@ def write_backup(ledger: Path, keep: int = KEEP_DEFAULT, clock=dt.datetime.now,
 
 
 def atomic_write(path: Path, text: str) -> None:
-    """Replace a file's contents in one step: temp file beside it, then os.replace."""
-    tmp = path.with_name(f".{path.name}.unforget-tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    """Replace a file's contents in one step: temp file beside it, then os.replace.
+
+    The temp file gets an unpredictable name from mkstemp (created exclusively,
+    so a planted symlink is never followed), is fsynced before the swap, and
+    takes the original file's permission bits (mkstemp creates it 0600)."""
+    fd, tmp_name = tempfile.mkstemp(dir=str(path.parent), prefix=f".{path.name}.", suffix=".tmp")
+    tmp = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
+            fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
+        if path.exists():
+            os.chmod(tmp, stat.S_IMODE(path.stat().st_mode))
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def main() -> int:
