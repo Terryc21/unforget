@@ -238,7 +238,7 @@ class Regressions(unittest.TestCase):
         self.assertEqual(cli('verify_install.py','--skill-root',SKILL_ROOT).returncode,0)
     def test_F15_history_moved_version_sync(self):
         text=(SKILL_ROOT/'SKILL.md').read_text();self.assertNotIn('### v2.9.0',text);self.assertIn('CHANGELOG.md',text)
-        versions=verify_install.read_declared_versions(SKILL_ROOT);self.assertEqual(versions['changelog'],'2.14.0');self.assertEqual(set(v for v in versions.values() if v),{'2.14.0'})
+        versions=verify_install.read_declared_versions(SKILL_ROOT);self.assertEqual(versions['changelog'],'2.14.1');self.assertEqual(set(v for v in versions.values() if v),{'2.14.1'})
 
     def test_F2_standard_lean_compact_optional_columns(self):
         layouts=[['#','Target','Finding','Urgency','Risk: Fix','Risk: No Fix','ROI','Blast Radius','Fix Effort','Status'],['#','Target','Finding','Urgency','Effort','Status'],['#','Finding','Urgency','Risk: Fix','Risk: No Fix','ROI','Blast Radius','Fix Effort','Status']]

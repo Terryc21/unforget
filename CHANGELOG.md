@@ -1,6 +1,6 @@
 # Changelog
 
-### Unreleased: likelihood bar direction, the ship rule in the docs, and the gallery
+### v2.14.1: likelihood bar direction, the ship rule in the docs, and the gallery (2026-11-21) · patch
 
 - The example gallery shows the strips. All six report pages in `examples/` now include the
   Likelihood and 1-Star Risk columns, six sample rows carry `@likelihood:`/`@basis:` ratings

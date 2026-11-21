@@ -1,7 +1,7 @@
 ---
 name: unforget
 metadata:
-  version: "2.14.0"
+  version: "2.14.1"
 description: |
   A single source of truth for deferred work: paused plans, mid-task spillover,
   audit findings, and observed bugs. Kept in one UNFORGET.md per project so
