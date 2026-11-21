@@ -1,6 +1,6 @@
 {
   "name": "unforget",
-  "version": "2.15.0",
+  "version": "2.15.1",
   "description": "A single source of truth for deferred work: paused plans, mid-task spillover, audit findings, and observed bugs, kept in one UNFORGET.md per project so nothing slips between releases. Activate when the user asks what's deferred, what's the backlog, or wants to log something for later without losing it. Status tokens mean a fix isn't done until it's verified, and a release check never lets a ship blocker through. Includes HTML ledger views (top 10 by urgency, quick wins, ship blockers, or your own mix) that say what they left out and can read your project's own rating words.",
   "author": {
     "name": "Terry Nyberg"

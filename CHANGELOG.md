@@ -1,6 +1,6 @@
 # Changelog
 
-### Unreleased
+### v2.15.1: a Likelihood column, dot-and-word 1-Star Risk, and the GitHub survey in worktrees (2026-11-21) · patch
 
 - The ledger's 1-Star Risk cell is now the colored dot and word only, "🟡 Watch (mid)",
   matching the HTML report. The one-line bar with a star is retired from the format; cells
