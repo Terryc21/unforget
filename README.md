@@ -82,7 +82,8 @@ page you can search, sort, filter and print, in light or dark mode. It opens in 
 soon as it's ready, and you're told where it's saved so you can open it again later. (Say "don't
 open it" if you'd rather it didn't.) Making a view never changes your ledger.
 
-Here is the default view (`/unforget report`), made from the bundled sample ledger:
+Here is the default view (`/unforget report`), made from the bundled sample ledger, with the
+two optional strip columns, **Likelihood** and **1-Star Risk**, added:
 
 [![Default unfinished-work view of the sample ledger: summary counts, action filters, a search box, and a table whose column titles each carry a sort control](examples/unfinished-ledger.png)](examples/README.md)
 

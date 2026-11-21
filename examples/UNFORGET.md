@@ -14,11 +14,11 @@ Plans that started, made some progress, and were intentionally paused.
 | #  | Target     | Finding                                              | Urg     | RFix    | RNo     | ROI          | Blast      | Effort | Status | 1-Star Risk |
 |----|------------|------------------------------------------------------|---------|---------|---------|--------------|------------|--------|--------|-------------|
 | P1 | 🟡 LATER   | Schema v3 migration paused (rollback path unclear)   | 🟢 MED  | 🟡 High | 🟢 Med  | 🟢 Good      | 🟢 ~7 fls  | Med    | `@status:blocked` rollback path unclear | `risk‹───────────›clear`<br>⚪ n/a |
-| P2 | 🔵 NEXT    | Test suite: 23 flaky tests, 4 root causes            | 🟡 HIGH | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟡 ~10 fls | Med    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
+| P2 | 🔵 NEXT    | Test suite: 23 flaky tests, 4 root causes            | 🟡 HIGH | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟡 ~10 fls | Med    | `@status:open` `@likelihood:probable` `@basis:measured` | `risk‹───────────›clear`<br>⚪ n/a |
 | P3 | 🔴 THIS    | Wallet pass server signing not yet implemented       | 🟡 HIGH | 🟢 Med  | 🟡 High | 🟠 Excellent | 🟢 ~4 fls  | Med    | `@status:done-verified` `@verified:device` menu hidden, build 13 | `risk‹────★──────›clear`<br>🟡 Watch (mid) |
 | P4 | 🟡 LATER   | Search relevance overhaul (phases 1-4 done, 5-7 TBD) | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟡 ~8 fls  | Lrg    | `@status:in-progress` → history in detail block | `risk‹───────────›clear`<br>⚪ n/a |
 | P5 | ⚪ SOMEDAY | Third-party API access rejected 2026-03-10           | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | ⚪ 0 fls   | Triv   | `@status:withdrawn` using public OAuth tier instead | `risk‹───────────›clear`<br>⚪ n/a |
-| P6 | 🔵 NEXT    | Wallet pass: build server signing endpoint           | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟢 ~4 fls  | Med    | `@status:open` | `risk‹─────★─────›clear`<br>🟡 Watch (mid) |
+| P6 | 🔵 NEXT    | Wallet pass: build server signing endpoint           | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟢 ~4 fls  | Med    | `@status:open` `@likelihood:unlikely` `@basis:reviewed` | `risk‹─────★─────›clear`<br>🟡 Watch (mid) |
 
 ### Detail - Paused plans
 
@@ -103,7 +103,7 @@ Items that surfaced mid-task in some other session. Captured here in 1-2 lines s
 
 | #  | Target     | Finding                                              | Urg     | RFix    | RNo     | ROI          | Blast     | Effort | Status | 1-Star Risk |
 |----|------------|------------------------------------------------------|---------|---------|---------|--------------|-----------|--------|--------|-------------|
-| S1 | 🔵 NEXT    | Sentry breadcrumbs: 2 paths missing user_id          | 🟢 MED  | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟢 2 fls  | Triv   | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
+| S1 | 🔵 NEXT    | Sentry breadcrumbs: 2 paths missing user_id          | 🟢 MED  | ⚪ Low  | 🟢 Med  | 🟠 Excellent | 🟢 2 fls  | Triv   | `@status:open` `@likelihood:certain` `@basis:reproduced` | `risk‹───────────›clear`<br>⚪ n/a |
 | S2 | 🟡 LATER   | DateFormatter cached in 4 spots (perf, not correct.) | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | 🟢 4 fls  | Sml    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
 | S3 | 🔵 NEXT    | Empty-state copy: 3 strings hardcoded English        | 🟢 MED  | ⚪ Low  | 🟢 Med  | 🟢 Good      | 🟢 3 fls  | Sml    | `@status:done-unverified` `@verified:code` strings extracted, not yet eyeballed on device | `risk‹────────★──›clear`<br>🟢 Clear (mid) |
 | S4 | ⚪ SOMEDAY | Color asset catalog has 12 unused entries            | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | ⚪ 1 fl   | Triv   | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
@@ -133,7 +133,7 @@ Items from audit tools (linters, code review skills, custom audits) not fixed im
 | #  | Target     | Finding                                              | Urg     | RFix    | RNo     | ROI          | Blast      | Effort | Status | 1-Star Risk |
 |----|------------|------------------------------------------------------|---------|---------|---------|--------------|------------|--------|--------|-------------|
 | A1 | 🔴 THIS    | radar-suite: 3 force unwraps in critical paths       | 🔴 CRIT | 🟢 Med  | 🔴 Crit | 🟠 Excellent | 🟢 3 fls   | Sml    | `@status:done-verified` `@verified:code` guard + tests, commit `2ce6d3f5` | `risk‹★──────────›clear`<br>🔴 At risk (deep) |
-| A2 | 🔵 NEXT    | radar-suite: ObservableObject + @Published (legacy)  | 🟢 MED  | ⚪ Low  | 🟢 Med  | 🟢 Good      | 🟡 ~9 fls  | Med    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
+| A2 | 🔵 NEXT    | radar-suite: ObservableObject + @Published (legacy)  | 🟢 MED  | ⚪ Low  | 🟢 Med  | 🟢 Good      | 🟡 ~9 fls  | Med    | `@status:open` `@likelihood:n/a` `@basis:reasoned` | `risk‹───────────›clear`<br>⚪ n/a |
 | A3 | 🟡 LATER   | code-review: 6 oversized files (>800 lines)          | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | 🟢 6 fls   | Med    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
 | A4 | 🔵 NEXT    | radar-suite: try? swallowing errors in 14 spots      | 🟢 MED  | 🟢 Med  | 🟢 Med  | 🟢 Good      | 🟡 ~14 fls | Med    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
 | A5 | ⚪ SOMEDAY | radar-suite: 47 async calls without .task modifier   | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | 🔴 >15 fls | Lrg    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
@@ -156,8 +156,8 @@ Bugs noticed but not reproduced; friction observed.
 
 | #  | Target     | Finding                                              | Urg     | RFix    | RNo     | ROI          | Blast    | Effort | Status | 1-Star Risk |
 |----|------------|------------------------------------------------------|---------|---------|---------|--------------|----------|--------|--------|-------------|
-| U1 | 🔵 NEXT    | iPad: keyboard doesn't dismiss on first sheet open   | 🟢 MED  | ⚪ Low  | 🟢 Med  | 🟢 Good      | 🟢 2 fls | Sml    | `@status:in-progress` reproduced, spike open | `risk‹──────★────›clear`<br>🟡 Watch (border) |
-| U2 | 🟡 LATER   | macOS: window position not restored after hiber.     | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | 🟢 1 fl  | Sml    | `@status:open` | `risk‹───────────›clear`<br>⚪ n/a |
+| U1 | 🔵 NEXT    | iPad: keyboard doesn't dismiss on first sheet open   | 🟢 MED  | ⚪ Low  | 🟢 Med  | 🟢 Good      | 🟢 2 fls | Sml    | `@status:in-progress` `@likelihood:likely` `@basis:reproduced` reproduced, spike open | `risk‹──────★────›clear`<br>🟡 Watch (border) |
+| U2 | 🟡 LATER   | macOS: window position not restored after hiber.     | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | 🟢 1 fl  | Sml    | `@status:open` `@likelihood:rare` `@basis:reasoned` | `risk‹───────────›clear`<br>⚪ n/a |
 | U3 | ⚪ SOMEDAY | TestFlight: 1 user reported chart colors look wrong  | ⚪ LOW  | ⚪ Low  | ⚪ Low  | 🟡 Marginal  | ⚪ 1 fl  | Triv   | `@status:blocked` awaiting user follow-up | `risk‹───★───────›clear`<br>🟡 Watch (mid) |
 
 ### Detail - User-reported / observed

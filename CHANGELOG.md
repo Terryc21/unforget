@@ -1,7 +1,14 @@
 # Changelog
 
-### Unreleased: likelihood bar direction, and the ship rule in the docs
+### Unreleased: likelihood bar direction, the ship rule in the docs, and the gallery
 
+- The example gallery shows the strips. All six report pages in `examples/` now include the
+  Likelihood and 1-Star Risk columns, six sample rows carry `@likelihood:`/`@basis:` ratings
+  (none set aside, so every "Showing N of M" count is unchanged), and the six PNG previews are
+  refreshed. `examples/generate_html.py` works again (its script path predated the plugin
+  layout), and the new `examples/snapshot.swift` renders a preview with the system WebKit at
+  the gallery's 1265 × 889 size. The gallery table links each view live on GitHub Pages as
+  well as for download.
 - The HTML report's likelihood bar now reads `seldom‹──★────────›often`: often on the right,
   so a rarer rating sits further left. Sorting is unchanged (most likely first).
 - `SKILL.md` and `format.md` stated the ship rule as "every THIS row must be Status = Fixed".

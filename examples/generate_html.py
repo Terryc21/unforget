@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'scripts'))
+sys.path.insert(0, str(ROOT / 'skills' / 'unforget' / 'scripts'))  # plugin layout (cf907b2)
 import html_report as report
 
 
@@ -20,6 +20,7 @@ PAGES = [
     ('unfinished-ledger.html', [
         '--title', 'Unforget · unfinished work',
         '--sort', 'blocker,urgency',
+        '--columns', 'id,finding,target,status,likelihood,onestar,ux,owner,next',
         '--scope-note', 'Fictional demo with illustrative assignments and check evidence. Unfinished work, ranked by release blockers, then recorded urgency.',
         '--note', SAMPLE_NOTE + " P0 is the source ledger's illustrative release-blocker row.",
         '--note', COMMON_NOTE,
@@ -27,7 +28,7 @@ PAGES = [
     ('top-10.html', [
         '--title', 'Unforget · ten most urgent',
         '--sort', 'blocker,urgency', '--limit', '10',
-        '--columns', 'rank,id,finding,status,effort,roi,owner,next',
+        '--columns', 'rank,id,finding,status,likelihood,onestar,effort,roi,owner,next',
         '--scope-note', 'Fictional demo with illustrative assignments and check evidence. The ten most urgent unfinished items, ship blockers first.',
         '--note', SAMPLE_NOTE,
         '--note', COMMON_NOTE,
@@ -36,7 +37,7 @@ PAGES = [
         '--title', 'Unforget · trivial fixes only',
         '--effort', 'trivial',
         '--sort', 'urgency,roi',
-        '--columns', 'rank,id,finding,status,effort,roi,owner,next',
+        '--columns', 'rank,id,finding,status,likelihood,onestar,effort,roi,owner,next',
         '--scope-note', 'Fictional demo with illustrative assignments and check evidence. Only the fixes rated trivial, most urgent first.',
         '--note', SAMPLE_NOTE,
         '--note', COMMON_NOTE,
@@ -44,7 +45,7 @@ PAGES = [
     ('best-value.html', [
         '--title', 'Unforget · best value first',
         '--sort', 'roi,urgency,effort',
-        '--columns', 'rank,id,finding,status,effort,roi,owner,next',
+        '--columns', 'rank,id,finding,status,likelihood,onestar,effort,roi,owner,next',
         '--scope-note', 'Fictional demo with illustrative assignments and check evidence. Everything unfinished, ranked by value for the effort, then urgency, then fix effort.',
         '--note', SAMPLE_NOTE,
         '--note', COMMON_NOTE,
@@ -52,7 +53,7 @@ PAGES = [
     ('ship-blockers.html', [
         '--title', 'Unforget · ship blockers',
         '--blockers-only',
-        '--columns', 'rank,id,finding,status,effort,roi,owner,next',
+        '--columns', 'rank,id,finding,status,likelihood,onestar,effort,roi,owner,next',
         '--scope-note', 'Fictional demo with illustrative assignments and check evidence. Only what stands between you and the next release.',
         '--note', SAMPLE_NOTE + " P0 is the source ledger's illustrative release-blocker row.",
         '--note', COMMON_NOTE,
@@ -61,7 +62,7 @@ PAGES = [
         '--title', 'Unforget · quick wins',
         '--effort', 'trivial', '--effort', 'small',
         '--sort', 'roi,urgency', '--limit', '5',
-        '--columns', 'rank,id,finding,status,effort,roi,owner,next',
+        '--columns', 'rank,id,finding,status,likelihood,onestar,effort,roi,owner,next',
         '--scope-note', 'Fictional demo with illustrative assignments and check evidence. Trivial and small fixes, best value for the effort first, cut to five rows.',
         '--note', SAMPLE_NOTE,
         '--note', COMMON_NOTE,
