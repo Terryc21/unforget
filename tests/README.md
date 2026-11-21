@@ -49,12 +49,10 @@ time and a snapshot would be brittle.
 | Check | What it asserts |
 |---|---|
 | `scripts/check_header_order.py --root <repo>` | Every UNFORGET-ledger table header across the repo lists its core columns in canonical order (`# → Target → Finding → Urgency → …`). Guards against finding #1 (a fixture that reversed Target/Finding) returning silently. Validates *relative* order, so abbreviated headers (`Urg`/`RFix`), appended extra columns (`1-Star Risk`), and preset omissions (Lean) all pass; non-ledger tables (roadmap/feedback docs, which have Finding but no Target) are skipped. |
+| `.claude-plugin/verify-manifest.sh` | `plugin.json` parses, its name matches `SKILL.md`, and the version agrees across `SKILL.md`, `plugin.json` and `marketplace.json`. |
 
 ### Not covered (deferred)
 
-- **`scripts/prune_backups.py`** — destructive (deletes files). Belongs in its
-  own test that creates and tears down a temp dir. Out of scope for the
-  initial corpus.
 - **Surface 6 (memory files)** — requires either a `--memory-dir` override
   flag in `scan_surfaces.py` or a mock `~/.claude/projects/` tree in the
   fixture. Neither exists today; the normalizer suppresses Surface 6 output
@@ -120,3 +118,11 @@ controls. Fixtures use disposable directories and injected memory roots; no real
 account memory or user-ledger recipes are executed. `tests/run.sh` includes these
 checks. Behavioral result files remain separately reported live-model evidence;
 checker selftests and synthetic results do not count as host invocation.
+
+## Destructive and write-path helpers
+
+`test_prune_backups.py` builds a temp directory of backups and look-alike files, then
+checks that rotation keeps the newest N (same-day backups ordered by time), that
+`--dry-run` deletes nothing, that look-alikes are never touched, and that `--keep 0`
+is refused with nothing deleted. `test_companions.py` checks that `companions.py init
+--force` never damages text outside its managed block. Both run in `tests/run.sh`.

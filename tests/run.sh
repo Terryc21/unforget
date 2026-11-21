@@ -266,6 +266,23 @@ if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_archive_file.py; then
   FAILED=1
 fi
 
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_companions.py; then
+  echo "FAIL: companions.py init --force damaged content outside its block"
+  FAILED=1
+fi
+
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_prune_backups.py; then
+  echo "FAIL: prune_backups.py rotation (kept the wrong files, or deleted too many)"
+  FAILED=1
+fi
+
+echo
+echo "--- plugin manifest (name and version agree across manifests) ---"
+if ! bash "$REPO_ROOT/.claude-plugin/verify-manifest.sh"; then
+  echo "FAIL: plugin manifests disagree with SKILL.md"
+  FAILED=1
+fi
+
 if [[ "$FAILED" == 1 ]]; then
   echo
   echo "One or more tests failed."
