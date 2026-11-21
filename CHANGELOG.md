@@ -6,6 +6,12 @@
   deleted every backup, so a typo or an empty variable could erase the only restore point.
   `--keep` must now be at least 1. New `tests/test_prune_backups.py` covers rotation order
   (same-day backups by time), `--dry-run`, look-alike files left alone, and the refusal.
+- One description. `plugin.json`, the marketplace entry and the marketplace tagline each
+  described the skill differently from one another and from `SKILL.md`. The two plugin
+  descriptions are now one text, both they and the tagline open with `SKILL.md`'s first
+  sentence, and `verify-manifest.sh` fails if they drift apart again.
+- The suite now runs `test_companions.py` and `verify-manifest.sh`, which existed but never ran.
+- `SKILL.md` said `--status=Fixed` in two places where the command spec uses `--status=done`.
 
 ### v2.14.1: likelihood bar direction, the ship rule in the docs, and the gallery (2026-11-21) · patch
 

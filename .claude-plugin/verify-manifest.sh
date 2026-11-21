@@ -74,5 +74,31 @@ if [ "$SKILL_VER" != "$PLUGIN_VER" ] || [ "$SKILL_VER" != "$MARKET_VER" ]; then
     exit 1
 fi
 
-echo "OK: plugin.json valid, name=unforget, matches SKILL.md; version $SKILL_VER consistent across all three manifests"
+# 5. one description: plugin.json and the marketplace's plugin entry say the same thing,
+#    and the marketplace tagline is SKILL.md's opening sentence (SKILL.md itself goes on
+#    to list trigger phrases, so it is not compared whole).
+if ! python3 - "$MANIFEST" "$MARKETPLACE" "$SKILL_FILE" <<'PY'
+import json, re, sys
+plugin = json.load(open(sys.argv[1]))["description"].strip()
+market = json.load(open(sys.argv[2]))
+entry = market["plugins"][0]["description"].strip()
+tagline = market["description"].strip()
+text = open(sys.argv[3], encoding="utf-8").read()
+m = re.search(r"^description:\s*\|\n((?:  .*\n)+)", text, re.M)
+skill = " ".join(line.strip() for line in m.group(1).splitlines()) if m else ""
+ok = True
+if plugin != entry:
+    print("ERROR: plugin.json description differs from marketplace.json plugins[0].description"); ok = False
+first = lambda s: s.split(". ")[0].rstrip(".")
+if first(tagline) != first(skill) or not plugin.startswith(first(skill)):
+    print("ERROR: marketplace tagline and plugin description must open with SKILL.md's first sentence:")
+    print(f"       SKILL.md: {first(skill)!r}")
+    print(f"       tagline:  {first(tagline)!r}"); ok = False
+sys.exit(0 if ok else 1)
+PY
+then
+    exit 1
+fi
+
+echo "OK: plugin.json valid, name=unforget, matches SKILL.md; version $SKILL_VER consistent across all three manifests; descriptions agree"
 exit 0
