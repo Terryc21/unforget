@@ -96,6 +96,10 @@ the rest) to sort the table by it, and click the same title again to reverse the
 **Reset filters & ranking** puts the report's own ranking back. To narrow the rows instead, type
 in the search box, or set the **Release status** menu to **Blockers only**.
 
+**Likelihood and 1-Star Risk** are not in your own reports until you ask for them, for example
+`/unforget report: add the likelihood and 1-star risk columns`. Both sort by band, so their
+titles sort like any other column.
+
 The default table puts **who acts next** and **the next action** beside each item's release
 target, status and user impact. Assignments inferred from the work are marked **Suggested**;
 confirmed assignments show their source in the expandable details. If responsibility is
