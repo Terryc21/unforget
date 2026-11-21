@@ -224,8 +224,8 @@ The leading `**🔴 THIS · ...**` form is the contract: a literal Target badge 
 
 Continuous deployment has no discrete release cycles, so the file-header fields that Standard / Compact / Lean rely on (`Last promoted:` / `Currently shipping toward:`) have no defined meaning. Continuous files use these equivalents instead:
 
-- **`Last sweep:`** — date of the most recent `/unforget scan` or `/unforget promote` pass. Stamped automatically by either command.
-- **`Active focus:`** — free-form text naming the current major work theme (e.g., "Q3 latency reduction" or "v2 API migration"). The user updates this manually whenever the focus shifts; there is no automated promotion ritual driving it.
+- **`Last sweep:`** The date of the most recent review in which the user re-rated the Windows. No command writes it: `/unforget scan` is read-only, and `promote` does not apply to Continuous. Update it by hand at the end of a sweep, or ask the session to stamp it then.
+- **`Active focus:`** Free-form text naming the current major work theme (e.g., "Q3 latency reduction" or "v2 API migration"). The user updates this manually whenever the focus shifts; there is no automated promotion ritual driving it.
 
 The four Window values (🟢 NOW / 🟡 THIS WEEK / 🔵 THIS MONTH / ⚪ SOMEDAY) replace the four Target values. The promotion concept doesn't apply to Continuous: items don't auto-promote between Windows because there's no release cut driving the move; the user re-rates Windows during weekly or sweep-time reviews.
 
