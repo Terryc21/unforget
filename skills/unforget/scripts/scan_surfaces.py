@@ -362,25 +362,81 @@ GH_DEFERRAL_COMMAND = (
 )
 
 
-def scan_github_issues(root: Path) -> dict:
-    """Report state only; this script never invokes `gh`."""
-    notes = []
-    git_dir = root / ".git"
-    if not git_dir.exists():
-        return {"state": "not-a-git-repo", "notes": ["No .git directory; skip gh"]}
-    # Read .git/config for an origin url (lightweight; no `git` invocation)
-    config = git_dir / "config"
-    has_github_origin = False
-    if config.exists():
+ORIGIN_SECTION_RE = re.compile(r'^\s*\[\s*remote\s+"origin"\s*\]\s*$')
+SECTION_RE = re.compile(r"^\s*\[")
+URL_RE = re.compile(r"^\s*url\s*=\s*(.+?)\s*$")
+
+
+def resolve_git_dir(root: Path) -> Path | None:
+    """The repository directory behind `root/.git`, or None.
+
+    `.git` is a directory in an ordinary checkout, but a FILE in a linked
+    worktree (`git worktree add`) and in a submodule, holding one line,
+    `gitdir: <path>` (absolute, or relative to `root`)."""
+    dot_git = root / ".git"
+    if dot_git.is_dir():
+        return dot_git
+    if dot_git.is_file():
         try:
-            text = config.read_text(encoding="utf-8", errors="replace")
-            has_github_origin = "github.com" in text
+            first = dot_git.read_text(encoding="utf-8", errors="replace").strip()
+        except OSError:
+            return None
+        if first.startswith("gitdir:"):
+            target = Path(first[len("gitdir:"):].strip())
+            target = target if target.is_absolute() else (root / target)
+            return target.resolve() if target.is_dir() else None
+    return None
+
+
+def git_config_path(git_dir: Path) -> Path:
+    """A linked worktree's git dir holds a `commondir` file naming the main
+    repository's git dir (usually `../..`), where the shared config lives."""
+    commondir = git_dir / "commondir"
+    if commondir.is_file():
+        try:
+            rel = commondir.read_text(encoding="utf-8", errors="replace").strip()
+            common = Path(rel) if Path(rel).is_absolute() else (git_dir / rel)
+            if (common / "config").is_file():
+                return common.resolve() / "config"
         except OSError:
             pass
-    if not has_github_origin:
+    return git_dir / "config"
+
+
+def origin_url(config: Path) -> str | None:
+    """The `url` of the `[remote "origin"]` section, ignoring every other remote."""
+    try:
+        lines = config.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    in_origin = False
+    for line in lines:
+        if SECTION_RE.match(line):
+            in_origin = bool(ORIGIN_SECTION_RE.match(line))
+            continue
+        m = URL_RE.match(line) if in_origin else None
+        if m:
+            return m.group(1)
+    return None
+
+
+def scan_github_issues(root: Path) -> dict:
+    """Report state only; this script never invokes `gh` (or `git`)."""
+    notes = []
+    git_dir = resolve_git_dir(root)
+    if git_dir is None:
+        reason = ("`.git` is a file whose gitdir could not be read"
+                  if (root / ".git").is_file() else "No .git directory")
+        return {"state": "not-a-git-repo", "notes": [f"{reason}; skip gh"]}
+    # Read the origin url from the config files (lightweight; no `git` invocation).
+    # Only `origin` counts: a fork with an `upstream` on GitHub and an origin
+    # elsewhere is not this project's issue tracker.
+    url = origin_url(git_config_path(git_dir))
+    if not url or "github.com" not in url:
         return {
             "state": "non-github-remote",
-            "notes": ["origin remote does not point at github.com; skip gh"],
+            "notes": [("no origin remote" if not url else "origin remote does not point at github.com")
+                      + "; skip gh"],
         }
     # We don't call `gh` from this script — that's the LLM's job
     notes.append(

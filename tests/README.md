@@ -59,7 +59,8 @@ time and a snapshot would be brittle.
   so the bench remains stable. Add this when the override flag lands.
 - **Surface 5 (GitHub issues), live.** The helper never invokes `gh`. The golden
   fixture is not a git repo, so it returns `not-a-git-repo`; `test_github_surface.py`
-  plants a stub `.git/config` for the other states and checks the command's shape.
+  plants a stub `.git/config` for the other states, builds a real linked worktree and
+  submodule (whose `.git` is a file) when `git` is installed, and checks the command's shape.
   Its one live check (labels combine as ANY under `--search`, ALL under `--label`)
   runs only with `GH_LIVE=1`.
 

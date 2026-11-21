@@ -1,5 +1,14 @@
 # Changelog
 
+### Unreleased
+
+- The GitHub issue survey works in a linked worktree and in a submodule. There `.git` is a
+  file pointing at the real repository, not a folder, and `scan_surfaces.py` only looked for
+  `.git/config`, so it reported the project as not on GitHub and skipped its issues. It now
+  follows the `gitdir:` pointer (and a worktree's `commondir`) to the right config. It also
+  reads the `origin` remote only: before, any `github.com` anywhere in the config counted, so
+  a fork whose `upstream` was on GitHub was surveyed as if its own issues lived there.
+
 ### v2.15.0: verified moves, one backup contract, measured row ages, a split command spec (2026-11-21) · minor
 
 - HTML reports show the Likelihood and 1-Star Risk columns as a colored dot and a word
