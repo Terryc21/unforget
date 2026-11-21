@@ -31,12 +31,11 @@ next action. Most assignments are visibly **Suggested**; one fictional assistant
 and one fictional teammate, Alex, demonstrate explicit assignments. The user label is **You**,
 so this example never sets a name for your project. One item stays **Unassigned**.
 
-**The two strip columns.** Every view also shows two optional columns, drawn the same way:
-a one-line bar with a star, and below it a colored dot and a word, so color is never the only
-cue. **Likelihood** reads the row's `@likelihood:` rating and its basis, for example
-`seldom‹────────★──›often` over "🔴 Probable (measured)"; six sample rows are rated, and the
-rest show "⚪ Not rated". **1-Star Risk** shows the ledger's own 1-Star Risk cell, for example
-`risk‹─────★─────›clear` over "🟡 Watch (mid)". To get them on your own report, add
+**The two rating columns.** Every view also shows two optional columns, each a colored dot
+and a word, so color is never the only cue. **Likelihood** reads the row's `@likelihood:`
+rating and its basis, for example "🔴 Probable (measured)"; six sample rows are rated, and the
+rest show "Not rated". **1-Star Risk** shows the band line of the ledger's own 1-Star Risk
+cell, for example "🟡 Watch (mid)". To get them on your own report, add
 `likelihood,onestar` to `--columns`.
 
 Try the action filters above the table. Verification remains owed on unfinished checks;

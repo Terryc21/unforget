@@ -39,41 +39,43 @@ ID = re.compile(parse_status.ROW_ID_PATTERN)  # the one shared id grammar (fullm
 E = html.escape
 
 
-# Strips: the same look as the ledger's 1-Star Risk column (reference/format.md §
-# Optional column: 1-Star Risk): a one-line monospace bar with a star, and below it
-# the band glyph and the word, so color is never the only cue. Likelihood is an
-# ordinal scale, so each value has a fixed position: seldom on the left, often on
-# the right (Terry's call, 11/21/2026). LIKELIHOOD_POS is the rank, most likely
-# first, used for sorting; the bar position is its mirror.
+# Likelihood and 1-Star Risk cells show the band glyph and the word only, such as
+# "🟢 Rare (reviewed)" or "🟡 Watch (mid)": the word means color is never the only
+# cue. Until 11/21/2026 they also drew a one-line bar with a star, copying the
+# ledger's 1-Star Risk strip; Terry dropped the bars because the two pointed
+# opposite ways (seldom‹›often vs risk‹›clear), widened the default table until it
+# scrolled sideways, and drew empty bars on unrated rows. LIKELIHOOD_POS is the
+# rank, most likely first, used for sorting.
 LIKELIHOOD_POS = {'certain': 0, 'probable': 2, 'likely': 4, 'unlikely': 6, 'rare': 8, 'improbable': 10}
 LIKELIHOOD_BAND = {'certain': '🔴', 'probable': '🔴', 'likely': '🟡', 'unlikely': '🟡',
                    'rare': '🟢', 'improbable': '🟢'}
 ONESTAR_ORDER = (('🔴', 0), ('🟡', 1), ('🟢', 2), ('⚪', 3))
 
 
-def likelihood_strip(value, basis):
-    """HTML for a likelihood rating, drawn like the 1-Star Risk strip."""
-    pos = LIKELIHOOD_POS.get(value)
-    bar = ''.join('★' if pos is not None and i == 10 - pos else '─' for i in range(11))
-    if pos is not None:
+def likelihood_label(value, basis):
+    """HTML for a likelihood rating: band glyph and word, e.g. "🟢 Rare (reviewed)"."""
+    if value in LIKELIHOOD_POS:
         label = f"{LIKELIHOOD_BAND[value]} {value.title()}" + (f" ({basis})" if basis else '')
+    elif value == 'n/a':
+        label = 'n/a'
     elif value:
-        label = f"⚪ {value if value == 'n/a' else value.title()}"
+        label = value.title()
     else:
-        label = '⚪ Not rated'
-    return f'<span class="strip">seldom‹{bar}›often</span><br>{html.escape(label)}'
+        label = 'Not rated'
+    return html.escape(label)
 
 
-def ledger_strip(text):
-    """HTML for a ledger cell written as `strip`<br>label (the 1-Star Risk format)."""
-    out = []
-    for part in re.split(r'<br\s*/?>', text, flags=re.I):
-        pieces = re.split(r'`([^`]*)`', part)
-        rendered = ''.join(html.escape(p) if i % 2 == 0 else f'<span class="strip">{html.escape(p)}</span>'
-                           for i, p in enumerate(pieces)).strip()
-        if rendered:
-            out.append(rendered)
-    return '<br>'.join(out)
+def onestar_label(text):
+    """HTML for a ledger 1-Star Risk cell: its band line only, e.g. "🟡 Watch (mid)".
+
+    The ledger writes the cell as `strip`<br>band line; the code-span strip is
+    dropped. A cell with no band line (only a strip, or empty) reads Not rated."""
+    parts = []
+    for part in re.split(r'<br\s*/?>', text or '', flags=re.I):
+        words = re.sub(r'`[^`]*`', '', part).strip()
+        if words:
+            parts.append(html.escape(words))
+    return '<br>'.join(parts) or 'Not rated'
 
 
 def cells(line):
@@ -476,8 +478,8 @@ def render(rows, sources, warnings, args, total_blockers):
                     text={'suggested':'Suggested','recorded':'Recorded assignment','explicit':'Explicitly assigned'}[r['owner_source']]
                     value+=f'<small class="assignment {E(r["owner_source"])}">{text}</small>'
             elif col=='status':value=E(statuses[r['status']])
-            elif col=='likelihood':value=likelihood_strip(r['likelihood'],r.get('basis'))
-            elif col=='onestar':value=ledger_strip(r['onestar']) if r.get('onestar') else E('Not rated')
+            elif col=='likelihood':value=likelihood_label(r['likelihood'],r.get('basis'))
+            elif col=='onestar':value=onestar_label(r.get('onestar'))
             else:value=E(value or 'Not recorded')
             sortvalue=sort_key(r,[col])[0] if col in SORTS else r.get(col,'')
             if col=='likelihood':sortvalue=f"{LIKELIHOOD_POS.get(r['likelihood'],99):02d}"

@@ -2,6 +2,13 @@
 
 ### Unreleased: review follow-ups
 
+- HTML reports show the Likelihood and 1-Star Risk columns as a colored dot and a word
+  only ("🟢 Rare (reviewed)", "🟡 Watch (mid)"); unrated rows read "Not rated" or "n/a".
+  The one-line bars are gone: the two pointed opposite ways (seldom‹›often and risk‹›clear),
+  they widened the default table until it scrolled sideways and pushed **Who acts next** and
+  **Next action** off screen, the star was too small to read, and unrated rows drew empty
+  bars. Sorting by band is unchanged, and the ledger keeps its own 1-Star Risk strip. The
+  six gallery pages and their previews are regenerated.
 - The command spec is one file per command. `reference/commands.md` was 100 KB, and every
   command loaded all of it: a one-row `add` read the whole `list` interview. Each command now
   has its own file in `reference/commands/` (`add.md` is 7 KB), the `list --fresh` interview
