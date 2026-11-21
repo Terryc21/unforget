@@ -447,13 +447,13 @@ some rows, renaming or reordering the core columns, and splitting UNFORGET.md in
 
 ## Related skills
 
-[**bug-echo**](https://github.com/Terryc21/bug-echo): find the same bug elsewhere after a fix ·
-[**bug-prospector**](https://github.com/Terryc21/bug-prospector): hunt for bugs before a release ·
-[**workflow-audit**](https://github.com/Terryc21/workflow-audit): trace SwiftUI behaviour ·
-[**radar-suite**](https://github.com/Terryc21/radar-suite): six skills tracing user paths ·
-[**prompter**](https://github.com/Terryc21/prompter): rewrite prompts before running them ·
-[**skill-reviewer**](https://github.com/Terryc21/skill-reviewer): candid reviews of other skills ·
-[**tutorial-creator**](https://github.com/Terryc21/tutorial-creator): lessons from your own code
+- [**bug-echo**](https://github.com/Terryc21/bug-echo): find the same bug elsewhere after a fix
+- [**bug-prospector**](https://github.com/Terryc21/bug-prospector): hunt for bugs before a release
+- [**workflow-audit**](https://github.com/Terryc21/workflow-audit): trace SwiftUI behaviour
+- [**radar-suite**](https://github.com/Terryc21/radar-suite): six skills tracing user paths
+- [**prompter**](https://github.com/Terryc21/prompter): rewrite prompts before running them
+- [**skill-reviewer**](https://github.com/Terryc21/skill-reviewer): candid reviews of other skills
+- [**tutorial-creator**](https://github.com/Terryc21/tutorial-creator): lessons from your own code
 
 ---
 
