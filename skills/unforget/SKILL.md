@@ -68,7 +68,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 |---|---|---|
 | `/unforget init` | Bootstrap UNFORGET.md and survey existing deferral artifacts across the project | `reference/init.md` (with surface detail in `reference/surfaces.md`) |
 | `/unforget add` | Capture a new deferral (defaults to Section 2 / Session spillover); 30s end-to-end | `reference/commands.md` |
-| `/unforget edit` | Refine a row's columns; closure recommendations on `--status=Fixed` | `reference/commands.md` |
+| `/unforget edit` | Refine a row's columns; closure recommendations on `--status=done` | `reference/commands.md` |
 | `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
 | `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers, `--fresh` re-runs the display-preference interview | `reference/commands.md` |
 | `/unforget report` / `list --html` | Create a standalone HTML table with default unfinished scope or user-selected ledgers, filters, columns and ranking, then open it in the user's browser | `reference/html-report.md` |
@@ -99,7 +99,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **You're about to ship a release** → `/unforget promote`
 - **You want to verify the install loaded correctly** → `/unforget --version`
 - **You just reported a fix for something that has a ledger row** → update that row in the same turn, with the honest status and its proof (`done-verified` with a `Code-is-sufficient:` reason drawn from this session's evidence, or `done-unverified` naming the owed check), and end the report with the row's new state (`reference/status.md` § Close on report). Say "verified" only when the row says so.
-- **A row is being closed (`/unforget edit <ID> --status=Fixed`) and you want the post-fix sweep** → see `reference/promotion.md` § post-fix-sweep
+- **A row is being closed (`/unforget edit <ID> --status=done`) and you want the post-fix sweep** → see `reference/promotion.md` § post-fix-sweep
 
 ---
 
