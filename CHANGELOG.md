@@ -12,6 +12,15 @@
   sentence, and `verify-manifest.sh` fails if they drift apart again.
 - The suite now runs `test_companions.py` and `verify-manifest.sh`, which existed but never ran.
 - `SKILL.md` said `--status=Fixed` in two places where the command spec uses `--status=done`.
+- `docs/RECOVERY.md` is rewritten for format v2. It quoted a header notice `init` no longer
+  writes, told readers to mark rows "Fixed", listed only the Standard column order, and said
+  splitting the file was never allowed (child ledgers made with `/unforget branch` are
+  supported). It now explains `@status:` tokens and what `verify` catches after a hand edit.
+- Stale text fixed in `SKILL.md` ("This skill (v2.0)"), `format.md` (four presets, not
+  three), `branching.md` (policy name `nearest-death`, matching `registry.md`), `surfaces.md`
+  (a "pin in v0.3" TODO), `commands.md` (said both "no count in the label" and "put the count
+  in parens"), `html-report.md` (named a private project), and `scripts/README.md` (an
+  outdated import list, and a Tests section saying the test corpus didn't exist yet).
 
 ### v2.14.1: likelihood bar direction, the ship rule in the docs, and the gallery (2026-11-21) · patch
 

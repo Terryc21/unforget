@@ -173,7 +173,7 @@ The convention: every Open row whose detail block references specific file paths
 
 ### Presets
 
-`unforget init` offers three presets at setup. Each is opinionated and complete; users pick the closest fit, and the skill adapts the table format accordingly.
+`unforget init` offers four presets at setup. Each is opinionated and complete; users pick the closest fit, and the skill adapts the table format accordingly.
 
 | Preset | Audience | Columns |
 |---|---|---|

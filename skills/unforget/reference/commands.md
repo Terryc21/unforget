@@ -684,8 +684,8 @@ once the descriptions were doing the work.)
 🛑 **These descriptions are outcome-first on purpose — do not "simplify" them back to key names.**
 `view preset` / `grouping` / `verbosity` / `multi-ledger default` are internal config keys; an
 option list written in those terms reads as jargon to anyone who has not read this file, leaving
-the question count as the only usable signal. State what the user gets, put the count in parens
-at the end. Substitute the ledger's real numbers where they help (e.g. name how many sibling
+the question count as the only usable signal. State what the user gets; the
+descriptions show relative size by getting longer, so no count is needed anywhere in the option. Substitute the ledger's real numbers where they help (e.g. name how many sibling
 ledgers "this project's other ledgers" actually means).
 
 If the user dismisses Q0 rather than answering, **abort the interview and render the list with

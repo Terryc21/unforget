@@ -197,8 +197,8 @@ next actions and user-impact estimates. Keys are `filename.md::ID`:
 
 Allowed impact values: severe, high, moderate, low, indirect, unrated. An estimate
 requires `ux_basis`. Annotations cannot alter status, target or blocker membership.
-Do not copy Stuffolio's IDs, release assumptions, source paths or ratings into
-another project's report. The bundled asset is the reusable visual model; a user's
+Do not carry IDs, release assumptions, source paths or ratings from one project's
+ledger (or from the example above) into another project's report. The bundled asset is the reusable visual model; a user's
 provided HTML can guide style without supplying current ledger facts.
 
 ### Closure integrity and effort order

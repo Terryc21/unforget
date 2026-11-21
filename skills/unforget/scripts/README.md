@@ -4,7 +4,7 @@ Deterministic helpers invoked by `SKILL.md` and `reference/*.md` prose. Each scr
 
 **Design constraints (all scripts):**
 
-1. **Python standard library only.** No `pip install` required. Imports are limited to `json`, `sys`, `os`, `re`, `pathlib`, `argparse`, `typing` (and equivalents). Helpers support **Python 3.9+** with postponed annotations, including the format-v2 scripts.
+1. **Python standard library only.** No `pip install` required. Scripts import only standard-library modules and the sibling helpers in this directory (`parse_status`, `registry`, `managed_block`, and so on). Helpers support **Python 3.9+** with postponed annotations, including the format-v2 scripts.
 2. **JSON in / JSON out.** Each script reads a path or stdin and writes structured JSON to stdout. The LLM parses the JSON; it does not re-derive the algorithm.
 3. **Pure where possible.** No global state, no side effects beyond what each CLI advertises. `prune_backups.py` deletes backups; registry/recall/branch/tally helpers write their documented artifacts, and row_budget writes only with `--apply`. Read/verify/scan modes are read-only.
 4. **Algorithm fallback in prose.** When Python is unavailable, each `reference/*.md` file that delegates to a script keeps an "Algorithm fallback" paragraph. The fallback is functional but slower and non-deterministic.
@@ -66,7 +66,7 @@ All scripts support `--help`.
 
 ## Tests
 
-A self-test corpus (`tests/fixtures/`) is queued for a future v0.3 cycle (item #3 in `v0.3-feedback.md`). Until then, smoke tests are run manually against the real Stuffolio repo (`/Volumes/2 TB Drive/Coding/GitHubDeskTop/Stufflio`), which has 44 active deferred rows across the six surfaces.
+Run `bash tests/run.sh` from the repo root. It diffs each deterministic helper against a golden file built from `tests/fixtures/`, runs the unit tests in `tests/test_*.py`, and checks the plugin manifests. `tests/README.md` lists what is and isn't covered.
 
 ## HTML report
 

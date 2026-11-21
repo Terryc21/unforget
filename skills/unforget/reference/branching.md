@@ -66,7 +66,7 @@ policy picks the default owner, applied silently, **overridable per row**:
 |---|---|
 | **lifespan-wins** (recommended default) | the nearest-death container (the sprint ledger) owns it; it dies and takes the row with it. |
 | **actor-wins** | user-only work always lives in TERRY so "what can I do now?" stays complete; the other ledger keeps a pointer. |
-| **nearest-death-owns** | general form — the container with the closest end-condition owns multi-axis rows. |
+| **nearest-death** | general form — the container with the closest end-condition owns multi-axis rows. |
 
 Whatever the default, a specific multi-axis row may be placed in the other ledger,
 leaving a **pointer** in the one the default would have chosen.

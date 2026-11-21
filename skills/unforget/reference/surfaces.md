@@ -51,8 +51,8 @@ The memory-file scan needs to know where memory files live. The location depends
 | Detected AI tool | Memory directory |
 |---|---|
 | **Claude Code** (`CLAUDE.md` or `AGENTS.md` present) | `~/.claude/projects/<encoded-project-path>/memory/` |
-| **Cursor** (`.cursorrules` present) | TODO: research and pin in v0.3. For v0.2, fall back to filename-only scan in repo root. |
-| **Aider** (`.aider.conf.yml` present) | TODO: research and pin in v0.3. For v0.2, fall back to filename-only scan in repo root. |
+| **Cursor** (`.cursorrules` present) | Not yet researched. Falls back to the filename-only scan in the repo root. |
+| **Aider** (`.aider.conf.yml` present) | Not yet researched. Falls back to the filename-only scan in the repo root. |
 
 **Claude Code path-encoding rule:** the current working directory is converted to a dash-separated string with each `/` replaced by `-` AND each whitespace character (space, tab) also replaced by `-`. The leading `/` becomes a leading `-`. Example: working directory `/Volumes/2 TB Drive/Coding/GitHubDeskTop/Stufflio` encodes to `-Volumes-2-TB-Drive-Coding-GitHubDeskTop-Stufflio`, so memory files live at `~/.claude/projects/-Volumes-2-TB-Drive-Coding-GitHubDeskTop-Stufflio/memory/`. The skill must compute this path from the cwd at scan time, not hardcode it.
 
