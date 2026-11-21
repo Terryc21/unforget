@@ -340,6 +340,71 @@ class ConvertTests(unittest.TestCase):
 
 
 
+class ConvertColumnTests(unittest.TestCase):
+    """convert fills the optional Likelihood column with what the tokens now say, so
+    verify doesn't warn on every converted row (11/21/2026: it left the cell empty)."""
+
+    HEAD = ("| # | Target | Finding | Urgency | Risk: Fix | Risk: No Fix | ROI | Blast Radius | Fix Effort "
+            "| Status | Likelihood | 1-Star Risk |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+
+    def line(self, rid, finding, status, shown):
+        return (f"| {rid} | 🔵 NEXT | {finding} | 🟢 MEDIUM | ⚪ Low | ⚪ Low | 🟢 Good | ⚪ 1 file | Small "
+                f"| {status} | {shown} | ⚪ n/a |\n")
+
+    def ledger(self):
+        return ("# U\n\n<!-- unforget-format: v2 -->\n\n## 3. Audit\n\n" + self.HEAD
+                + self.line("K1", "Empty cell", "`@status:open` Likelihood: Rare (from code). x", "")
+                + self.line("K2", "Pipe a\\|b", "`@status:open` Likelihood: Unlikely, measured in telemetry. x",
+                            "Not rated")
+                + self.line("K3", "Already right", "`@status:open` Likelihood: Rare. x", "🟢 Rare (reasoned)")
+                + self.line("K4", "Person wrote it", "`@status:open` Likelihood: Rare. x", "Probably fine"))
+
+    def convert(self, path, apply=True):
+        args = [sys.executable, str(SCRIPTS / "set_aside.py"), "convert", "--file", str(path)]
+        r = subprocess.run(args + (["--apply"] if apply else []), capture_output=True, text=True)
+        return json.loads(r.stdout)
+
+    def test_preview_says_what_happens_to_each_cell(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "UNFORGET.md"
+            path.write_text(self.ledger(), encoding="utf-8")
+            add = {a["id"]: a for a in self.convert(path, apply=False)["add"]}
+            self.assertEqual({k: add[k]["column"] for k in add},
+                             {"K1": "fill", "K2": "fill", "K3": "matches", "K4": "differs"})
+            self.assertEqual(add["K2"]["column_text"], "🟡 Unlikely (measured)")
+            self.assertEqual(add["K4"]["column_now"], "Probably fine")
+            self.assertNotIn("column_index", add["K1"])
+            self.assertEqual(path.read_text(encoding="utf-8"), self.ledger())
+
+    def test_apply_fills_empty_and_not_rated_cells_and_leaves_written_ones(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "UNFORGET.md"
+            path.write_text(self.ledger(), encoding="utf-8")
+            data = self.convert(path)
+            self.assertTrue(data["applied"], data)
+            self.assertEqual(data["column_filled"], ["K1", "K2"])
+            self.assertEqual(data["column_left"], ["K4"])
+            after = path.read_text(encoding="utf-8")
+            self.assertIn("| 🟢 Rare (reasoned) | ⚪ n/a |", after.splitlines()[8])
+            self.assertIn("Pipe a\\|b", after)  # escaped pipe kept, cell count unchanged
+            self.assertIn("| 🟡 Unlikely (measured) | ⚪ n/a |", after)
+            self.assertIn("| Probably fine | ⚪ n/a |", after)
+            # Only the person-written cell is left for verify to flag.
+            warned = {f["id"] for f in verify_ledger.check_likelihood_column(after)}
+            self.assertEqual(warned, {"K4"})
+            # Every other cell is exactly as it was.
+            for old, new in zip(self.ledger().splitlines(), after.splitlines()):
+                a, b = parse_status.data_cells(old), parse_status.data_cells(new)
+                self.assertEqual(len(a), len(b))
+                changed = {i for i in range(len(a)) if a[i] != b[i]}
+                self.assertLessEqual(changed, {9, 10}, "only Status (tokens) and Likelihood may change")
+
+    def test_ledger_without_the_column_gets_no_column_plan(self):
+        plan = set_aside.plan_conversion(CONVERT_LEDGER, set_aside.DEFAULT_REVIEWED_WORDS,
+                                         set_aside.DEFAULT_MEASURED_WORDS)
+        self.assertFalse([a for a in plan["add"] if "column" in a])
+
+
 class BudgetTests(unittest.TestCase):
     """Machine tokens don't count toward the row-length budget (2026-11-18: converting
     a real ledger's ratings pushed 4 rows over the soft budget, one to 1,507 of 1,600)."""

@@ -169,7 +169,9 @@ project adds its reviewers' names (for example `astra, fresh-context, reviewed`)
 name several values, none, or have no status token are listed for a person; when every part
 is on the frequency scale it also suggests the most likely part's value, the rule above.
 `--apply` writes a timestamped backup, inserts only the tokens, and refuses if any row's
-status, completion or release gating would change. Converting never sets a row aside and
+status, completion or release gating would change. In a table with a `Likelihood` column it
+also writes the matching label into an empty or `Not rated` cell; a cell a person wrote is
+left as it is and listed under `column_left`, with the label it should show. Converting never sets a row aside and
 never changes a Target.
 
 ### What setting aside does

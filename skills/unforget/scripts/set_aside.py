@@ -274,9 +274,49 @@ def plan_conversion(text: str, reviewed: list[str], measured: list[str]) -> dict
             needs_person.append({"id": rid, "evidence": evidence,
                                  "reason": "no @status token to place it after"})
             continue
-        add.append({"id": rid, "value": values.pop(), "basis": read_basis(segment, reviewed, measured),
-                    "evidence": evidence, "line": row_no[line].pop(0)})
+        value = values.pop()
+        basis = read_basis(segment, reviewed, measured)
+        item = {"id": rid, "value": value, "basis": basis,
+                "evidence": evidence, "line": row_no[line].pop(0)}
+        item.update(column_plan(line, headers, value, basis))
+        add.append(item)
     return {"add": add, "needs_person": needs_person, "already_tokened": already}
+
+
+def column_plan(line: str, headers, value: str, basis: str) -> dict:
+    """What to do with the row's Likelihood display column, if its table has one.
+
+    The column shows the tokens (format.md § Optional column: Likelihood), so a
+    conversion that adds tokens must also fill the cell, or verify warns on every
+    converted row. Only an empty or `Not rated` cell is filled: anything else was
+    written by a person and is left for them, with what it should say.
+    """
+    if not headers or "likelihood" not in headers:
+        return {}
+    expected = parse_status.likelihood_text(value, basis)
+    cell = parse_status.named_cell(line, headers, "likelihood", lambda r: "")
+    shown = _plain(cell)
+    if shown == _plain(expected):
+        return {"column": "matches", "column_text": expected}
+    if shown in ("", "not rated"):
+        return {"column": "fill", "column_text": expected, "column_index": headers.index("likelihood")}
+    return {"column": "differs", "column_text": expected, "column_now": cell}
+
+
+def _plain(text: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[*`]", "", text)).strip().casefold()
+
+
+def fill_column(line: str, index: int, label: str) -> str | None:
+    """Rewrite data cell `index` (0-based, as data_cells counts) to the label."""
+    parts = parse_status.split_row(line)
+    # A row starts with "|", so parts[0] is the empty text before it.
+    if not line.lstrip().startswith("|") or index + 1 >= len(parts):
+        return None
+    if _plain(parts[index + 1]) not in ("", "not rated"):
+        return None
+    parts[index + 1] = f" {label} "
+    return "|".join(parts)
 
 
 def insert_tokens(line: str, value: str, basis: str) -> str | None:
@@ -296,18 +336,36 @@ def insert_tokens(line: str, value: str, basis: str) -> str | None:
 
 def apply_conversion(path: Path, text: str, plan: dict) -> dict:
     lines = text.split("\n")
-    refused = []
+    tokened = list(lines)
+    refused, filled, left = [], [], []
     for item in plan["add"]:
         new = insert_tokens(lines[item["line"]], item["value"], item["basis"])
         if new is None:
             refused.append(item["id"])
             continue
-        lines[item["line"]] = new
+        tokened[item["line"]] = lines[item["line"]] = new
+        if item.get("column") == "fill":
+            with_cell = fill_column(new, item["column_index"], item["column_text"])
+            if with_cell is None:
+                left.append(item["id"])
+            else:
+                lines[item["line"]] = with_cell
+                filled.append(item["id"])
+        elif item.get("column") == "differs":
+            left.append(item["id"])
     new_text = "\n".join(lines)
-    # Lossless: removing exactly the inserted tokens must give back the original.
-    stripped = re.sub(r"`@likelihood:[a-z/-]+` `@basis:[a-z-]+` ", "", new_text)
+    # Lossless: removing exactly the inserted tokens must give back the original...
+    stripped = re.sub(r"`@likelihood:[a-z/-]+` `@basis:[a-z-]+` ", "", "\n".join(tokened))
     if stripped != text and stripped.replace("` `@likelihood", "``@likelihood") != text:
         return {"applied": False, "error": "refused: the edit would change more than the inserted tokens"}
+    # ...and a filled row may differ from its tokened form in that one cell only.
+    for item in plan["add"]:
+        if item["id"] in filled:
+            a = parse_status.split_row(tokened[item["line"]])
+            b = parse_status.split_row(lines[item["line"]])
+            i = item["column_index"] + 1
+            if len(a) != len(b) or a[:i] + a[i + 1:] != b[:i] + b[i + 1:]:
+                return {"applied": False, "error": "refused: filling the Likelihood column would change another cell"}
     before = parse_status.parse_file(text)
     after = parse_status.parse_file(new_text)
     if len(before) != len(after) or any(
@@ -320,7 +378,8 @@ def apply_conversion(path: Path, text: str, plan: dict) -> dict:
     except ledger_backup.BackupRefused as e:
         return {"applied": False, "error": f"refused: {e}"}
     ledger_backup.atomic_write(path, new_text)
-    return {"applied": True, "backup": backup["backup"], "refused": refused}
+    return {"applied": True, "backup": backup["backup"], "refused": refused,
+            "column_filled": filled, "column_left": left}
 
 
 def main() -> int:
@@ -350,7 +409,7 @@ def main() -> int:
         result = {"file": str(path), "applied": False,
                   "counts": {"add": len(plan["add"]), "needs_person": len(plan["needs_person"]),
                              "already_tokened": len(plan["already_tokened"])},
-                  "add": [{k: v for k, v in a.items() if k != "line"} for a in plan["add"]],
+                  "add": [{k: v for k, v in a.items() if k not in ("line", "column_index")} for a in plan["add"]],
                   "needs_person": plan["needs_person"]}
         if args.apply and plan["add"]:
             result.update(apply_conversion(path, text, plan))

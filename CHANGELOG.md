@@ -16,6 +16,11 @@
   every token it uses. The gallery is regenerated: Top 10 now shows 10 of 17 rows, Quick wins
   5 of 8, and each view notes the set-aside row it leaves out.
 - README lists the related skills as bullets.
+- `set_aside.py convert --apply` fills the Likelihood column too. It added the tokens but left
+  the column alone, so on a ledger with the column `verify` warned on every row it converted.
+  An empty or `Not rated` cell now gets the label the tokens call for. A cell someone wrote
+  by hand is never overwritten: the preview marks it `differs` with what it should say, and
+  the apply result lists it under `column_left`.
 - The GitHub issue survey works in a linked worktree and in a submodule. There `.git` is a
   file pointing at the real repository, not a folder, and `scan_surfaces.py` only looked for
   `.git/config`, so it reported the project as not on GitHub and skipped its issues. It now

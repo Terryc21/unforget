@@ -223,7 +223,7 @@ A ledger can show each row's likelihood rating to its readers in a **`Likelihood
 | … | `@status:open`                                          | Not rated             | ⚪ n/a         |
 ```
 
-**The tokens stay the source.** Every tool reads the tokens in the Status cell, never this column, so status, filtering, setting aside and release gating behave exactly as they do without it. The column is a view of the tokens for whoever reads the table. When a rating changes, change the tokens and rewrite the cell to match. `verify` warns (`likelihood-column`) on any cell that doesn't read exactly as its row's tokens do; an unrated row's cell may be empty or `Not rated`.
+**The tokens stay the source.** Every tool reads the tokens in the Status cell, never this column, so status, filtering, setting aside and release gating behave exactly as they do without it. The column is a view of the tokens for whoever reads the table. When a rating changes, change the tokens and rewrite the cell to match. `set_aside.py convert --apply` fills empty and `Not rated` cells for the rows it converts. `verify` warns (`likelihood-column`) on any cell that doesn't read exactly as its row's tokens do; an unrated row's cell may be empty or `Not rated`.
 
 ### Compact preset detail
 
