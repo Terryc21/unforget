@@ -166,6 +166,14 @@ Reads the JSON candidate list emitted by `scan_surfaces.py` (or any equivalent p
 - `gh` available but project is not on GitHub: "GitHub issues skipped (project not on GitHub)". Detection runs before invoking `gh`. Conditions: `git rev-parse --git-dir` succeeds AND `git remote get-url origin 2>/dev/null` returns a URL containing `github.com`. If either check fails (no `.git/` directory, missing `origin` remote, or `origin` points at GitLab / Bitbucket / a self-hosted Git server), surface this fourth state and skip the `gh` invocation entirely.
 - `gh` authed and project is on GitHub but `gh issue list` returns empty: "GitHub issues: 0 open issues with deferral labels found"
 
+**The command.** `scan_surfaces.py` returns it in `github_issues.command`; run that, don't retype it:
+
+```
+gh issue list --state open -L 200 --search 'label:deferred,wontfix-for-now,post-release,backlog' --json number,title,labels,url
+```
+
+🛑 Do not use `--label deferred,wontfix-for-now,...`. `gh issue list --label a,b` returns only issues that carry **every** listed label, so the survey comes back empty and reads as "0 issues found" when the project has dozens. In `--search`, a comma-separated `label:` list matches **any** of them, and a label the repo doesn't have is ignored.
+
 The spec must distinguish these so the user knows whether the surface is silent because empty or silent because broken. The fourth state matters because invoking `gh issue list` against a non-GitHub repo prints a confusing error rather than a clean "skipped" status.
 
 ---

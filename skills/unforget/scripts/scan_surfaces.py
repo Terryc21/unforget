@@ -347,6 +347,21 @@ def scan_code_comments(root: Path, include: bool) -> dict:
     return {"candidates": candidates, "notes": notes}
 
 
+# Labels that mark an issue as deferred work.
+GH_DEFERRAL_LABELS = ("deferred", "wontfix-for-now", "post-release", "backlog")
+
+# The command the LLM runs for Surface 5. It must use `--search 'label:a,b'`:
+# in GitHub search a comma-separated label list matches ANY of the labels,
+# while `gh issue list --label a,b` requires an issue to carry ALL of them, so
+# the old `--label deferred,wontfix-for-now,...` form found almost nothing
+# (verified 2026-11-21 on cli/cli: --label x,y returned 0 where search gave 4).
+GH_DEFERRAL_COMMAND = (
+    "gh issue list --state open -L 200 "
+    f"--search 'label:{','.join(GH_DEFERRAL_LABELS)}' "
+    "--json number,title,labels,url"
+)
+
+
 def scan_github_issues(root: Path) -> dict:
     """Report state only; this script never invokes `gh`."""
     notes = []
@@ -369,9 +384,13 @@ def scan_github_issues(root: Path) -> dict:
         }
     # We don't call `gh` from this script — that's the LLM's job
     notes.append(
-        "GitHub remote detected; invoke `gh issue list -L 200 --label deferred,wontfix-for-now,post-release,backlog` separately"
+        f"GitHub remote detected; invoke `{GH_DEFERRAL_COMMAND}` separately"
     )
-    return {"state": "github-detected-defer-to-gh-cli", "notes": notes}
+    return {
+        "state": "github-detected-defer-to-gh-cli",
+        "command": GH_DEFERRAL_COMMAND,
+        "notes": notes,
+    }
 
 
 def read_memory_dir_pin(unforget_md: Path | None) -> str | None:

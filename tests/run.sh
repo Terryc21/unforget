@@ -276,6 +276,11 @@ if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_prune_backups.py; then
   FAILED=1
 fi
 
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_github_surface.py; then
+  echo "FAIL: Surface 5 gh command no longer matches ANY deferral label"
+  FAILED=1
+fi
+
 echo
 echo "--- plugin manifest (name and version agree across manifests) ---"
 if ! bash "$REPO_ROOT/.claude-plugin/verify-manifest.sh"; then

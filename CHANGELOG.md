@@ -2,6 +2,13 @@
 
 ### Unreleased: review follow-ups
 
+- The GitHub issue survey finds labeled issues again. `scan_surfaces.py` told the model to
+  run `gh issue list --label deferred,wontfix-for-now,post-release,backlog`, but `--label`
+  with several values matches only issues carrying **all** of them, so the survey reported
+  "0 issues" for nearly every project. It now hands over
+  `--search 'label:deferred,wontfix-for-now,post-release,backlog'`, which matches any of
+  them, in a new `github_issues.command` field. Checked live: two labels with 2 issues each
+  gave 0 under `--label` and 4 under `--search`.
 - `prune_backups.py --keep 0` is refused, and nothing is deleted. Keeping zero backups
   deleted every backup, so a typo or an empty variable could erase the only restore point.
   `--keep` must now be at least 1. New `tests/test_prune_backups.py` covers rotation order

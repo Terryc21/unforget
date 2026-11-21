@@ -57,11 +57,11 @@ time and a snapshot would be brittle.
   flag in `scan_surfaces.py` or a mock `~/.claude/projects/` tree in the
   fixture. Neither exists today; the normalizer suppresses Surface 6 output
   so the bench remains stable. Add this when the override flag lands.
-- **Surface 5 (GitHub issues)** — the helper never invokes `gh`; it only
-  reads `.git/config`. The fixture is intentionally not a git repo, so this
-  surface returns `not-a-git-repo`. A follow-up could plant a stub `.git/`
-  with a github.com origin to exercise the `github-detected-defer-to-gh-cli`
-  branch.
+- **Surface 5 (GitHub issues), live.** The helper never invokes `gh`. The golden
+  fixture is not a git repo, so it returns `not-a-git-repo`; `test_github_surface.py`
+  plants a stub `.git/config` for the other states and checks the command's shape.
+  Its one live check (labels combine as ANY under `--search`, ALL under `--label`)
+  runs only with `GH_LIVE=1`.
 
 ## Re-baselining
 
