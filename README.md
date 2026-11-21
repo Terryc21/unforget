@@ -20,14 +20,21 @@ quick wins, or only what stands between you and shipping.
 
 ## What it makes
 
-One `UNFORGET.md` in your project. Each row is something you deferred:
+One `UNFORGET.md` in your project. Each row is something you deferred. It's plain markdown, so
+GitHub shows the file as a table like this one:
 
-```markdown
-| #  | Target   | Finding                                  | Urgency   | Effort  | Status |
-|----|----------|------------------------------------------|-----------|---------|--------|
-| A1 | 🔴 THIS  | Paywall lists a feature that ships free  | 🟡 HIGH   | Trivial | `@status:done-verified` |
-| A2 | 🔵 NEXT  | Slow loading on the inventory screen     | 🟢 MEDIUM | Small   | `@status:open` |
-```
+| # | Target | Finding | Urgency | Effort | Status |
+|---|---|---|---|---|---|
+| A1 | 🔴 THIS | Paywall lists a feature that ships free | 🟡 HIGH | Trivial | `@status:done-verified` `@verified:device` |
+| A2 | 🔵 NEXT | Slow loading on the inventory screen | 🟢 MEDIUM | Small | `@status:open` |
+| A3 | ⚪ SOMEDAY | Export stalls on a 10,000-item library | 🟢 MEDIUM | Medium | `@status:open` `@likelihood:rare` `@basis:reviewed` `@parked:likelihood` |
+
+The words starting with `@` are for the tools, so they can read each row without guessing. A1 is
+done and was checked on a real device. A2 is still open. A3 is real but rare: a reviewer agreed
+it rarely happens, so it was set aside and stays out of your views until you pick it.
+
+This example uses the short six-column layout. The default layout adds four rating columns: the
+risk of fixing, the risk of leaving it, the value for the effort, and how many files it touches.
 
 **Target** is the column that matters: *when does this have to be done?*
 
@@ -38,7 +45,8 @@ One `UNFORGET.md` in your project. Each row is something you deferred:
 | 🟡 **LATER** | Further out. |
 | ⚪ **SOMEDAY** | No promise. Written down so it isn't lost. |
 
-When you ship, NEXT becomes THIS automatically, and LATER becomes NEXT.
+When you're ready to ship, `/unforget promote` checks that every THIS row is really done, then
+moves NEXT up to THIS and LATER up to NEXT. Nothing moves until you run it.
 
 Underneath the table, each row gets a few lines of detail: why it matters, which files, and a
 command to check whether it's still a problem. The table is the index; the detail is the story.
