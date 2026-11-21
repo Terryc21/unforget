@@ -2,7 +2,7 @@
 r"""Display-preference resolution: saved registry prefs -> effective list/scan settings.
 
 Implements the deterministic half of the display-preference interview (see
-reference/commands.md § Display-preference interview). The split is the same one
+reference/commands/list-preferences.md § Display-preference interview). The split is the same one
 defer_tally.py draws: the JUDGMENT (which questions to ask, how to word them,
 whether the user's answer makes sense) belongs to the LLM running the interview;
 the MECHANICS (precedence, defaults, validation, building a safe merge payload)
@@ -81,7 +81,7 @@ import registry  # noqa: E402
 # --- the enums, mirroring the flags these resolve into ----------------------
 VIEWS = ("all", "open", "done", "split", "next")
 GROUP_BYS = ("target", "section", "none")
-# `auto` keeps the terminal-width auto-detection (reference/commands.md §
+# `auto` keeps the terminal-width auto-detection (reference/commands/list.md §
 # Terminal-aware rendering). It is the DEFAULT and the skip-value on purpose: a
 # pinned `full` permanently defeats the <120-column fallback that exists because
 # the 10-column table is unreadable there.

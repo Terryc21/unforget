@@ -2,6 +2,13 @@
 
 ### Unreleased: review follow-ups
 
+- The command spec is one file per command. `reference/commands.md` was 100 KB, and every
+  command loaded all of it: a one-row `add` read the whole `list` interview. Each command now
+  has its own file in `reference/commands/` (`add.md` is 7 KB), the `list --fresh` interview
+  is split from `list` itself, and `commands.md` is a 4.5 KB index that also says where each
+  old section went, so outside references to "commands.md § …" still lead somewhere. Every
+  reference in the skill now names the right file, and `tests/test_command_refs.py` fails if
+  one points at a missing file or heading. The move is verbatim: no line was lost or added.
 - Staleness has dates behind it. `scan`, `list --stale` and `--age=` promised "stale after
   30 days" for rows that carry no date. New `scripts/row_age.py` reads the ledger's git
   history in one pass and gives each row the date it was first seen and last changed; an

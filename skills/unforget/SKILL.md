@@ -67,18 +67,18 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 | Subcommand | One-line purpose | Full spec |
 |---|---|---|
 | `/unforget init` | Bootstrap UNFORGET.md and survey existing deferral artifacts across the project | `reference/init.md` (with surface detail in `reference/surfaces.md`) |
-| `/unforget add` | Capture a new deferral (defaults to Section 2 / Session spillover); 30s end-to-end | `reference/commands.md` |
-| `/unforget edit` | Refine a row's columns; closure recommendations on `--status=done` | `reference/commands.md` |
-| `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands.md` (surface detail in `reference/surfaces.md`) |
-| `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers, `--fresh` re-runs the display-preference interview | `reference/commands.md` |
+| `/unforget add` | Capture a new deferral (defaults to Section 2 / Session spillover); 30s end-to-end | `reference/commands/add.md` |
+| `/unforget edit` | Refine a row's columns; closure recommendations on `--status=done` | `reference/commands/edit.md` |
+| `/unforget import` | Re-run the surface survey after init (catches NEW artifacts) | `reference/commands/import.md` (surface detail in `reference/surfaces.md`) |
+| `/unforget list` | Show current state, filterable by section / Target / Urgency / age / staleness; `--view=` (all/open/done/split/next) picks which rows, `--group-by=` (target/section/none) picks the grouping, `--ledgers=`/`--all-ledgers` unions registered sibling ledgers, `--fresh` re-runs the display-preference interview | `reference/commands/list.md` |
 | `/unforget report` / `list --html` | Create a standalone HTML table with default unfinished scope or user-selected ledgers, filters, columns and ranking, then open it in the user's browser | `reference/html-report.md` |
-| `/unforget show` | Synthesized current-state read for ONE row (Finding/Impact/Fix, no history); `--full` appends the raw Detail block; markdown baseline, optional interactive card view where available | `reference/commands.md` |
-| `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands.md` |
-| `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands.md`) |
+| `/unforget show` | Synthesized current-state read for ONE row (Finding/Impact/Fix, no history); `--full` appends the raw Detail block; markdown baseline, optional interactive card view where available | `reference/commands/show.md` |
+| `/unforget scan` | Identify rows past their staleness threshold; read-only | `reference/commands/scan.md` |
+| `/unforget branch` | (format v2+) Atomically create a child ledger (header + parent pointer + registry entry, all-or-none) when work differs on the actor / lifespan / domain axis | `reference/branching.md` (summary in `reference/commands/branch.md`) |
 | `/unforget verify` | (format v2+) Integrity lint: contradictions, unproven "done", bloat, dangling detail-block pointers, stale recipes, registry drift; read-only; gates `archive`/`promote` | `reference/verify.md` |
-| `/unforget archive` | Move completed (Done/Fixed) rows out of the active tables into an archive file; lightweight, run anytime; holds back "Done-but-owed" rows | `reference/commands.md` |
+| `/unforget archive` | Move completed (Done/Fixed) rows out of the active tables into an archive file; lightweight, run anytime; holds back "Done-but-owed" rows | `reference/commands/archive.md` |
 | `/unforget promote` | Release-time ritual: check every 🔴 THIS row is cleanly `done-verified` or `withdrawn` (or demoted), then promote 🔵 NEXT to 🔴 THIS | `reference/promotion.md` (with backups in same file) |
-| `/unforget --version` | Print version, install path, supported format-version; install-verification | `reference/commands.md` |
+| `/unforget --version` | Print version, install path, supported format-version; install-verification | `reference/commands/version.md` |
 
 **Decision flowchart: which subcommand do I run?**
 
@@ -93,7 +93,7 @@ UNFORGET.md is a single markdown file with **4 sections**, each containing a rat
 - **You read the ledger and saw rows nobody asked you about** → mention them in one line each and keep going. Start one only if the user named it, it blocks the current release, or it sits directly in the path of your task (`reference/pickup.md`).
 - **You've picked one row to actually work on and want its current state, not its whole history** → `/unforget show <ID>` (add `--full` for the complete raw history)
 - **You want to find rows that have aged past their thresholds** → `/unforget scan`
-- **The user wants to change how `list`/`scan` display by default, or says "run fresh" / "ask me what I want to see"** → `/unforget list --fresh` (depth-gated interview, saved per-project; see `reference/commands.md` § Display-preference interview)
+- **The user wants to change how `list`/`scan` display by default, or says "run fresh" / "ask me what I want to see"** → `/unforget list --fresh` (depth-gated interview, saved per-project; see `reference/commands/list-preferences.md` § Display-preference interview)
 - **Deferred work differs on actor (a different *human* acts on it) / lifespan (a sprint with its own discipline) / domain (a different repo or subject)** → `/unforget branch` (but default to a row or section — see `reference/branching.md`)
 - **Completed rows have piled up and you want them out of the active view** → `/unforget archive` (lightweight; use this between releases instead of `promote`)
 - **You're about to ship a release** → `/unforget promote`
@@ -113,7 +113,7 @@ This SKILL.md is intentionally thin. The full spec is split across `reference/*.
 | `reference/init.md` | Phases 1–7 of the init walkthrough, success criteria | Running `/unforget init` |
 | `reference/surfaces.md` | Six core surfaces, Surface 1b general doc scanning, redirect-pointer pre-check, memory-dir resolution, path encoding, meta-file pre-check, audit-tool format-aware parsing, cross-surface dedup, GitHub-issues four states, algorithm fallback | Running `init` or `import`, or auditing surface behavior |
 | `reference/promotion.md` | Promote ritual, dry-run mechanics, post-fix-sweep workflow, backups and recovery | Running `/unforget promote` or marking a row Fixed |
-| `reference/commands.md` | Per-subcommand specs for `add`, `edit`, `import`, `list`, `show`, `scan`, `archive`, `--version` (incl. `--version`'s install-integrity + recall-trigger checks) | Running any of those subcommands |
+| `reference/commands.md` | Index of the per-subcommand specs, one file each in `reference/commands/` (`add`, `edit`, `import`, `list`, `list-preferences`, `show`, `scan`, `branch`, `verify`, `archive`, `version`), and where each old section went | Finding which file holds a subcommand's spec; then load only that file |
 | `reference/html-report.md` | HTML defaults, user choices, scope/provenance, generator and verification | Creating an HTML report or `list --html` |
 | `reference/status.md` | (format v2+) `@status` / `@verified` tokens: the status enum, the `done-verified`-requires-device/user rule, the token↔narration contradiction rule, archive invariant, provenance, and close-on-report (update the row in the same turn a fix is reported) | Reading/writing a row's status; running `archive`/`list`/`edit`; reporting a fix |
 | `reference/registry.md` | (format v2+) the registry: schema (global config + per-ledger), README-canonical rule (README wins over the `.unforget.json` cache), where it lives | Resolving where ledgers live / reading persisted posture & policies |
@@ -209,11 +209,11 @@ The reference files below are written for the **implementer**, so they name conf
 
 **Origin (2026-08-13).** A live `--fresh` run rendered `reference/commands.md`'s key names straight into the prompt; the user's report was that it gave "not much context as to how to answer." The repair took three passes — key names → outcomes, then effort-framing → outcome-framing, then removing question counts the *second* pass had added — because each pass fixed only what was pointed at, with no stated principle to apply. This rule is here, in the index every session reads, so the next question is written right the first time rather than corrected after a user hits it.
 
-**Where the rule is applied today (v2.8.0):** `reference/commands.md § Display-preference interview` (all seven `--fresh` questions) and `reference/init.md` (git posture, cadence, recall — the three of its five that named mechanism; the file-path question was already outcome-framed and was deliberately left alone). Both files carry an `**Ask as:**` line per question giving the wording that reaches the user.
+**Where the rule is applied today (v2.8.0):** `reference/commands/list-preferences.md § Display-preference interview` (all seven `--fresh` questions) and `reference/init.md` (git posture, cadence, recall — the three of its five that named mechanism; the file-path question was already outcome-framed and was deliberately left alone). Both files carry an `**Ask as:**` line per question giving the wording that reaches the user.
 
 ⚠️ **`init` deserves the most care of any interview in this skill** — it is the only one where every respondent is new by definition. A confused user in `--fresh` already has a ledger and can decline; a confused user in `init` never gets one. Apply this rule hardest there.
 
-See `reference/commands.md § The governing rule for EVERY question in this interview` for the long form and worked examples.
+See `reference/commands/list-preferences.md § The governing rule for EVERY question in this interview` for the long form and worked examples.
 
 ---
 

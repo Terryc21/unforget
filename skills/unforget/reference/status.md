@@ -185,7 +185,7 @@ row in the **same turn**, before the reply ends. Never leave it for "later" or f
      test"). This is not a failure; it is the honest state, and it keeps blocking a release
      if the row is THIS.
 3. **Validate** with `python3 scripts/parse_status.py --row "<row>"` and fix any
-   `tier_valid:false` or contradiction before saving (see `reference/commands.md` §
+   `tier_valid:false` or contradiction before saving (see `reference/commands/edit.md` §
    Status-token rule).
 4. **Report the row, not just the fix.** End the fix report with the row's new state in one
    line, for example "A280 → `done-verified` `@verified:code` (Code-is-sufficient: …)" or

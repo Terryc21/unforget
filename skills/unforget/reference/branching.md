@@ -162,7 +162,7 @@ over-branches. Two related items is the middle path.
 - When it offers, the skill **names the pattern it saw**: *"3 App-Store-Connect rows
   this session — split into a user-action ledger?"* — not a generic "want to branch?"
 - One item does **not** trigger a suggestion. Wired into `add`/`import` (see
-  `reference/commands.md`).
+  `reference/commands/add.md` and `reference/commands/import.md`).
 
 ## §7 — Anti-patterns (what NOT to do)
 

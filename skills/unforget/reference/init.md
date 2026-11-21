@@ -33,7 +33,7 @@ Short questions before any scanning happens. The first three (path, cadence, rec
    - If `docs/` exists: default `docs/UNFORGET.md` (matches conventional library / web projects)
    - If neither exists: default `UNFORGET.md` at repo root (matches minimal single-purpose repos like skills, CLI tools, small libraries)
 
-   Always offer the user the chance to override. The point is to not impose a directory structure the project doesn't already use. **Archives are NOT a separate question**: the archive file always sits beside the ledger (`UNFORGET-archive.md`; see `reference/commands.md` § The archive file). Don't ask what you can sensibly default.
+   Always offer the user the chance to override. The point is to not impose a directory structure the project doesn't already use. **Archives are NOT a separate question**: the archive file always sits beside the ledger (`UNFORGET-archive.md`; see `reference/commands/archive.md` § The archive file). Don't ask what you can sensibly default.
 
    **Out-of-repo homes** (a separate notes tree, e.g. an Obsidian vault) are allowed, but WARN: an out-of-repo ledger is the split-brain risk vector (a session can't find it from the repo). The registry mitigates it, but the recall block (question below) must then carry the **absolute** path.
 
@@ -316,7 +316,7 @@ The collapsed form removes noise on minimal projects where most sections are emp
 User can preview the rows before committing. If they cancel, no files are touched. If they proceed:
 
 1. **Write UNFORGET.md** with all imported rows in their assigned sections, carrying the `<!-- unforget-format: v2 -->` marker (new ledgers are v2). If Surface 6 returned candidates and the scan emitted `pin_action.action == "write"`, write `<!-- unforget-config: memory-dir=<encoded> -->` on its own line immediately under the format marker. The pin caches "this directory worked for this project" so subsequent `/unforget import` runs skip the cwd-encode + ancestor-walk resolution. Skip the pin write when `pin_action.action == "none"`. See `reference/surfaces.md` § Memory-dir config pin (post-resolution).
-2. **Move RESOLVED / FIXED items** to the ledger's archive file (`UNFORGET-archive.md` in the same directory, in a `## Archived <date> (init)` block; see `reference/commands.md` § The archive file).
+2. **Move RESOLVED / FIXED items** to the ledger's archive file (`UNFORGET-archive.md` in the same directory, in a `## Archived <date> (init)` block; see `reference/commands/archive.md` § The archive file).
 3. **Optionally rename / replace the source files**: e.g., replace root `Deferred.md` with a redirect pointer to UNFORGET.md (preserving git history). Always ask before modifying any source file.
 4. **Write the registry (format v2).** Record the answers to the Phase 1 questions — git posture, recall mode + file, ledger home, and the two policy defaults — plus one entry for UNFORGET.md, in the ledger directory's `README.md` manifest (canonical) via `python3 scripts/registry.py write --dir <ledger-dir> --json <payload>`. README-canonical, `.unforget.json` is a regenerable cache; see `reference/registry.md`.
 5. **Apply the git posture.** Write the `.gitignore` rules the chosen posture implies (Split: ignore ledger contents, un-ignore the `README.md` index; Ignored: ignore all; Committed: nothing to ignore). Add `.unforget-session.json` (the deferral-gate per-session tally) and `.unforget.json` (the registry cache) to `.gitignore` under every posture — both are churn, not records. Preview the `.gitignore` diff before writing.
@@ -353,5 +353,5 @@ After init runs:
 
 Keep the bootstrap refusal when UNFORGET.md already exists. Missing or stale maintained
 recall is repaired via `import` and `recall_block.py write` using the actual registry,
-without resetting the ledger or repeating onboarding. See `reference/commands.md` § Repair
+without resetting the ledger or repeating onboarding. See `reference/commands/version.md` § Repair
 an existing ledger's recall block. Manual/none policies are not maintenance promises.

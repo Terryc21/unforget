@@ -73,8 +73,8 @@ and never touches the surrounding human prose:
 | `report_user_name` | Explicit project user name for HTML reports; unset by default. Never infer from paths or accounts. |
 | `report_user_label` | `you` (default) or `name`; name requires an explicit project name, otherwise falls back to You. |
 | `report_assistant_label` | HTML assignment label, default `Coding assistant`. |
-| `archive_nudge_threshold` | integer; completed-row count at which `list`/`add` append the archive nudge (default 5; `0` silences it). See `reference/commands.md` § The archive nudge |
-| `stale_days_this` | integer; days unchanged before an unfinished 🔴 THIS row (or one with no Target) is stale (default 30). See `reference/commands.md` § Staleness thresholds; read by `scripts/row_age.py` |
+| `archive_nudge_threshold` | integer; completed-row count at which `list`/`add` append the archive nudge (default 5; `0` silences it). See `reference/commands/archive.md` § The archive nudge |
+| `stale_days_this` | integer; days unchanged before an unfinished 🔴 THIS row (or one with no Target) is stale (default 30). See `reference/commands/scan.md` § Staleness thresholds; read by `scripts/row_age.py` |
 | `stale_days_next` | integer; days unchanged before an unfinished 🔵 NEXT row is stale (default 90) |
 | `stale_days_later` | integer; days unchanged before an unfinished 🟡 LATER row is stale (default 180) |
 | `stale_days_someday` | integer; days unchanged before an unfinished ⚪ SOMEDAY row is stale (default 365) |

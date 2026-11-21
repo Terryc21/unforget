@@ -4,7 +4,7 @@
 `init`, `archive` and `promote` once named three different destinations
 (an `archive/` subfolder, `UNFORGET-archive-<date>.md` and `UNFORGET-archive.md`),
 so archived history spread across files depending on which command moved it.
-`reference/commands.md` § The archive file is now the only definition. These
+`reference/commands/archive.md` § The archive file is now the only definition. These
 tests keep the other references from naming a second destination, and keep the
 archive file out of the active backlog.
 
@@ -24,14 +24,15 @@ sys.path.insert(0, str(SKILL / "scripts"))
 import import_drift  # noqa: E402
 import scan_surfaces  # noqa: E402
 
-DOCS = sorted((SKILL / "reference").glob("*.md")) + [SKILL / "SKILL.md", ROOT / "README.md"]
-DEFINITION = SKILL / "reference" / "commands.md"
+# rglob: the command specs live in reference/commands/ since the 11/21/2026 split.
+DOCS = sorted((SKILL / "reference").rglob("*.md")) + [SKILL / "SKILL.md", ROOT / "README.md"]
+DEFINITION = SKILL / "reference" / "commands" / "archive.md"
 
 
 class ArchiveFileTests(unittest.TestCase):
     def test_defined_once(self):
-        hits = [p.name for p in DOCS if "### The archive file" in p.read_text(encoding="utf-8")]
-        self.assertEqual(hits, ["commands.md"])
+        hits = [p for p in DOCS if "### The archive file" in p.read_text(encoding="utf-8")]
+        self.assertEqual(hits, [DEFINITION])
 
     def test_no_second_destination_named(self):
         # Dated archive files and an archive/ subfolder may be mentioned only in
@@ -49,7 +50,7 @@ class ArchiveFileTests(unittest.TestCase):
     def test_init_archive_and_promote_point_at_the_definition(self):
         for name in ("init.md", "promotion.md"):
             text = (SKILL / "reference" / name).read_text(encoding="utf-8")
-            self.assertIn("§ The archive file", text, name)
+            self.assertIn("commands/archive.md` § The archive file", text, name)
 
     def test_archive_files_never_count_as_active_ledgers(self):
         for name in ("UNFORGET-archive.md", "SITE-UNFORGET-archive.md"):

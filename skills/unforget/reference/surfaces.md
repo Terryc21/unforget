@@ -30,7 +30,7 @@ The default surface scan looks in the repo's standard locations. But the failure
 On `init` (migration, Phase 6b) and on `import`, in addition to scanning the defaults:
 
 - **Ask the user for non-standard ledger locations:** "Do you keep any deferred-work ledgers outside this repo — a notes tree, an Obsidian vault, a parallel directory?" If yes, take the path(s) and survey them explicitly. Do NOT deep-scan the whole disk to find them.
-- **Also flag ledger-shaped files found on disk but not registered** (`*UNFORGET*.md`, `TERRY-*`, `MI-*`, excluding `-archive`/`README`) — the "found-but-unregistered" drift check (`scripts/import_drift.py`; see `reference/commands.md` § `/unforget import` drift checks). This surfaces a stranded ledger the user forgot to mention.
+- **Also flag ledger-shaped files found on disk but not registered** (`*UNFORGET*.md`, `TERRY-*`, `MI-*`, excluding `-archive`/`README`) — the "found-but-unregistered" drift check (`scripts/import_drift.py`; see `reference/commands/import.md` § `/unforget import` drift checks). This surfaces a stranded ledger the user forgot to mention.
 - **Record every confirmed location in the registry** so it never has to be re-discovered — that is the whole point of §0 of the onboarding design: nothing the skill relies on should live only in memory.
 
 Bounded and consented: ask for paths, survey what the user names plus what the drift check finds, and register the result. Never a disk-wide crawl.

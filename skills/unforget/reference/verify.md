@@ -17,7 +17,7 @@ user's call. The one scoped exception is **`verify --fix`**, which offers to res
 **char-budget findings only** by splitting an over-budget row into a bounded index +
 a detail block, **per row with approval** (`scripts/row_budget.py`, lossless-verified
 — it refuses any split it can't prove preserves every character). It never auto-edits
-contradictions, tiers, or any other finding. See `reference/commands.md` §
+contradictions, tiers, or any other finding. See `reference/commands/verify.md` §
 `/unforget verify --fix` and `reference/format.md` § Row-length discipline.
 
 ## The checks (§4a)
@@ -76,7 +76,7 @@ its own answer instead of borrowing the archive gate's.*
   A ship/relocation decision is refused while any error-severity finding stands —
   the same way `promote` already refuses over unresolved 🔴 THIS rows. See the
   gate wiring in `reference/promotion.md` and the archive steps in
-  `reference/commands.md`.
+  `reference/commands/archive.md`.
 
 ## The `cell-count` check (§4d)
 
