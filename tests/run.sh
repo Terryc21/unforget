@@ -281,6 +281,11 @@ if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_start_accounting.py; t
   FAILED=1
 fi
 
+if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_row_age.py; then
+  echo "FAIL: row ages (row_age.py) no longer match git history or written dates"
+  FAILED=1
+fi
+
 if ! python3 -m unittest discover -s "$TESTS_DIR" -p test_ledger_moves.py; then
   echo "FAIL: ledger backups or verified moves (ledger_backup.py / move_ledger.py)"
   FAILED=1

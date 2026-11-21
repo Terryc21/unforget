@@ -119,6 +119,7 @@ REQUIRED_COMPANIONS = [
     "scripts/set_aside.py",
     "scripts/ledger_backup.py",
     "scripts/move_ledger.py",
+    "scripts/row_age.py",
 ]
 
 VERSION_RE = re.compile(r"^version:[ \t]*[\"']?([0-9]+\.[0-9]+\.[0-9]+)(?=[\"' \t\r\n]|$)", re.MULTILINE)

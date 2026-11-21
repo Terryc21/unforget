@@ -2,6 +2,15 @@
 
 ### Unreleased: review follow-ups
 
+- Staleness has dates behind it. `scan`, `list --stale` and `--age=` promised "stale after
+  30 days" for rows that carry no date. New `scripts/row_age.py` reads the ledger's git
+  history in one pass and gives each row the date it was first seen and last changed; an
+  uncommitted edit counts as today. When the ledger isn't in git (a gitignored, local-only
+  ledger), it uses the dates written in the row and its detail block instead, and labels
+  them `date_source: "text"`. Rows it can't date go to "Needs date stamp" with no guessed
+  age. The threshold table is restated for status tokens: unfinished rows age by Target
+  (30/90/180/365 days, the `stale_days_*` keys), and `done-verified` and `withdrawn` rows
+  never go stale. On one real 695-row gitignored ledger it dated 634 rows from written dates.
 - Starts are counted. A session may start a row the user did not name when it blocks the
   release or sits in the path of the task, but it only said so in one line. Now it records
   each start (`defer_tally.py record --outcome started --id <ID> --condition

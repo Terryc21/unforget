@@ -40,7 +40,8 @@
     "scripts/companions.py",
     "scripts/set_aside.py",
     "scripts/ledger_backup.py",
-    "scripts/move_ledger.py"
+    "scripts/move_ledger.py",
+    "scripts/row_age.py"
   ],
   "declared_versions": {
     "changelog": "2.14.1",

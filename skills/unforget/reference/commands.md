@@ -270,9 +270,9 @@ Show current state. Default view is sorted by Target (🔴 THIS first), then Urg
 /unforget list --target=THIS          ·  only ship-blockers
 /unforget list --section=audit        ·  only Section 3
 /unforget list --status=open          ·  filter by @status value (open/in-progress/done-verified/done-unverified/blocked/withdrawn)
-/unforget list --stale                ·  only rows past their staleness threshold
+/unforget list --stale                ·  only rows past their staleness threshold (ages from `scripts/row_age.py`)
 /unforget list --parked               ·  include rows set aside by likelihood (left out by default; see § Output format)
-/unforget list --age=30+              ·  only rows older than 30 days
+/unforget list --age=30+              ·  only rows not changed for more than 30 days (`row_age.py` `age_days`)
 /unforget list --view=<mode>          ·  all | open | done | split | next (see § View modes)
 /unforget list --group-by=<axis>      ·  target | section | none (see § Grouping)
 /unforget list --ledgers=<names>      ·  read across named sibling ledgers (see § Multi-ledger scope)
@@ -961,16 +961,37 @@ history, no scrolling)"`. Only on explicit accept does it build a small self-con
 
 Identify rows past their staleness threshold. Read-only. Never modifies the file.
 
+### Where the ages come from
+
+Run `python3 scripts/row_age.py --file <ledger> --dir <ledger-dir>` and use its output; never
+estimate a row's age. For each row it returns `logged` (first seen), `touched` (last changed),
+`age_days` (days since `touched`), `stale`, and `date_source`:
+
+- **`git`**: dates from the ledger's commit history (one `git log -p` pass).
+- **`uncommitted`**: the row was edited in the working tree and not committed yet, so it was
+  touched today.
+- **`text`**: git can't date it (a gitignored, local-only ledger, or one never committed), so the
+  dates come from those written in the row and its detail block. Say so in the scan output: a
+  written date may name an event the row cites rather than an edit to the row.
+
+Rows it cannot date either way come back in `needs_date`; they fill the scan's **Needs date
+stamp** section, and are never given a guessed age. A bulk rewrite of the ledger (a format
+migration, a token conversion) counts as a git touch for every row it changed.
+
 ### Staleness thresholds (default)
 
-| Status / Target | Stale after |
+A row is stale when it has not changed for longer than its Target's threshold:
+
+| Row | Stale after |
 |---|---|
-| Status = Open or In Progress | 30 days |
-| Status = Deferred AND Target = 🔵 NEXT | 90 days |
-| Status = Deferred AND Target = 🟡 LATER | 180 days |
-| Status = Deferred AND Target = ⚪ SOMEDAY | 365 days |
-| Status = Skipped | never stale |
-| Status = Fixed | never stale (but flag as ready-for-archive) |
+| `open`, `in-progress`, `blocked` or `done-unverified`, Target 🔴 THIS (or no Target) | 30 days |
+| same, Target 🔵 NEXT | 90 days |
+| same, Target 🟡 LATER | 180 days |
+| same, Target ⚪ SOMEDAY | 365 days |
+| `done-verified` or `withdrawn` | never stale (listed as ready for archive) |
+
+A v1 ledger's words map the same way: Open, In Progress and Deferred age by Target; Fixed and
+Skipped never go stale.
 
 These thresholds are customizable via the registry's `stale_days_this` / `stale_days_next` /
 `stale_days_later` / `stale_days_someday` keys (`reference/registry.md` § The schema), settable
