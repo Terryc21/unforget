@@ -369,3 +369,60 @@ class BudgetTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LikelihoodColumnTests(unittest.TestCase):
+    """The optional ledger Likelihood column (format.md § Optional column: Likelihood)
+    shows the tokens; verify warns when a cell says anything else."""
+
+    HEAD = ("| # | Target | Finding | Urgency | Risk: Fix | Risk: No Fix | ROI | Blast Radius | Fix Effort "
+            "| Status | Likelihood | 1-Star Risk |\n|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+
+    def line(self, rid, status, shown):
+        return (f"| {rid} | 🔵 NEXT | Thing {rid} | 🟢 MEDIUM | ⚪ Low | ⚪ Low | 🟢 Good | ⚪ 1 file | Small "
+                f"| {status} | {shown} | ⚪ n/a |\n")
+
+    def warnings(self, text):
+        return [(f["id"], f["message"]) for f in verify_ledger.check_likelihood_column(text)]
+
+    def test_label_text(self):
+        self.assertEqual(parse_status.likelihood_text("probable", "measured"), "🔴 Probable (measured)")
+        self.assertEqual(parse_status.likelihood_text("unlikely", None), "🟡 Unlikely")
+        self.assertEqual(parse_status.likelihood_text("n/a", "reasoned"), "n/a")
+        self.assertEqual(parse_status.likelihood_text(None), "Not rated")
+
+    def test_matching_cells_pass(self):
+        text = self.HEAD + "".join([
+            self.line("A1", "`@status:open` `@likelihood:rare` `@basis:reviewed`", "🟢 Rare (reviewed)"),
+            self.line("A2", "`@status:open`", "Not rated"),
+            self.line("A3", "`@status:open`", ""),
+            self.line("A4", "`@status:open` `@likelihood:likely`", "🟡  likely"),  # case and spacing forgiven
+        ])
+        self.assertEqual(self.warnings(text), [])
+
+    def test_disagreeing_cells_warn_and_name_the_tokens(self):
+        text = self.HEAD + "".join([
+            self.line("A1", "`@status:open` `@likelihood:rare` `@basis:reviewed`", "🔴 Probable (measured)"),
+            self.line("A2", "`@status:open` `@likelihood:likely` `@basis:reproduced`", ""),
+            self.line("A3", "`@status:open`", "🟢 Rare (reasoned)"),
+        ])
+        got = dict(self.warnings(text))
+        self.assertEqual(sorted(got), ["A1", "A2", "A3"])
+        self.assertIn("'🟢 Rare (reviewed)'", got["A1"])
+        self.assertIn("'Not rated'", got["A3"])
+
+    def test_ledgers_without_the_column_are_untouched(self):
+        text = HEADER + row("A1", "🔵 NEXT", "Thing", "⚪ Low", "`@status:open` `@likelihood:rare`")
+        self.assertEqual(self.warnings(text), [])
+
+    def test_status_and_gating_ignore_the_column(self):
+        with_col = self.HEAD + self.line("A1", "`@status:open` `@likelihood:rare` `@parked:likelihood`",
+                                         "🔴 Probable (measured)")
+        parsed = parse_status.parse_file(with_col)[0]
+        self.assertEqual((parsed["status"], parsed["likelihood"], parsed["set_aside"]), ("open", "rare", True))
+
+    def test_the_example_ledger_column_matches_its_tokens(self):
+        text = (ROOT / "examples" / "UNFORGET.md").read_text(encoding="utf-8")
+        self.assertEqual(self.warnings(text), [])
+        self.assertIn("| Likelihood |", text)
+        self.assertNotIn("risk‹─", text.split("### The `1-Star Risk` column")[0])

@@ -47,22 +47,13 @@ E = html.escape
 # scrolled sideways, and drew empty bars on unrated rows. LIKELIHOOD_POS is the
 # rank, most likely first, used for sorting.
 LIKELIHOOD_POS = {'certain': 0, 'probable': 2, 'likely': 4, 'unlikely': 6, 'rare': 8, 'improbable': 10}
-LIKELIHOOD_BAND = {'certain': '🔴', 'probable': '🔴', 'likely': '🟡', 'unlikely': '🟡',
-                   'rare': '🟢', 'improbable': '🟢'}
+LIKELIHOOD_BAND = parse_status.LIKELIHOOD_BAND
 ONESTAR_ORDER = (('🔴', 0), ('🟡', 1), ('🟢', 2), ('⚪', 3))
 
 
 def likelihood_label(value, basis):
     """HTML for a likelihood rating: band glyph and word, e.g. "🟢 Rare (reviewed)"."""
-    if value in LIKELIHOOD_POS:
-        label = f"{LIKELIHOOD_BAND[value]} {value.title()}" + (f" ({basis})" if basis else '')
-    elif value == 'n/a':
-        label = 'n/a'
-    elif value:
-        label = value.title()
-    else:
-        label = 'Not rated'
-    return html.escape(label)
+    return html.escape(parse_status.likelihood_text(value, basis))
 
 
 def onestar_label(text):

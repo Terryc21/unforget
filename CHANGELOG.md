@@ -2,6 +2,20 @@
 
 ### Unreleased
 
+- The ledger's 1-Star Risk cell is now the colored dot and word only, "🟡 Watch (mid)",
+  matching the HTML report. The one-line bar with a star is retired from the format; cells
+  that still have it read correctly and need no rewrite.
+- New optional `Likelihood` column, placed after Status, shows a row's likelihood tokens to
+  whoever reads the table ("🔴 Probable (measured)", or "Not rated"). The tokens in the Status
+  cell stay the source every tool reads, and `verify` warns (`likelihood-column`) when a cell
+  says something else. The report and the column word a rating identically
+  (`parse_status.likelihood_text`).
+- The sample ledger (`examples/UNFORGET.md`) is brought up to date: it shows the Likelihood
+  column, dot-and-word 1-Star Risk cells, a row a session logged and you haven't triaged
+  (S5, `@parked`), a row set aside as unlikely (A6, `@parked:likelihood`), and a table of
+  every token it uses. The gallery is regenerated: Top 10 now shows 10 of 17 rows, Quick wins
+  5 of 8, and each view notes the set-aside row it leaves out.
+- README lists the related skills as bullets.
 - The GitHub issue survey works in a linked worktree and in a submodule. There `.git` is a
   file pointing at the real repository, not a folder, and `scan_surfaces.py` only looked for
   `.git/config`, so it reported the project as not on GitHub and skipped its issues. It now

@@ -377,7 +377,33 @@ def check_rows(text: str, char_budget: int, char_budget_hard: int | None = None,
         # accepted, and a set-aside that didn't actually leave the release gate.
         findings.extend(check_likelihood(parsed, rid, line, details.get(rid, ""), protected_classes))
 
+    findings.extend(check_likelihood_column(text))
     return findings, blockers
+
+
+def _plain(text: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[*`]", "", text)).strip().casefold()
+
+
+def check_likelihood_column(text: str) -> list[dict]:
+    """Check 13: an optional Likelihood column shows the row's tokens, nothing else
+    (reference/format.md § Optional column: Likelihood). The tokens are what every
+    tool reads, so a column that says something different misleads only the person
+    reading the table: warn, naming what the tokens say."""
+    out = []
+    for line, headers in parse_status.row_contexts(text):
+        if not headers or "likelihood" not in headers:
+            continue
+        cell = parse_status.named_cell(line, headers, "likelihood", lambda r: "")
+        parsed = parse_status.parse_row(line, headers)
+        expected = parse_status.likelihood_text(parsed.get("likelihood"), parsed.get("basis"))
+        shown = _plain(cell)
+        ok = shown == _plain(expected) or (not parsed.get("likelihood") and shown == "")
+        if not ok:
+            out.append({"severity": "warn", "check": "likelihood-column", "id": parsed["id"],
+                        "message": f"Likelihood column says {cell.strip()!r} but the tokens say "
+                                   f"{expected!r}; the tokens are what tools read, so fix the column"})
+    return out
 
 
 UNREAD_TARGET_RE = re.compile(r"\b(THIS|NEXT|LATER|SOMEDAY)\b")

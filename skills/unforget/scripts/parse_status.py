@@ -87,6 +87,24 @@ LIKELIHOOD_VALUES = ("certain", "probable", "likely", "unlikely", "rare",
                      "improbable", "uncertain", "n/a")
 # Only these may be set aside for likelihood. `uncertain` never qualifies.
 SET_ASIDE_LIKELIHOODS = {"rare", "improbable"}
+
+# How a likelihood rating reads to a person: band glyph and word, then the basis,
+# e.g. "🔴 Probable (measured)". The HTML report's Likelihood column and a ledger's
+# optional Likelihood column (reference/format.md § Optional column: Likelihood)
+# both use likelihood_text, so the two can never word the same rating differently.
+LIKELIHOOD_BAND = {"certain": "🔴", "probable": "🔴", "likely": "🟡", "unlikely": "🟡",
+                   "rare": "🟢", "improbable": "🟢"}
+
+
+def likelihood_text(value, basis=None) -> str:
+    """'🔴 Probable (measured)', 'Uncertain', 'n/a', or 'Not rated' (no token)."""
+    if value in LIKELIHOOD_BAND:
+        return f"{LIKELIHOOD_BAND[value]} {value.title()}" + (f" ({basis})" if basis else "")
+    if value == "n/a":
+        return "n/a"
+    if value:
+        return value.title() + (f" ({basis})" if basis else "")
+    return "Not rated"
 LIKELIHOOD_RE = re.compile(r"@likelihood:\s*([a-z/-]+)")
 # What a likelihood rating rests on, strongest first (reference/format.md §
 # Likelihood token). Like @verified for fixes: a rating reasoned out by one

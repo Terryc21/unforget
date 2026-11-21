@@ -85,14 +85,14 @@ class ParkedMarkerTests(unittest.TestCase):
         # Parking is reported (parked_waiting, and a clause on the advisory), but
         # changes no finding, count, gate or blocker list.
         waiting = parked.pop("parked_waiting")
-        self.assertEqual(base.pop("parked_waiting"), [])
+        already = base.pop("parked_waiting")  # rows the example itself parks (S5)
         self.assertEqual(base.pop("set_aside"), parked.pop("set_aside"))
-        self.assertEqual(base.pop("advisory"),
-                         re.sub(r"; \d+ row\(s\) logged by a session are waiting for you: [^;(]*?(?= \(|$)",
-                                "", parked.pop("advisory")))
+        drop = re.compile(r"; \d+ row\(s\) logged by a session are waiting for you: [^;(]*?(?= \(|$)")
+        self.assertEqual(drop.sub("", base.pop("advisory")), drop.sub("", parked.pop("advisory")))
         self.assertEqual(base, parked)
         open_ids = {r["id"] for r in run("parse_status.py", self.parked) if not r["completed"]}
-        self.assertEqual(set(waiting), set(self.ids) & open_ids)
+        self.assertEqual(set(waiting), set(already) | (set(self.ids) & open_ids))
+        self.assertLess(len(already), len(waiting), "parking the open rows must add rows waiting")
         self.assertTrue(set(self.ids) & set(parked["this_open"]),
                         "a parked THIS row must still block release")
 

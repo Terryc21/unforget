@@ -143,9 +143,9 @@ A quick-wins list is worth a look on its own. unforget's rule is that trivial fi
 not written down, so anything that shows up there probably slipped through.
 
 Here is the Quick wins view of the bundled sample ledger. Note the line under the scope:
-"Showing 5 of 7 matching rows".
+"Showing 5 of 8 matching rows".
 
-[![Quick wins view: trivial and small fixes, best value first, cut to five rows, with a visible Showing 5 of 7 note](examples/quick-wins.png)](examples/README.md)
+[![Quick wins view: trivial and small fixes, best value first, cut to five rows, with a visible Showing 5 of 8 note](examples/quick-wins.png)](examples/README.md)
 
 **[See every view in the example gallery](examples/README.md)**: a preview of each one, what
 to type for it, and a download of the real interactive page.

@@ -106,5 +106,17 @@
     "owner_source": "suggested",
     "owner_basis": "Fictional example: this role is proposed for the next step, not a confirmed assignment.",
     "dependencies": "Product owner feedback on the proposed palette."
+  },
+  "UNFORGET.md::S5": {
+    "next": "Triage it: confirm a Target to unpark it, or withdraw it.",
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: a session logged this row on its own initiative, so only you can unpark it."
+  },
+  "UNFORGET.md::A6": {
+    "next": "Nothing while it is set aside; restore it if anyone reports a repeated tip.",
+    "owner_kind": "user",
+    "owner_source": "suggested",
+    "owner_basis": "Fictional example: you set this row aside, so bringing it back is your call."
   }
 }

@@ -38,6 +38,7 @@ contradictions, tiers, or any other finding. See `reference/commands/verify.md` 
 | **set-aside-unrated** / **set-aside-likelihood**: a set-aside row with no `@likelihood:` token, or rated something other than rare/improbable | warn | a set-aside with no basis, or one whose rating has since been raised |
 | **likelihood-value**: an `@likelihood:` value not on the scale | warn | typos in the rating vocabulary |
 | **basis-value** / **basis-without-likelihood**: an `@basis:` value not on the list, or a basis with no rating | warn | typos, or a basis left behind when a rating was removed |
+| **likelihood-column**: a ledger with the optional `Likelihood` column (`format.md` § Optional column: Likelihood) where a cell does not read exactly as the row's tokens do (`🔴 Probable (measured)`; empty or `Not rated` when there is no token) | warn | a table that tells the reader one rating while every tool acts on another |
 
 **Errors fail the gate; warnings do not.** Warnings are hygiene the user should
 address but that don't block a ship decision.

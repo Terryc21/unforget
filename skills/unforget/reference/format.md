@@ -73,7 +73,7 @@ read instead of parsing prose. Full spec: `reference/status.md`. In brief:
 | `reviewed` | A second, independent reviewer agreed with the rating. |
 | `reasoned` | One judgment from reading the code. The weakest basis, and the common one. |
 
-A standing policy sets a row aside only on `measured`, `reproduced` or `reviewed`; a `reasoned` rating, or a rating with no basis, always goes to the user. The HTML report can show both as a column (`--columns …,likelihood`).
+A standing policy sets a row aside only on `measured`, `reproduced` or `reviewed`; a `reasoned` rating, or a rating with no basis, always goes to the user. The HTML report can show both as a column (`--columns …,likelihood`), and a ledger can show them to its readers in the optional `Likelihood` column (§ Optional column: Likelihood).
 
 A row with several parts takes the rating of its **most likely** part, so a row with one probable part is never set aside as rare. Only `rare` and `improbable` rows may be set aside, which writes `@parked:likelihood` after the tokens, an `Accepted-risk: "<the user's words>" (MM/DD/YYYY)` line when the row is protected, and a `Parked:` line in the detail block. `verify` checks these (`reference/verify.md`).
 
@@ -186,26 +186,44 @@ Users on Standard, Compact, or Lean can also append **extra columns** (Client, S
 
 ### Optional column: `1-Star Risk`
 
-Projects shipping a user-facing app (App Store / Play Store) can append a **`1-Star Risk`** column that rates each row's exposure to a one-star review. It is an **appended extra column, not a core column** — it works in either format version (v1 or v2) and doesn't change which one the file declares; tooling that doesn't know about it ignores it, and projects that don't ship a public app simply omit it. Append it as the last column, **after `Status`**. (The status tooling finds the `@status` token by content, not by position, so an appended 1-Star Risk column after Status is read correctly — see `scripts/parse_status.py` § `status_cell`.) There is a live example in [`examples/UNFORGET.md`](../examples/UNFORGET.md).
+Projects shipping a user-facing app (App Store / Play Store) can append a **`1-Star Risk`** column that rates each row's exposure to a one-star review. It is an **appended extra column, not a core column**. It works in either format version (v1 or v2) and doesn't change which one the file declares; tooling that doesn't know about it ignores it, and projects that don't ship a public app simply omit it. Append it as the last column, **after `Status`** (and after `Likelihood`, when a ledger has both). The status tooling finds the `@status` token by content, not by position, so columns appended after Status are read correctly (`scripts/parse_status.py` § `status_cell`). There is a live example in [`examples/UNFORGET.md`](../../../examples/UNFORGET.md).
 
-**What it holds.** A three-zone risk strip — `At risk · Watch · Clear` (left→right = riskier→safer) — with a single `★` marking the row's band. The rating semantics are borrowed wholesale from the `one-star-risk` skill; when that skill is installed, `/unforget` can delegate the scoring to it. The strip is not a decoration: it is the compressed output of a one-star-risk judgment. `one-star-risk` is the shipped default filler for the `ship-risk-scoring` companion function — its skill mapping and URL live in the companion manifest (`reference/skill-handoffs.md`), the single place a companion link is written; resolve it there rather than hardcoding a URL at this column.
+**What it holds.** One of three bands, `At risk · Watch · Clear`, or `n/a`, with a lean word. The rating semantics are borrowed wholesale from the `one-star-risk` skill; when that skill is installed, `/unforget` can delegate the scoring to it. `one-star-risk` is the shipped default filler for the `ship-risk-scoring` companion function. Its skill mapping and URL live in the companion manifest (`reference/skill-handoffs.md`), the single place a companion link is written; resolve it there rather than hardcoding a URL at this column.
 
-**In-cell rendering (markdown table).** Make the strip **one unbroken inline-code span with no internal spaces** — spaces and `|` let the renderer wrap or break the column. The `★` sits in the third of the bar matching the band; its position *within* that third is a lean, not a percentage. Put the band glyph + zone word on the next line via `<br>` so color is never the only cue:
+**In-cell rendering.** The band glyph, the zone word, and the lean in parentheses:
 
 ```
 | … | Status | 1-Star Risk |
-| … | Open   | `risk‹★────────›clear`<br>🔴 At risk (deep) |
-| … | Open   | `risk‹─────★───›clear`<br>🟡 Watch (mid) |
-| … | Fixed  | `risk‹────────★›clear`<br>🟢 Clear (border) |
-| … | Open   | `risk‹─────────›clear`<br>⚪ n/a |
+| … | Open   | 🔴 At risk (deep) |
+| … | Open   | 🟡 Watch (mid) |
+| … | Fixed  | 🟢 Clear (border) |
+| … | Open   | ⚪ n/a |
 ```
+
+Until 11/21/2026 the cell also carried a one-line bar with a star, as an inline-code span before a `<br>` (`` `risk‹─────★─────›clear`<br>🟡 Watch (mid) ``). The bar was retired: the glyph and word already carry the rating, and the bar made tables too wide to read. Cells written that way are still valid. Every tool reads the band from the glyph and ignores the bar, so there is no need to rewrite them.
 
 **Hard rules (inherited from `one-star-risk`):**
 
-- **The zone is the band and is firm; the star's position within the zone is only a lean** — one of three named lean-words (`deep` / `mid` / `border`), how near the skeptic pass came to the adjacent band. **Never a percentage or computed coordinate** (`pos: 62%` is forbidden), and never let two same-zone rows be compared by strip position.
-- **Accessibility:** always pair the strip with the band glyph (🔴/🟡/🟢/⚪) *and* the zone word in text ("At risk / Watch / Clear"). The strip never encodes the band by position alone.
+- **The zone is the band and is firm; the lean is only a lean.** It is one of three named words (`deep` / `mid` / `border`) saying how near the skeptic pass came to the adjacent band. **Never a percentage or computed coordinate** (`pos: 62%` is forbidden), and never compare two same-zone rows by their lean.
+- **Accessibility:** the band glyph (🔴/🟡/🟢/⚪) is always paired with the zone word in text ("At risk / Watch / Clear"), so color is never the only cue.
 - **Most unforget rows are `⚪ n/a`.** Paused plans, spillover TODOs, and internal audit findings usually aren't user-visible App Store risks. That is expected — the value is the non-⚪ few. Do not inflate bands to fill the column.
 - **`1-Star Risk` never drives the Target/ship-gate.** It is advisory context alongside the existing `Risk: No Fix` column, not a replacement for it. A 🔴 At-risk row still ships or defers on its `Target`, same as any other row.
+
+### Optional column: `Likelihood`
+
+A ledger can show each row's likelihood rating to its readers in a **`Likelihood`** column, placed directly **after `Status`** (before `1-Star Risk`, if both are present). Like `1-Star Risk`, it is an appended extra column, not a core one, and ledgers without it are unaffected.
+
+**What it holds.** The row's `@likelihood:` and `@basis:` tokens, written for a person: band glyph, value, basis in parentheses. These are the same words the HTML report uses (`scripts/parse_status.py` § `likelihood_text`):
+
+```
+| … | Status                                                  | Likelihood            | 1-Star Risk   |
+| … | `@status:open` `@likelihood:probable` `@basis:measured` | 🔴 Probable (measured) | ⚪ n/a         |
+| … | `@status:open` `@likelihood:rare` `@basis:reviewed`     | 🟢 Rare (reviewed)     | 🟡 Watch (mid) |
+| … | `@status:open` `@likelihood:n/a` `@basis:reasoned`      | n/a                   | ⚪ n/a         |
+| … | `@status:open`                                          | Not rated             | ⚪ n/a         |
+```
+
+**The tokens stay the source.** Every tool reads the tokens in the Status cell, never this column, so status, filtering, setting aside and release gating behave exactly as they do without it. The column is a view of the tokens for whoever reads the table. When a rating changes, change the tokens and rewrite the cell to match. `verify` warns (`likelihood-column`) on any cell that doesn't read exactly as its row's tokens do; an unrated row's cell may be empty or `Not rated`.
 
 ### Compact preset detail
 
