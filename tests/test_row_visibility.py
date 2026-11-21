@@ -313,6 +313,24 @@ _plan = row_budget.split_row(HDR + LONG_ESC + "\n", "E2", 400, "short headline")
 check("a row split keeps the escaped pipe and stays lossless",
       bool(_plan.get("lossless")) and "a\\|b" in _plan.get("detail_bullet", ""), True)
 
+# --- the Target word counts; the marker in front of it is decoration (2026-11-21) ---
+print("\ntarget markers:")
+# A Compact table has no Target column, so the parser reads the badge in the
+# Finding cell. Parse whole tables (with headers), the path real ledgers take.
+COMPACT_HDR = "| # | Finding | Urgency | Status |\n|---|---|---|---|\n"
+for badge, word in (("🔴 THIS", "THIS"), ("🚢 THIS", "THIS"), ("🚢+1 NEXT", "NEXT"),
+                    ("🌫️ SOMEDAY", "SOMEDAY"), ("NEXT", "NEXT")):
+    rows = parse_status.parse_file(COMPACT_HDR + f"| C1 | **{badge} · a finding** | HIGH | `@status:open` |\n")
+    check(f"Compact badge {badge!r} reads as {word}", rows[0]["target"], word)
+_blk = parse_status.parse_file(COMPACT_HDR + "| C2 | **🚢 THIS · paywall bug** | HIGH | `@status:open` |\n")
+check("a Compact 🚢 THIS row blocks release", _blk[0]["blocks_release"], True)
+_vf, _vb = verify_ledger.check_rows(COMPACT_HDR + "| C2 | **🚢 THIS · paywall bug** | HIGH | `@status:open` |\n", 400)
+check("...and verify lists it in this_open", [b["id"] for b in _vb], ["C2"])
+check("prose that merely contains THIS is not a Compact badge",
+      bool(parse_status.COMPACT_FINDING_RE.match("Fix THIS · later")), False)
+check("a Standard bare Target cell is not mistaken for a Compact Finding",
+      bool(parse_status.COMPACT_FINDING_RE.match("🔵 NEXT")), False)
+
 PROSE = "| Step two | the build runs | done |"
 check("a prose table row is not reported as unidentified",
       any(f["check"] == "unidentified-row" for f in _checks(PROSE)), False)

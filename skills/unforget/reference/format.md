@@ -95,6 +95,8 @@ Detection and validation delegate to `scripts/parse_status.py` (see `reference/s
 | 🟡 **LATER** | Two cycles out or more. Real work, not yet scheduled. |
 | ⚪ **SOMEDAY** | No commitment. Captured so it doesn't get lost. May stay here forever. |
 
+**The word is the Target; the marker in front of it is decoration.** Every helper reads `THIS`, `NEXT`, `LATER` or `SOMEDAY` and ignores the emoji. The shipped dots reuse the Urgency column's colors (🟡 is LATER here but HIGH in Urgency), so a ledger may use other markers instead, for example 🚢 THIS, 🚢+1 NEXT, 🚢+2 LATER and 🌫️ SOMEDAY, which read as "which release". Use one style per ledger. The four words themselves never change: tools and every existing ledger depend on them.
+
 **Invariant:** `🔴 THIS` is the only Target that blocks shipping. At submission time, every `🔴 THIS` row must be Status = Fixed or have been demoted with a one-line reason.
 
 ### Detail blocks
@@ -212,7 +214,7 @@ Compact preserves Standard's release-cycle semantics; only the rendering changes
 - Standard cell: `🔴 THIS` in column 2, `Apple Wallet pass broken promise` in column 3.
 - Compact cell: column 2 is dropped; column 3 (Finding) becomes `**🔴 THIS · Apple Wallet pass broken promise**`.
 
-The leading `**🔴 THIS · ...**` form is the contract: a literal Target badge (one of `🔴 THIS` / `🔵 NEXT` / `🟡 LATER` / `⚪ SOMEDAY`), the literal middle dot ` · ` separator, and the original Finding text. Bold the whole prefix-plus-Finding so the badge stays visually anchored.
+The leading `**🔴 THIS · ...**` form is the contract: a Target badge (one of the four words, optionally after a marker such as `🔴` or `🚢+1`; see § Target values), the literal middle dot ` · ` separator, and the original Finding text. Bold the whole prefix-plus-Finding so the badge stays visually anchored.
 
 **Why Compact exists.** A 10-column rating table can wrap or render as vertical blocks in narrow terminals. Compact saves one column without losing the Target signal: `grep '🔴 THIS'` still finds ship-blockers, the Finding cell gets more room before hitting its character limit, and tooling that reads the file can still parse Target via a simple regex on the leading badge.
 

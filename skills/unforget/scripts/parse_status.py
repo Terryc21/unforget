@@ -223,9 +223,18 @@ def status_cell(row: str) -> str:
 # Finding-with-badge from a Standard bare Target cell (which is JUST the badge, no
 # separator). Requiring the separator is what keeps finding_cell from mistaking a
 # Standard Target cell for a Finding.
-COMPACT_FINDING_RE = re.compile(r"^\**\s*(🔴 THIS|🔵 NEXT|🟡 LATER|⚪ SOMEDAY)\s*·\s*\S")
+#
+# The WORD is the target; whatever marker precedes it is decoration. The shipped
+# dots (🔴 🔵 🟡 ⚪) reuse the Urgency column's colors, so a ledger may use other
+# markers such as 🚢 THIS, 🚢+1 NEXT, 🚢+2 LATER, 🌫️ SOMEDAY (reference/format.md §
+# Target values). Group 1 is the whole badge (kept verbatim by row splits);
+# group 2 is the word every caller reads. html_report.py already accepted any
+# marker, so the Compact parser and the report once disagreed (fixed 2026-11-21).
+TARGET_MARKER = r"(?:[^\w\s|*·]+(?:\+\d+)?\s*)?"
+COMPACT_FINDING_RE = re.compile(
+    rf"^\**\s*({TARGET_MARKER}(THIS|NEXT|LATER|SOMEDAY))\s*·\s*\S")
 # A bare Target cell (Standard/Lean) — the whole cell is the badge, nothing after.
-TARGET_BADGE_RE = re.compile(r"^\**\s*(🔴 THIS|🔵 NEXT|🟡 LATER|⚪ SOMEDAY)\**\s*$")
+TARGET_BADGE_RE = re.compile(rf"^\**\s*({TARGET_MARKER}(THIS|NEXT|LATER|SOMEDAY))\**\s*$")
 
 
 def data_cells(row: str) -> list[str]:
@@ -313,7 +322,7 @@ def row_target(row: str, headers=None) -> str:
     elif headers:
         finding = named_cell(row, headers, 'finding', lambda r: '')
         compact = COMPACT_FINDING_RE.match(finding)
-        return compact[1].split()[-1] if compact else ''
+        return compact[2] if compact else ''
     else:
         cells = data_cells(row)
         value = cells[1] if len(cells) > 1 else ''
@@ -481,7 +490,7 @@ def parse_row(row: str, headers=None, detail: str = "", fields=None) -> dict:
             target = match[1] if match else ""
         else:
             match = COMPACT_FINDING_RE.match(fields.get("finding", ""))
-            target = match[1].split()[-1] if match else ""
+            target = match[2] if match else ""
     blocks_release = target == "THIS" and not completed
 
     # Likelihood and parking: reported only, never fed into the decisions above.

@@ -1,5 +1,22 @@
 # Changelog
 
+### v2.14.0: Target markers, and strips in HTML reports (2026-11-21) · minor
+
+- The Target word is what counts; the marker before it is decoration. The Compact layout's
+  parser only recognized the shipped dots, so a Compact row written `🚢 THIS · …` was not a
+  release blocker: `verify` left it out of `this_open`. Any marker now works (🔴, 🚢, 🚢+1,
+  🌫️, or none), matching what the HTML report already accepted. `format.md` documents
+  🚢 THIS / 🚢+1 NEXT / 🚢+2 LATER / 🌫️ SOMEDAY as an alternative that avoids reusing the
+  Urgency column's red and yellow. The four words are unchanged.
+- The README's Target table gets a header row, "must be done by" wording that matches the
+  spec (LATER is two or more releases out), and markers that no longer wrap.
+- HTML reports draw likelihood and 1-Star Risk as strips, the ledger's 1-Star Risk format:
+  a bar with a star, then the band glyph and the word ("🟢 Rare (reviewed)"). The new
+  `onestar` column shows the ledger's own 1-Star Risk cell; `likelihood` places each rating
+  at a fixed point, left being more likely. Both sort by band.
+- Tests: Compact markers parsed with headers (fail on the old parser), a Compact 🚢 THIS
+  row in `this_open`, prose not read as a badge, both strips, and escaping in strip cells.
+
 ### v2.13.1: tokens don't count toward the row-length budget (2026-11-19) · patch
 
 - The row-length budget (400 characters soft, 1,600 hard) now measures a cell's prose only.

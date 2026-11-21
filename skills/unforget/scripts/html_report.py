@@ -24,7 +24,7 @@ URGENCY = {'critical': 0, 'high': 1, 'medium': 2, 'low': 3, 'unrated': 4}
 IMPACT = {'severe': 0, 'high': 1, 'moderate': 2, 'low': 3, 'indirect': 4, 'unrated': 5}
 TARGET = {'THIS': 0, 'NEXT': 1, 'LATER': 2, 'SOMEDAY': 3, 'Unassigned': 4}
 DEFAULT_COLUMNS = ['id', 'finding', 'target', 'status', 'ux', 'owner', 'next']
-COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'roi', 'owner', 'next', 'verification', 'last_checked', 'reconciliation', 'readiness', 'likelihood']
+COLUMNS = ['rank', 'id', 'ledger', 'blocker', 'target', 'finding', 'urgency', 'ux', 'status', 'effort', 'roi', 'owner', 'next', 'verification', 'last_checked', 'reconciliation', 'readiness', 'likelihood', 'onestar']
 OWNER_KINDS = {'user', 'assistant', 'person', 'team', 'unassigned'}
 OWNER_SOURCES = {'recorded', 'explicit', 'suggested'}
 SORTS = ['blocker', 'urgency', 'ux', 'target', 'effort', 'roi', 'id', 'ledger', 'status']
@@ -37,6 +37,41 @@ ROI_WORDS = {'excel': 'excellent', 'excellent': 'excellent', 'good': 'good', 'fa
 DELIMITER = re.compile(r'^\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$')
 ID = re.compile(parse_status.ROW_ID_PATTERN)  # the one shared id grammar (fullmatch)
 E = html.escape
+
+
+# Strips: the same look as the ledger's 1-Star Risk column (reference/format.md §
+# Optional column: 1-Star Risk): a one-line monospace bar with a star, and below it
+# the band glyph and the word, so color is never the only cue. Left is the worse
+# side in both. Likelihood is an ordinal scale, so each value has a fixed position.
+LIKELIHOOD_POS = {'certain': 0, 'probable': 2, 'likely': 4, 'unlikely': 6, 'rare': 8, 'improbable': 10}
+LIKELIHOOD_BAND = {'certain': '🔴', 'probable': '🔴', 'likely': '🟡', 'unlikely': '🟡',
+                   'rare': '🟢', 'improbable': '🟢'}
+ONESTAR_ORDER = (('🔴', 0), ('🟡', 1), ('🟢', 2), ('⚪', 3))
+
+
+def likelihood_strip(value, basis):
+    """HTML for a likelihood rating, drawn like the 1-Star Risk strip."""
+    pos = LIKELIHOOD_POS.get(value)
+    bar = ''.join('★' if i == pos else '─' for i in range(11))
+    if pos is not None:
+        label = f"{LIKELIHOOD_BAND[value]} {value.title()}" + (f" ({basis})" if basis else '')
+    elif value:
+        label = f"⚪ {value if value == 'n/a' else value.title()}"
+    else:
+        label = '⚪ Not rated'
+    return f'<span class="strip">often‹{bar}›seldom</span><br>{html.escape(label)}'
+
+
+def ledger_strip(text):
+    """HTML for a ledger cell written as `strip`<br>label (the 1-Star Risk format)."""
+    out = []
+    for part in re.split(r'<br\s*/?>', text, flags=re.I):
+        pieces = re.split(r'`([^`]*)`', part)
+        rendered = ''.join(html.escape(p) if i % 2 == 0 else f'<span class="strip">{html.escape(p)}</span>'
+                           for i, p in enumerate(pieces)).strip()
+        if rendered:
+            out.append(rendered)
+    return '<br>'.join(out)
 
 
 def cells(line):
@@ -198,6 +233,7 @@ def read_ledger(path):
                          finding=finding, status=status, target=target, urgency=urgency,
                          blocker=evaluated['blocks_release'], completed=evaluated['completed'],
                          set_aside=evaluated['set_aside'], likelihood=evaluated['likelihood'] or '', basis=evaluated.get('basis') or '',
+                         onestar=data.get('1-star risk', ''),
                          integrity_issues=evaluated['issues'],
                          ux='unrated', ux_basis='', owner='', next='', effort=column(data, ('fix effort', 'effort', 'est'), 'effort') or 'Unrated',
                          roi=column(data, ('roi',), 'roi'), vocab_key=str(path), original=data, notes=[], detail=details.get(ident,''),
@@ -401,7 +437,7 @@ def render(rows, sources, warnings, args, total_blockers):
     template=(Path(__file__).resolve().parent.parent/'assets/html-report.html').read_text(encoding='utf-8')
     labels={'id':'ID','finding':'Item','ux':'User impact','blocker':'Release gate','effort':'Fix effort',
             'roi':'Value (ROI)', 'target':'Release target','owner':'Who acts next','next':'Next action','last_checked':'Last checked',
-            'verification':'Verification needed','reconciliation':'Needs reconciliation','likelihood':'Likelihood'}
+            'verification':'Verification needed','reconciliation':'Needs reconciliation','likelihood':'Likelihood','onestar':'1-Star Risk'}
     statuses={'done-unverified':'Awaiting verification','done-verified':'Verified complete','in-progress':'In progress',
               'legacy-complete':'Completed (legacy claim)','open':'Open','blocked':'Blocked','withdrawn':'Withdrawn','unknown':'Needs review'}
     heads=''.join(f'<th scope="col"><button data-col="{n}">{E(labels.get(k,k.title()))} ↕</button></th>' for n,k in enumerate(args.columns))
@@ -438,9 +474,12 @@ def render(rows, sources, warnings, args, total_blockers):
                     text={'suggested':'Suggested','recorded':'Recorded assignment','explicit':'Explicitly assigned'}[r['owner_source']]
                     value+=f'<small class="assignment {E(r["owner_source"])}">{text}</small>'
             elif col=='status':value=E(statuses[r['status']])
-            elif col=='likelihood':value=E((r['likelihood'].title()+(f" ({r['basis']})" if r.get('basis') else '')) if r['likelihood'] else 'Not rated')
+            elif col=='likelihood':value=likelihood_strip(r['likelihood'],r.get('basis'))
+            elif col=='onestar':value=ledger_strip(r['onestar']) if r.get('onestar') else E('Not rated')
             else:value=E(value or 'Not recorded')
             sortvalue=sort_key(r,[col])[0] if col in SORTS else r.get(col,'')
+            if col=='likelihood':sortvalue=f"{LIKELIHOOD_POS.get(r['likelihood'],99):02d}"
+            if col=='onestar':sortvalue=next((str(n) for g,n in ONESTAR_ORDER if g in r.get('onestar','')),'9')
             if isinstance(sortvalue,bool):sortvalue=int(sortvalue)
             vals.append(f'<td data-label="{E(labels.get(col,col.title()),quote=True)}" data-value="{E(str(sortvalue),quote=True)}">{value}</td>')
         search=' '.join(' '.join(str(v) for v in public(r).values()).casefold().split())

@@ -217,8 +217,13 @@ key, preserving the source spelling and stable ties.
 
 The default columns are **ID · Item · Release target · Status · User impact · Who acts next · Next action**.
 `--columns` can also show rank, ledger, release gate, urgency, effort, verification,
-last_checked, reconciliation, readiness and likelihood (the `@likelihood:` rating with its
-`@basis:`, or "Not rated"). Original ratings, dependencies,
+last_checked, reconciliation, readiness, likelihood and onestar. Both `likelihood` and `onestar`
+use the 1-Star Risk strip format: a one-line bar with a star (`often‹────────★──›seldom`,
+`risk‹─────★─────›clear`), and below it the band glyph and the word, such as "🟢 Rare
+(reviewed)" or "🟡 Watch (mid)", so color is never the only cue. `onestar` draws the ledger's
+own `1-Star Risk` cell. `likelihood` draws the `@likelihood:` rating with its `@basis:`; each
+value has a fixed place on the bar, left being the more likely, and an unrated row shows an
+empty bar and "⚪ Not rated". Both sort by band. Original ratings, dependencies,
 verification procedure, check evidence, source link/line, and ledger detail history
 remain expandable. Missing information stays **Not recorded** (owner: **Unassigned**).
 

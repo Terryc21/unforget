@@ -192,8 +192,25 @@ class ReportTests(unittest.TestCase):
                             "--output", str(out), "--columns", "id,finding,likelihood"],
                            capture_output=True, text=True, check=True)
             page = out.read_text(encoding="utf-8")
-            self.assertIn(">Rare (reviewed)<", page)
-            self.assertIn(">Not rated<", page)
+            # Drawn like the 1-Star Risk strip: bar with a star, then band glyph + word.
+            self.assertIn('<span class="strip">often‹────────★──›seldom</span><br>🟢 Rare (reviewed)', page)
+            self.assertIn('<span class="strip">often‹───────────›seldom</span><br>⚪ Not rated', page)
+
+    def test_onestar_column_keeps_the_ledger_strip(self):
+        import html_report
+        cell = "`risk‹─────★─────›clear`<br>🟡 Watch (mid)"
+        self.assertEqual(html_report.ledger_strip(cell),
+                         '<span class="strip">risk‹─────★─────›clear</span><br>🟡 Watch (mid)')
+        self.assertEqual(html_report.ledger_strip("`<b>x</b>`<br><i>y</i>"),
+                         '<span class="strip">&lt;b&gt;x&lt;/b&gt;</span><br>&lt;i&gt;y&lt;/i&gt;')
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "r.html"
+            subprocess.run([sys.executable, str(SCRIPTS / "html_report.py"), "--file",
+                            str(ROOT / "examples" / "UNFORGET.md"), "--output", str(out),
+                            "--view", "all", "--columns", "id,finding,onestar"],
+                           capture_output=True, text=True, check=True)
+            page = out.read_text(encoding="utf-8")
+            self.assertIn('<span class="strip">risk‹★──────────›clear</span><br>🔴 At risk (deep)', page)
 
     def test_set_aside_blocker_is_never_hidden(self):
         text = "# U\n\n<!-- unforget-format: v2 -->\n\n" + HEADER + row(
